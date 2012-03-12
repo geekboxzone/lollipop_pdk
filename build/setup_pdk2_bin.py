@@ -21,6 +21,7 @@
 import os, re, string, sys
 
 PDK_BIN_PREFIX = "pdk_bin_"
+PDK_BIN_TOP_DIR = "/vendor/pdk/data/partner/"
 
 def list_available_pdk_bins(path):
   """returns the list of pdk_bin_* dir under the given path"""
@@ -49,13 +50,13 @@ def main(argv):
   cpu_conf = argv[2]
   target_hw = argv[3]
 
-  pdk_bin_dirs = list_available_pdk_bins(top_dir + "/vendor")
+  pdk_bin_dirs = list_available_pdk_bins(top_dir + PDK_BIN_TOP_DIR)
   arch_list = []
   for pdk_bin_dir in pdk_bin_dirs:
     arch_list.append(pdk_bin_dir[len(PDK_BIN_PREFIX): ])
 
   if not (cpu_conf in arch_list):
-    print "Specified cpu_conf", cpu_conf, "not avaialble under", top_dir + "/vendor/"
+    print "Specified cpu_conf", cpu_conf, "not avaialble under", top_dir + PDK_BIN_TOP_DIR
     print "Avaiable configurations are ", arch_list
     sys.exit(1)
 
@@ -63,7 +64,7 @@ def main(argv):
   os.system("mkdir -p " + top_dir + "/out/host")
   os.system("mkdir -p " + top_dir + "/out/target/common")
   os.system("mkdir -p " + top_dir + "/out/target/product/" + target_hw)
-  pdk_bin_path = top_dir + "/vendor/" + PDK_BIN_PREFIX + cpu_conf
+  pdk_bin_path = top_dir + PDK_BIN_TOP_DIR + PDK_BIN_PREFIX + cpu_conf
   pdk_bin_target_name = get_target_name_from_pdk_bin(pdk_bin_path)
   os.system("cp -a " + pdk_bin_path + "/raw_copy/host/* " + top_dir + "/out/host")
   os.system("cp -a " + pdk_bin_path + "/raw_copy/target/common/* " + top_dir +

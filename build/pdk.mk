@@ -27,8 +27,7 @@ BUILD_PDK_SUBDIRS := \
 	device \
 	hardware \
 	prebuilt \
-	prebuilts \
-	system
+	prebuilts
 
 
 # if pdk_vendor.mk exist, do not include pdk_google.mk
@@ -53,8 +52,8 @@ BUILD_PDK1_SUBDIRS := \
 	packages/apps/Settings \
 	packages/inputmethods/LatinIME \
 	packages/providers \
-	sdk
-
+	sdk \
+	system
 
 
 BUILD_PDK_SUBDIRS += $(BUILD_PDK1_SUBDIRS)
@@ -122,9 +121,15 @@ BUILD_PDK2_SUBDIRS := \
 	external/yaffs2 \
 	external/zlib \
 	frameworks/native \
-	frameworks/base/media/libmedia \
-	frameworks/base/media/libstagefright
+	system/bluetooth \
+	system/core \
+	system/extras \
+	system/media/audio_utils \
+	system/netd \
+	system/security \
+	system/vold
 
+# system should be put back to common list once system/media is refactored
 
 BUILD_PDK_SUBDIRS += $(BUILD_PDK2_SUBDIRS)
 
@@ -140,14 +145,17 @@ PDK_BIN_PRIMARY := pdk_bin_$(TARGET_ARCH_VARIANT)_false
 PDK_BIN_SECONDARY := pdk_bin_$(TARGET_ARCH_VARIANT)_true
 endif # !SMP
 
-ifneq (,$(wildcard $(TOPDIR)vendor/$(PDK_BIN_PRIMARY)))
-PDK_BIN_REPOSITORY := $(TOPDIR)vendor/$(PDK_BIN_PRIMARY)
+PDK_BIN_VENDOR_TOP_DIR := $(TOPDIR)vendor/pdk/data/partner
+
+ifneq (,$(wildcard $(PDK_BIN_VENDOR_TOP_DIR)/$(PDK_BIN_PRIMARY)))
+PDK_BIN_REPOSITORY := $(PDK_BIN_VENDOR_TOP_DIR)/$(PDK_BIN_PRIMARY)
 else # !PRIMARY
-ifneq (,$(wildcard $(TOPDIR)vendor/$(PDK_BIN_SECONDARY)))
+ifneq (,$(wildcard $(PDK_BIN_VENDOR_TOP_DIR)/$(PDK_BIN_SECONDARY)))
 $(info PDK_BIN using secondary option $(PDK_BIN_SECONDARY) for build)
-PDK_BIN_REPOSITORY := $(TOPDIR)vendor/$(PDK_BIN_SECONDARY)
+PDK_BIN_REPOSITORY := $(PDK_BIN_VENDOR_TOP_DIR)/$(PDK_BIN_SECONDARY)
 else # !SECONDARY
-$(error Neither vendor/$(PDK_BIN_PRIMARY) nor $(TOPDIR)vendor/$(PDK_BIN_SECONDARY) exists.)
+$(error Neither $(PDK_BIN_VENDOR_TOP_DIR)/$(PDK_BIN_PRIMARY) nor \
+  $(PDK_BIN_VENDOR_TOP_DIR)/$(PDK_BIN_SECONDARY) exists.)
 endif # !SECONDARY
 endif # !PRIMARY
 

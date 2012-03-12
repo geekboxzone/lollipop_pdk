@@ -54,6 +54,8 @@ def create_symbolic_link(src_top, dest_top, dir_name):
   src_full = src_top + "/" + dir_name
   dest_full = dest_top + "/" + dir_name
   print "create symbolic link from " + dest_full + " to " + src_full
+  # remove existing link first to prevent recursive loop
+  os.system("rm -rf " + dest_full)
   os.system("ln -s " + src_full + " " + dest_full)
 
 
@@ -61,6 +63,7 @@ def create_symbolic_link(src_top, dest_top, dir_name):
 # instead of full copying. These dirs should not be overwritten or replaced by copy
 symbolic_link_list = [
   "bionic",
+  "build",
   "dalvik",
   "development",
   "external",
@@ -69,7 +72,8 @@ symbolic_link_list = [
   "prebuilt",
   "prebuilts",
   "sdk",
-  "system"
+  "system",
+  "frameworks/base/data"
 ]
 
 # the whole dir copied
@@ -80,7 +84,6 @@ additional_dir_list = [
 # these dirs will be direcly pulled as the whole git.
 # so these files will not go under vendor/pdk_data
 additional_dir_pdk2_list_git = [
-  "external/chromium",
   "external/libnl-headers",
   "external/proguard",
 ]
@@ -88,21 +91,16 @@ additional_dir_pdk2_list_git = [
 additional_dir_pdk2_list = [
   "frameworks/base/build",
   "frameworks/base/cmds/dumpstate",
-  "frameworks/base/drm/libdrmframework/plugins/common/include",
   "frameworks/base/include/androidfw",
   "frameworks/base/include/android_runtime",
   "frameworks/base/include/camera",
-  "frameworks/base/include/cpustats",
-  "frameworks/base/include/drm",
-  "frameworks/base/include/media",
-  "frameworks/base/include/private",
-  "frameworks/media/libvideoeditor/include",
   "frameworks/base/native/include",
   "dalvik/libnativehelper/include",
   "external/v8/include",
   "external/safe-iop/include",
-  "external/skia/include"
-
+  "system/media/audio_effects/include", # should be removed after refactoring
+  "frameworks/base/include/drm", # for building legacy audio HAL, not in PDK release
+  "frameworks/base/include/media", # for building legacy audio HAL, not in PDK release
   ]
 
 # only files under the dir is copied, not subdirs
@@ -116,7 +114,7 @@ copy_files_list = [
 copy_files_pdk2_list = [
   "frameworks/base/media/libeffects/data/audio_effects.conf",
   "development/data/etc/apns-conf_sdk.xml",
-  "development/data/etc/vold.conf"
+  "development/data/etc/vold.conf",
   ]
 
 prev_copy_dir_list = [
@@ -144,6 +142,7 @@ files_to_remove = [
   "vendor/samsung/manta",
   "vendor/samsung/mysidspr",
   "vendor/samsung/toro",
+  "vendor/samsung/crespo", # should be removed when crespo is supproted
   "vendor/nvidia/proprietary-tegra3",
   "packages/providers/BrowserProvider",
   ]
@@ -195,7 +194,7 @@ def main(argv):
     cu.copy_files(src_top_dir, dest_top_dir, "/" + file_name)
 
   # overwrite files
-  cu.copy_files(src_top_dir + "/vendor/pdk_data_internal/overwrite", dest_top_dir, "/*")
+  cu.copy_files(src_top_dir + "/vendor/pdk/data/google/overwrite", dest_top_dir, "/*")
 
   for file_name in files_to_remove:
     os.system("rm -rf " + dest_top_dir + "/" + file_name)
@@ -207,7 +206,10 @@ def main(argv):
   print "use ICS version for ", prev_copy_dir_list_
   for dir_name in prev_copy_dir_list_:
     os.system("rm -rf " + dest_top_dir + "/" + dir_name)
-    cu.copy_dir(prev_src_top_dir, dest_top_dir, "/" + dir_name)
+    if dir_name in symbolic_link_list:
+      create_symbolic_link(prev_src_top_dir, dest_top_dir, dir_name)
+    else:
+      cu.copy_dir(prev_src_top_dir, dest_top_dir, "/" + dir_name)
 
 if __name__ == '__main__':
   main(sys.argv)

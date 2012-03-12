@@ -21,6 +21,6 @@ BUILD_PDK_SUBDIRS += \
 	vendor/khronos \
 	vendor/nxp/pn544 \
 	vendor/samsung \
-	vendor/ti \
-	vendor/widevine
+	vendor/ti
+
 

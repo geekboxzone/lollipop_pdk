@@ -143,7 +143,8 @@ host_jar_list = [
 target_a_list = [
   "libdrmframeworkcommon",
   "libcpustats",
-  "libv8"
+  "libv8",
+  "libmedia_helper"
   ]
 
 # from target/product/product_name/obj/lib
@@ -160,6 +161,9 @@ target_so_list = [
   "libdvm",
   "libchromium_net",
   "libcamera_client",
+  "libmedia",
+  "libstagefright",
+  "libstagefright_foundation"
   ]
 
 
@@ -170,7 +174,8 @@ target_jar_list = [
   "ext",
   "framework",
   "android.test.runner",
-  "android_stubs_current"
+  "android_stubs_current",
+  "filterfw"
   ]
 
 # files unnecessarily built for PDK. remove after copy
