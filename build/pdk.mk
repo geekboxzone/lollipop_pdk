@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-# common build dirs for pdk1 and pdk2
-# this list should be minimal to make pdk2 build fast
+# common build dirs for pdk_eng and pdk_rel builds
+# this list should be minimal to make pdk_rel build fast
 
 # BUILD_PDK_SUBDIRS is parsed by a script to extract source tree list automatically.
 # To make that parsing simple, the first line should not include any explicit directory name.
@@ -31,7 +31,7 @@ BUILD_PDK_SUBDIRS := \
 
 
 # if pdk_vendor.mk exist, do not include pdk_google.mk
-# pdk_vendor.mk should add more dirs for pdk2 build
+# pdk_vendor.mk should add more dirs for pdk_rel build
 # that is, it should include BUILD_PDK_SUBDIRS += \ to add additional dir for build
 ifneq (,$(wildcard $(TOPDIR)pdk/build/pdk_vendor.mk))
 include $(TOPDIR)pdk/build/pdk_vendor.mk
@@ -39,9 +39,9 @@ else
 include $(TOPDIR)pdk/build/pdk_google.mk
 endif
 
-ifeq ($(PDK_BUILD_TYPE), pdk1)
-# addition for pdk1
-BUILD_PDK1_SUBDIRS := \
+ifeq ($(PDK_BUILD_TYPE), pdk_eng)
+# addition for pdk_eng
+BUILD_PDK_ENG_SUBDIRS := \
 	dalvik \
 	development \
 	external \
@@ -56,7 +56,7 @@ BUILD_PDK1_SUBDIRS := \
 	system
 
 
-BUILD_PDK_SUBDIRS += $(BUILD_PDK1_SUBDIRS)
+BUILD_PDK_SUBDIRS += $(BUILD_PDK_ENG_SUBDIRS)
 
 ifeq ($(TARGET_CPU_SMP), true)
 PDK_BIN_NAME := pdk_bin_$(TARGET_ARCH_VARIANT)_true
@@ -76,19 +76,20 @@ $(OUT_DIR)/target/$(PDK_BIN_NAME).zip: $(OUT_DIR)/target/$(PDK_BIN_NAME)
 # It is too early and INSTALLED_SYSTEMIMAGE is not defined yet.
 $(OUT_DIR)/target/$(PDK_BIN_NAME): $(OUT_DIR)/target/product/$(TARGET_DEVICE)/boot.img \
                                    $(OUT_DIR)/target/product/$(TARGET_DEVICE)/system.img
-	python $(TOPDIR)pdk/build/copy_pdk1_bins.py . $(OUT_DIR)/target/$(PDK_BIN_NAME) $(TARGET_DEVICE)
+	python $(TOPDIR)pdk/build/copy_pdk_bins.py . $(OUT_DIR)/target/$(PDK_BIN_NAME) $(TARGET_DEVICE)
 
-else # pdk2
+else # pdk_rel
 
-# overwrite the definition from conflig.mk, no package build in pdk2
+# overwrite the definition from conflig.mk, no package build in pdk_rel
 BUILD_PACKAGE :=
 
-# addition for pdk2
-BUILD_PDK2_SUBDIRS := \
+# addition for pdk_rel
+BUILD_PDK_REL_SUBDIRS := \
 	external/antlr \
 	external/bluetooth \
 	external/bsdiff \
 	external/bzip2 \
+	external/clang \
 	external/dbus \
 	external/doclava \
 	external/expat \
@@ -107,6 +108,7 @@ BUILD_PDK2_SUBDIRS := \
 	external/liblzf \
 	external/libpng \
 	external/libvpx \
+	external/llvm \
 	external/mksh \
 	external/openssl \
 	external/protobuf \
@@ -120,6 +122,7 @@ BUILD_PDK2_SUBDIRS := \
 	external/wpa_supplicant_8 \
 	external/yaffs2 \
 	external/zlib \
+	frameworks/compile \
 	frameworks/native \
 	system/bluetooth \
 	system/core \
@@ -131,7 +134,7 @@ BUILD_PDK2_SUBDIRS := \
 
 # system should be put back to common list once system/media is refactored
 
-BUILD_PDK_SUBDIRS += $(BUILD_PDK2_SUBDIRS)
+BUILD_PDK_SUBDIRS += $(BUILD_PDK_REL_SUBDIRS)
 
 # naming convention for bin repository: pdk_bin_CPUArch_SMPSupport
 # ex: pdk_bin_armv7-a_true (armv7-a with SMP support)
@@ -167,9 +170,9 @@ $(error PDK_BIN_ORIGINAL_TARGET not set in $(PDK_BIN_REPOSITORY)/pdk_prebuilt.mk
 endif
 
 ifeq (,$(wildcard $(OUT_DIR)/target/product/$(TARGET_DEVICE)/PDK_BIN_COPIED))
-$(error PDK binaries necessary for pdk2 build are not there! Did you run setup_pdk2_bin.py? )
+$(error PDK binaries necessary for pdk_rel build are not there! Did you run setup_pdk_rel.py? )
 endif # PDK_BIN_COPIED
 
 PRODUCT_PACKAGES += core core-junit
 
-endif # pdk2
+endif # pdk_rel

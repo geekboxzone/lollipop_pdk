@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-# script to create minimal source tree for pdk2 build
+# script to create minimal source tree for pdk_eng / pdk_rel build
 # pdk/build/pdk.mk file will be checked to detect necessary files
 # together with additional addition in this script for build dependency
 
@@ -67,6 +67,8 @@ symbolic_link_list = [
   "dalvik",
   "development",
   "external",
+  "external/clang",
+  "external/llvm",
   "libcore",
   "pdk",
   "prebuilt",
@@ -83,24 +85,24 @@ additional_dir_list = [
 
 # these dirs will be direcly pulled as the whole git.
 # so these files will not go under vendor/pdk_data
-additional_dir_pdk2_list_git = [
+additional_dir_pdk_rel_list_git = [
   "external/libnl-headers",
   "external/proguard",
 ]
 
-additional_dir_pdk2_list = [
+additional_dir_pdk_rel_list = [
   "frameworks/base/build",
   "frameworks/base/cmds/dumpstate",
   "frameworks/base/include/androidfw",
   "frameworks/base/include/android_runtime",
-  "frameworks/base/include/camera",
   "frameworks/base/native/include",
   "dalvik/libnativehelper/include",
   "external/v8/include",
   "external/safe-iop/include",
   "system/media/audio_effects/include", # should be removed after refactoring
-  "frameworks/base/include/drm", # for building legacy audio HAL, not in PDK release
-  "frameworks/base/include/media", # for building legacy audio HAL, not in PDK release
+  "frameworks/base/include/drm", # for building legacy HAL, not in PDK release?
+  "frameworks/base/include/media", # for building legacy HAL, not in PDK release?
+  "frameworks/base/libs/rs/scriptc" # may remove after refactoring RS
   ]
 
 # only files under the dir is copied, not subdirs
@@ -111,18 +113,18 @@ copy_files_list = [
   "Makefile"
   ]
 
-copy_files_pdk2_list = [
+copy_files_pdk_rel_list = [
   "frameworks/base/media/libeffects/data/audio_effects.conf",
   "development/data/etc/apns-conf_sdk.xml",
-  "development/data/etc/vold.conf",
+  "development/data/etc/vold.conf"
   ]
 
 prev_copy_dir_list = [
   "frameworks/base/data"
   ]
 
-# for PDK1 build only, use old version
-prev_copy_dir_pdk1_list = [
+# for PDK_ENG build only, use old version
+prev_copy_dir_pdk_eng_list = [
   "packages/apps/Bluetooth",
   "packages/inputmethods/LatinIME",
   "packages/providers/ApplicationsProvider",
@@ -145,14 +147,15 @@ files_to_remove = [
   "vendor/samsung/crespo", # should be removed when crespo is supproted
   "vendor/nvidia/proprietary-tegra3",
   "packages/providers/BrowserProvider",
+  "hardware/ti/omap4xxx/test/CameraHal" # cannot build with PDK source
   ]
 
 def main(argv):
   if len(argv) < 5:
-    print "Usage: create_source_tree.py pdk_type(1 or 2) current_src_top_dir prev_src_top_tree dest_top_dir"
-    print "   ex: create_source_tree.py 1 ../jb_master ../ics_master /pdk1_source"
+    print "Usage: create_source_tree.py pdk_type(eng or rel) current_src_top_dir prev_src_top_tree dest_top_dir"
+    print "   ex: create_source_tree.py eng ../jb_master ../ics_master /pdk_eng_source"
     sys.exit(1)
-  pdk1 = (argv[1] == "1")
+  pdk_eng = (argv[1] == "eng")
   src_top_dir = os.path.abspath(argv[2])
   prev_src_top_dir = os.path.abspath(argv[3])
   dest_top_dir = os.path.abspath(argv[4])
@@ -166,15 +169,18 @@ def main(argv):
   if full_copy:
     dir_list += extract_build_dir(src_top_dir + "/pdk/build/pdk.mk", "BUILD_PDK_SUBDIRS")
     dir_list += extract_build_dir(src_top_dir + "/pdk/build/pdk_google.mk", "BUILD_PDK_SUBDIRS")
-    if pdk1:
-      dir_list += extract_build_dir(src_top_dir + "/pdk/build/pdk.mk", "BUILD_PDK1_SUBDIRS")
+    if pdk_eng:
+      dir_list += extract_build_dir(src_top_dir + "/pdk/build/pdk.mk", "BUILD_PDK_ENG_SUBDIRS")
     else:
-      dir_list += extract_build_dir(src_top_dir + "/pdk/build/pdk.mk", "BUILD_PDK2_SUBDIRS")
+      dir_list += extract_build_dir(src_top_dir + "/pdk/build/pdk.mk", "BUILD_PDK_REL_SUBDIRS")
 
   dir_list += additional_dir_list
-  if not pdk1:
-    dir_list += additional_dir_pdk2_list_git
-    dir_list += additional_dir_pdk2_list
+  if not pdk_eng:
+    dir_list += additional_dir_pdk_rel_list_git
+    dir_list += additional_dir_pdk_rel_list
+  for dir_prev_version in prev_copy_dir_list:
+    if dir_prev_version in dir_list:
+      dir_list.remove(dir_prev_version)
   print "copy list", dir_list
 
   os.system("mkdir -p " + dest_top_dir)
@@ -188,8 +194,8 @@ def main(argv):
     cu.copy_dir_only_file(src_top_dir, dest_top_dir, "/" + dir_name)
 
   copy_files_list_ = copy_files_list
-  if not pdk1:
-    copy_files_list_ += copy_files_pdk2_list
+  if not pdk_eng:
+    copy_files_list_ += copy_files_pdk_rel_list
   for file_name in copy_files_list_:
     cu.copy_files(src_top_dir, dest_top_dir, "/" + file_name)
 
@@ -201,8 +207,8 @@ def main(argv):
 
   prev_copy_dir_list_ = []
   prev_copy_dir_list_ += prev_copy_dir_list
-  if pdk1:
-    prev_copy_dir_list_ += prev_copy_dir_pdk1_list
+  if pdk_eng:
+    prev_copy_dir_list_ += prev_copy_dir_pdk_eng_list
   print "use ICS version for ", prev_copy_dir_list_
   for dir_name in prev_copy_dir_list_:
     os.system("rm -rf " + dest_top_dir + "/" + dir_name)

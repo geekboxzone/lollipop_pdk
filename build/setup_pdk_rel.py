@@ -15,8 +15,9 @@
 # limitations under the License.
 #
 
-# script to prepare pdk2 branches for build.
+# script to prepare pdk_rel branches for build.
 # This should be run after every make clean as necessary files will be deleted
+# TODO : set up source code as well
 
 import os, re, string, sys
 
@@ -43,8 +44,8 @@ def get_target_name_from_pdk_bin(path):
 
 def main(argv):
   if len(argv) != 4:
-    print "Usage: setup_pdk2_bin.py top_dir cpu_conf target_hw"
-    print "   ex: setup_pdk2_bin.py pdk2_source armv7-a-neon_true maguro"
+    print "Usage: setup_pdk_rel.py top_dir cpu_conf target_hw"
+    print "   ex: setup_pdk_rel.py pdk_rel_source armv7-a-neon_true maguro"
     sys.exit(1)
   top_dir = argv[1]
   cpu_conf = argv[2]
@@ -67,8 +68,9 @@ def main(argv):
   pdk_bin_path = top_dir + PDK_BIN_TOP_DIR + PDK_BIN_PREFIX + cpu_conf
   pdk_bin_target_name = get_target_name_from_pdk_bin(pdk_bin_path)
   os.system("cp -a " + pdk_bin_path + "/raw_copy/host/* " + top_dir + "/out/host")
-  os.system("cp -a " + pdk_bin_path + "/raw_copy/target/common/* " + top_dir +
-            "/out/target/common")
+# no target/common yet
+#  os.system("cp -a " + pdk_bin_path + "/raw_copy/target/common/* " + top_dir +
+#            "/out/target/common")
   os.system("cp -a " + pdk_bin_path + "/raw_copy/target/product/" + pdk_bin_target_name + "/* "
             + top_dir + "/out/target/product/" + target_hw)
   os.system("touch " + top_dir + "/out/target/product/" + target_hw + "/PDK_BIN_COPIED")

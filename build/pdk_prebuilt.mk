@@ -14,13 +14,9 @@
 # limitations under the License.
 #
 
-# build list for PDK1
-# This build filters out most applications
-# The outcome of this build is to create a binary release to allow chipset vendors
-# to create a minimum UI image to bring up their H/W
 
-# This file under pdk/build is the template for the same file under vendor/pdk_XYZ
-# The file under vendor is automatically generated, and do not edit.
+# This file under pdk/build is the template for the same file under vendor/pdk
+# The file under vendor/pdk is automatically generated, and should not be manually edited.
 
 LOCAL_PATH := $(call my-dir)
 

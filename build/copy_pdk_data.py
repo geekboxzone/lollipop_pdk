@@ -35,13 +35,13 @@ def main(argv):
   for dir_name in tree.prev_copy_dir_list:
     cu.copy_dir(previous_branch, dest_top + "/vendor/pdk_data", dir_name)
 
-  for dir_name in tree.prev_copy_dir_pdk1_list:
+  for dir_name in tree.prev_copy_dir_pdk_eng_list:
     cu.copy_dir(previous_branch, dest_top + "/vendor/pdk_data_internal", dir_name)
 
-  for dir_name in tree.additional_dir_pdk2_list:
+  for dir_name in tree.additional_dir_pdk_rel_list:
     cu.copy_dir(current_branch, dest_top + "/vendor/pdk_data", dir_name)
 
-  for file_name in tree.copy_files_pdk2_list:
+  for file_name in tree.copy_files_pdk_rel_list:
     cu.copy_files(current_branch, dest_top + "/vendor/pdk_data", file_name)
 
 if __name__ == '__main__':

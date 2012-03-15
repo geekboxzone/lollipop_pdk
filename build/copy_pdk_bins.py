@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# script to copy PDK1 build result into a dir for PDK2 build
+# script to copy PDK_eng build result into a dir for PDK_rel build
 
 import os, string, sys, shutil
 import copy_utils as cu
@@ -118,18 +118,18 @@ raw_dir_list = [
   "target/product/maguro/system/etc/security",
   "target/product/maguro/system/framework",
   "target/product/maguro/system/lib",
-  # tools for debugging, not all of them are built in pdk2 build
+  # tools for debugging, not all of them are built in pdk_rel build
   "target/product/maguro/system/xbin"
   ]
 
 # from host/linux-x86/obj/STATIC_LIBRARIES/XYZ_intermediates
 host_a_list = [
-  "libandroidfw"
+  "libandroidfw",
+  "libRS"
   ]
 
 # from host/linux-x86/obj/lib
 host_so_list = [
-  "libbcc"
   ]
 
 # from host/commom/JAVA_LIBRARIES/XYZ_intermediates
@@ -157,13 +157,13 @@ target_so_list = [
   "libnativehelper",
   "libemoji",
   "libdrmframework",
-  "libbcc",
   "libdvm",
   "libchromium_net",
   "libcamera_client",
   "libmedia",
   "libstagefright",
-  "libstagefright_foundation"
+  "libstagefright_foundation",
+  "libRS"
   ]
 
 
@@ -195,13 +195,13 @@ raw_target_files_to_remove = [
   "target/product/maguro/system/lib/libSEC_OMX*.so",
   "target/product/maguro/system/lib/libWiMAX*.so",
   "target/product/maguro/system/lib/libOMX.TI.*.so",
-  "target/product/maguro/system/lib/libOMX_Core.so",
+  "target/product/maguro/system/lib/libOMX_Core.so"
   ]
 
 def main(argv):
   if len(argv) != 4:
-    print "Usage: copy_pdk1_bins.py src_top_dir dest_top_dir src_target_device"
-    print "   ex: copy_pdk1_bins.py ../master vendor/pdk_bin_j_arm maguro"
+    print "Usage: copy_pdk_bins.py src_top_dir dest_top_dir src_target_device"
+    print "   ex: copy_pdk_bins.py ../master vendor/pdk_bin_j_arm maguro"
     sys.exit(1)
   src_top_dir = argv[1]
   src_out_dir = argv[1] + "/out/"

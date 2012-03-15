@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-# subdirs for building pdk1/pdk2 for maruro/crespo
+# subdirs for building pdk_eng/pdk_rel for maruro/crespo
 BUILD_PDK_SUBDIRS += \
 	vendor/broadcom \
 	vendor/invensense \
