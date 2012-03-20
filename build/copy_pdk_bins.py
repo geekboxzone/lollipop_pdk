@@ -163,7 +163,8 @@ target_so_list = [
   "libmedia",
   "libstagefright",
   "libstagefright_foundation",
-  "libRS"
+  "libRS",
+  "libmedia_native" # TODO temp fix for build error: should be removed after moving to f/native
   ]
 
 
