@@ -19,30 +19,54 @@
 # the current and the previous branch
 
 import os, string, sys, shutil
-import copy_utils as cu
+import pdk_utils as pu
 import create_source_tree as tree
 
+def clean_dest_dirs(dest_vendor_data):
+  dir_to_clean = []
+  dir_to_clean += tree.prev_copy_dir_list
+  dir_to_clean += tree.additional_dir_pdk_rel_list
+  print dir_to_clean
+  for file_name in tree.copy_files_pdk_rel_list:
+    [path, name] = file_name.rsplit("/", 1)
+    print path
+    dir_to_clean.append(path)
+
+  for dir_name in dir_to_clean:
+    dir_path = dest_vendor_data + "/" + dir_name
+    print "deleting all files under " + dir_path
+    if os.path.isfile(dir_path):
+      # this is wrong, just remove the file
+      os.system("rm " + dir_path)
+    if os.path.isdir(dir_path):
+      file_list = pu.list_files(dir_path, ".git")
+      print file_list
+      for file_name in file_list:
+        os.system("rm " + file_name)
 
 def main(argv):
-  if len(argv) != 4:
-    print "Usage: copy_pdk_data.py current previous dest_top_dir"
-    print "   ex: copy_pdk_data.py ../jb_master ../ics_master ."
+  if len(argv) < 4:
+    print "Usage: copy_pdk_data.py current previous dest_dir [-c]"
+    print "   ex: copy_pdk_data.py ../jb_master ../ics_master ./out/target/pdk_data"
+    print "   -c to clean dest_dir"
     sys.exit(1)
-  current_branch = argv[1]
-  previous_branch = argv[2]
-  dest_top = argv[3]
+  current_branch = os.path.abspath(argv[1])
+  previous_branch = os.path.abspath(argv[2])
+  dest_dir = os.path.abspath(argv[3])
+
+  cp_option = ""
+  if len(argv) == 5 and argv[4] == "-c":
+    clean_dest_dirs(dest_dir)
+    cp_option = "-n" # do not overwrite
 
   for dir_name in tree.prev_copy_dir_list:
-    cu.copy_dir(previous_branch, dest_top + "/vendor/pdk_data", dir_name)
-
-  for dir_name in tree.prev_copy_dir_pdk_eng_list:
-    cu.copy_dir(previous_branch, dest_top + "/vendor/pdk_data_internal", dir_name)
+    pu.copy_dir(previous_branch, dest_dir, dir_name, cp_option)
 
   for dir_name in tree.additional_dir_pdk_rel_list:
-    cu.copy_dir(current_branch, dest_top + "/vendor/pdk_data", dir_name)
+    pu.copy_dir(current_branch, dest_dir, dir_name, cp_option)
 
   for file_name in tree.copy_files_pdk_rel_list:
-    cu.copy_files(current_branch, dest_top + "/vendor/pdk_data", file_name)
+    pu.copy_files(current_branch, dest_dir, file_name)
 
 if __name__ == '__main__':
   main(sys.argv)

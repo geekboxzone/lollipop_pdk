@@ -20,7 +20,7 @@
 # together with additional addition in this script for build dependency
 
 import os, string, sys, shutil
-import copy_utils as cu
+import pdk_utils as pu
 
 
 def get_one_var_occurrence(f, dir_list_var):
@@ -74,8 +74,7 @@ symbolic_link_list = [
   "prebuilt",
   "prebuilts",
   "sdk",
-  "system",
-  "frameworks/base/data"
+  "system"
 ]
 
 # the whole dir copied
@@ -84,10 +83,12 @@ additional_dir_list = [
   ]
 
 # these dirs will be direcly pulled as the whole git.
-# so these files will not go under vendor/pdk_data
+# so these files will not go under vendor/pdk/data
 additional_dir_pdk_rel_list_git = [
   "external/libnl-headers",
   "external/proguard",
+  "external/v8",
+  "external/safe-iop",
 ]
 
 additional_dir_pdk_rel_list = [
@@ -97,8 +98,6 @@ additional_dir_pdk_rel_list = [
   "frameworks/base/include/android_runtime",
   "frameworks/base/native/include",
   "dalvik/libnativehelper/include",
-  "external/v8/include",
-  "external/safe-iop/include",
   "system/media/audio_effects/include", # should be removed after refactoring
   "frameworks/base/include/drm", # for building legacy HAL, not in PDK release?
   "frameworks/base/include/media", # for building legacy HAL, not in PDK release?
@@ -114,6 +113,7 @@ copy_files_list = [
   ]
 
 copy_files_pdk_rel_list = [
+  "libcore/include/UniquePtr.h", # by h/libhardware/tests/keymaster
   "frameworks/base/media/libeffects/data/audio_effects.conf",
   "development/data/etc/apns-conf_sdk.xml",
   "development/data/etc/vold.conf"
@@ -188,19 +188,19 @@ def main(argv):
     if dir_name in symbolic_link_list:
       create_symbolic_link(src_top_dir, dest_top_dir, dir_name)
     else:
-      cu.copy_dir(src_top_dir, dest_top_dir, "/" + dir_name)
+      pu.copy_dir(src_top_dir, dest_top_dir, "/" + dir_name)
 
   for dir_name in dir_copy_only_files_list:
-    cu.copy_dir_only_file(src_top_dir, dest_top_dir, "/" + dir_name)
+    pu.copy_dir_only_file(src_top_dir, dest_top_dir, "/" + dir_name)
 
   copy_files_list_ = copy_files_list
   if not pdk_eng:
     copy_files_list_ += copy_files_pdk_rel_list
   for file_name in copy_files_list_:
-    cu.copy_files(src_top_dir, dest_top_dir, "/" + file_name)
+    pu.copy_files(src_top_dir, dest_top_dir, "/" + file_name)
 
   # overwrite files
-  cu.copy_files(src_top_dir + "/vendor/pdk/data/google/overwrite", dest_top_dir, "/*")
+  pu.copy_files(src_top_dir + "/vendor/pdk/data/google/overwrite", dest_top_dir, "/*")
 
   for file_name in files_to_remove:
     os.system("rm -rf " + dest_top_dir + "/" + file_name)
@@ -215,7 +215,7 @@ def main(argv):
     if dir_name in symbolic_link_list:
       create_symbolic_link(prev_src_top_dir, dest_top_dir, dir_name)
     else:
-      cu.copy_dir(prev_src_top_dir, dest_top_dir, "/" + dir_name)
+      pu.copy_dir(prev_src_top_dir, dest_top_dir, "/" + dir_name)
 
 if __name__ == '__main__':
   main(sys.argv)

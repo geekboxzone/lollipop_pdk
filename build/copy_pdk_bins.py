@@ -17,22 +17,22 @@
 # script to copy PDK_eng build result into a dir for PDK_rel build
 
 import os, string, sys, shutil
-import copy_utils as cu
+import pdk_utils as pu
 
 
 # currently javalib.jar is not used and target jar is just copied in raw copy process
 def copy_jar(src_jar_dir, dest_dir, jar_name):
   """copy classes.jar and javalib.jar to dest_dir/jar_name dir"""
-  cu.copy_file_if_exists(src_jar_dir, dest_dir + "/" + jar_name, "classes.jar")
-  cu.copy_file_if_exists(src_jar_dir, dest_dir + "/" + jar_name, "javalib.jar")
+  pu.copy_file_if_exists(src_jar_dir, dest_dir + "/" + jar_name, "classes.jar")
+  pu.copy_file_if_exists(src_jar_dir, dest_dir + "/" + jar_name, "javalib.jar")
 
 def copy_classes_or_javalib(src_jar_dir, dest_dir, jar_name):
   """For host, either classes.jar or javalib.jar is enough.
      Use javalib only when there is no classes.jar"""
-  if cu.copy_file_new_name_if_exists(src_jar_dir + "/classes.jar", dest_dir + "/" + jar_name,
+  if pu.copy_file_new_name_if_exists(src_jar_dir + "/classes.jar", dest_dir + "/" + jar_name,
                                      jar_name + ".jar"):
     return
-  cu.copy_file_new_name_if_exists(src_jar_dir + "/javalib.jar", dest_dir + "/" + jar_name,
+  pu.copy_file_new_name_if_exists(src_jar_dir + "/javalib.jar", dest_dir + "/" + jar_name,
                                   jar_name + ".jar")
 
 class DependencyMk(object):
@@ -226,24 +226,24 @@ def main(argv):
   os.system("rm -rf " + dest_top_dir + "/raw_copy")
   os.system("rm -rf " + dest_top_dir + "/target")
   # copy template for mk
-  cu.copy_file_if_exists(src_top_dir + "/pdk/build", dest_top_dir, "pdk_prebuilt.mk")
+  pu.copy_file_if_exists(src_top_dir + "/pdk/build", dest_top_dir, "pdk_prebuilt.mk")
   mkFile = DependencyMk(dest_top_dir + "/pdk_prebuilt.mk")
   mkFile.addString("\n\n\n")
   mkFile.addString("PDK_BIN_ORIGINAL_TARGET := " + target_name + "\n")
 
   for file_name in raw_file_list:
-    cu.copy_file_if_exists(src_out_dir, dest_top_dir + "/raw_copy", file_name)
+    pu.copy_file_if_exists(src_out_dir, dest_top_dir + "/raw_copy", file_name)
 
   for raw_dir in raw_dir_list:
-    cu.copy_dir(src_out_dir, dest_top_dir + "/raw_copy", raw_dir)
+    pu.copy_dir(src_out_dir, dest_top_dir + "/raw_copy", raw_dir)
 
   for host_a in host_a_list:
-    cu.copy_file_if_exists(src_out_dir + "/host/linux-x86/obj/STATIC_LIBRARIES/" + host_a +
+    pu.copy_file_if_exists(src_out_dir + "/host/linux-x86/obj/STATIC_LIBRARIES/" + host_a +
                            "_intermediates", dest_top_dir + "/host/lib", host_a + ".a")
     mkFile.addHostA(host_a)
 
   for host_so in host_so_list:
-    cu.copy_file_if_exists(src_out_dir + "/host/linux-x86/obj/lib/",
+    pu.copy_file_if_exists(src_out_dir + "/host/linux-x86/obj/lib/",
                            dest_top_dir + "/host/lib", host_so + ".so")
     mkFile.addHostSo(host_so)
 
@@ -254,12 +254,12 @@ def main(argv):
     mkFile.addHostJar(host_jar)
 
   for target_a in target_a_list:
-    cu.copy_file_if_exists(src_target_top_dir + "obj/STATIC_LIBRARIES/" + target_a +
+    pu.copy_file_if_exists(src_target_top_dir + "obj/STATIC_LIBRARIES/" + target_a +
                            "_intermediates", dest_top_dir + "/target/lib", target_a + ".a")
     mkFile.addTargetA(target_a)
 
   for target_so in target_so_list:
-    cu.copy_file_if_exists(src_target_top_dir + "obj/lib/",
+    pu.copy_file_if_exists(src_target_top_dir + "obj/lib/",
                            dest_top_dir + "/target/lib", target_so + ".so")
     mkFile.addTargetSo(target_so)
 
@@ -271,6 +271,10 @@ def main(argv):
 
   for file_to_remove in raw_target_files_to_remove:
     os.system("rm -rf " + dest_top_dir + "/raw_copy/" + file_to_remove)
+
+  # rename raw_copy/target/product/target_name to target/product/pdk_target
+  os.system("mv " + dest_top_dir + "/raw_copy/target/product/" + target_name \
+             + " " + dest_top_dir + "/raw_copy/target/product/pdk_target")
 
 if __name__ == '__main__':
   main(sys.argv)

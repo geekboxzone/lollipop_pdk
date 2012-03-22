@@ -16,11 +16,18 @@
 
 # subdirs for building pdk_eng/pdk_rel for maruro/crespo
 BUILD_PDK_SUBDIRS += \
+	device/samsung/tuna \
+	device/samsung/maguro \
+	device/ti/panda \
+	hardware/broadcom \
+	hardware/invensense \
+	hardware/ti/omap4xxx \
 	vendor/broadcom \
 	vendor/invensense \
 	vendor/khronos \
 	vendor/nxp/pn544 \
 	vendor/samsung \
 	vendor/ti
+
 
 

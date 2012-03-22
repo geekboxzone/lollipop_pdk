@@ -24,8 +24,6 @@ BUILD_PDK_SUBDIRS := \
 	bionic \
 	bootable \
 	build \
-	device \
-	hardware \
 	prebuilt \
 	prebuilts
 
@@ -44,8 +42,10 @@ ifeq ($(PDK_BUILD_TYPE), pdk_eng)
 BUILD_PDK_ENG_SUBDIRS := \
 	dalvik \
 	development \
+	device \
 	external \
 	frameworks \
+	hardware \
 	libcore \
 	packages/apps/Bluetooth \
 	packages/apps/Launcher2 \
@@ -64,19 +64,29 @@ else # !SMP
 PDK_BIN_NAME := pdk_bin_$(TARGET_ARCH_VARIANT)_false
 endif # !SMP
 
-.PHONY: pdk_bin_zip
-pdk_bin_zip: $(OUT_DIR)/target/$(PDK_BIN_NAME).zip
+.PHONY: pdk_bin_zip pdk_data_zip
+pdk_bin_zip: $(OUT_DIR)/target/$(PDK_BIN_NAME).zip pdk_data_zip
 
 
 $(OUT_DIR)/target/$(PDK_BIN_NAME).zip: $(OUT_DIR)/target/$(PDK_BIN_NAME)
 	$(info Creating $(OUT_DIR)/target/$(PDK_BIN_NAME).zip)
-	$(hide) cd $(dir $@) && rm -rf $(notdir $@) && zip -rq $(notdir $@) $(PDK_BIN_NAME)
+	$(hide) cd $(dir $@) && rm -rf $(notdir $@) && cd $(PDK_BIN_NAME) && zip -rq ../$(notdir $@) *
 
 # explicitly put dependency on two final images to avoid copying every time
 # It is too early and INSTALLED_SYSTEMIMAGE is not defined yet.
 $(OUT_DIR)/target/$(PDK_BIN_NAME): $(OUT_DIR)/target/product/$(TARGET_DEVICE)/boot.img \
                                    $(OUT_DIR)/target/product/$(TARGET_DEVICE)/system.img
 	python $(TOPDIR)pdk/build/copy_pdk_bins.py . $(OUT_DIR)/target/$(PDK_BIN_NAME) $(TARGET_DEVICE)
+
+pdk_data_zip: $(OUT_DIR)/target/pdk_data.zip
+
+$(OUT_DIR)/target/pdk_data.zip: $(OUT_DIR)/target/pdk_data
+	$(info Creating $(OUT_DIR)/target/pdk_data.zip)
+	$(hide) cd $(dir $@) && rm -rf $(notdir $@) && cd pdk_data && zip -rq ../$(notdir $@) *
+
+$(OUT_DIR)/target/pdk_data:  $(OUT_DIR)/target/product/$(TARGET_DEVICE)/boot.img \
+                             $(OUT_DIR)/target/product/$(TARGET_DEVICE)/system.img
+	python $(TOPDIR)pdk/build/copy_pdk_data.py . . $(OUT_DIR)/target/pdk_data
 
 else # pdk_rel
 
@@ -85,6 +95,8 @@ BUILD_PACKAGE :=
 
 # addition for pdk_rel
 BUILD_PDK_REL_SUBDIRS := \
+	device/common \
+	device/sample \
 	external/antlr \
 	external/bluetooth \
 	external/bsdiff \
@@ -124,6 +136,9 @@ BUILD_PDK_REL_SUBDIRS := \
 	external/zlib \
 	frameworks/compile \
 	frameworks/native \
+	hardware/libhardware \
+	hardware/libhardware_legacy \
+	hardware/ril \
 	system/bluetooth \
 	system/core \
 	system/extras \
@@ -172,6 +187,10 @@ endif
 ifeq (,$(wildcard $(OUT_DIR)/target/product/$(TARGET_DEVICE)/PDK_BIN_COPIED))
 $(error PDK binaries necessary for pdk_rel build are not there! Did you run setup_pdk_rel.py? )
 endif # PDK_BIN_COPIED
+
+ifeq (,$(wildcard $(TOPDIR)PDK_DATA_COPIED))
+$(error PDK data necessary for pdk_rel build are not there! Did you run setup_pdk_rel.py? )
+endif # PDK_DATA_COPIED
 
 PRODUCT_PACKAGES += core core-junit
 

@@ -20,27 +20,24 @@
 # TODO : set up source code as well
 
 import os, re, string, sys
+import pdk_utils as pu
 
 PDK_BIN_PREFIX = "pdk_bin_"
-PDK_BIN_TOP_DIR = "/vendor/pdk/data/partner/"
+PDK_BIN_TOP_DIR = "/vendor/pdk/data/partner/bin"
+PDK_CPU_ARCH_TOP_DIR = "/vendor/pdk/data/partner"
+PDK_DATA_TOP_DIR = "/vendor/pdk/data/partner/data"
 
 def list_available_pdk_bins(path):
   """returns the list of pdk_bin_* dir under the given path"""
-  pdk_bin_list = list()
-  file_list = os.listdir(path)
-  for file_name in file_list:
-    if file_name.startswith(PDK_BIN_PREFIX) and os.path.isdir(path + "/" + file_name):
-        pdk_bin_list.append(file_name)
-  return pdk_bin_list
+  pdk_bins_dict = {}
 
-def get_target_name_from_pdk_bin(path):
-  """returns the original target name from the given pdk_bin_* dir"""
-  product_dir = path + "/raw_copy/target/product"
-  file_list = os.listdir(product_dir)
+  file_list = pu.list_files(os.path.abspath(path))
   for file_name in file_list:
-    if os.path.isdir(product_dir + "/" + file_name):
-        return file_name
-  assert False, "target not found from product dir"
+    m = re.search(PDK_BIN_PREFIX + "(.*)\.zip$", file_name)
+    if m != None:
+      print " pdk_bin for arch " + m.group(1) + " @ " + file_name
+      pdk_bins_dict[m.group(1)] = file_name
+  return pdk_bins_dict
 
 def main(argv):
   if len(argv) != 4:
@@ -51,29 +48,54 @@ def main(argv):
   cpu_conf = argv[2]
   target_hw = argv[3]
 
-  pdk_bin_dirs = list_available_pdk_bins(top_dir + PDK_BIN_TOP_DIR)
-  arch_list = []
-  for pdk_bin_dir in pdk_bin_dirs:
-    arch_list.append(pdk_bin_dir[len(PDK_BIN_PREFIX): ])
+  pdk_bins_dict = list_available_pdk_bins(top_dir + PDK_BIN_TOP_DIR)
 
-  if not (cpu_conf in arch_list):
+  if not (cpu_conf in pdk_bins_dict):
     print "Specified cpu_conf", cpu_conf, "not avaialble under", top_dir + PDK_BIN_TOP_DIR
-    print "Avaiable configurations are ", arch_list
+    print "Avaiable configurations are ", pdk_bins_dict.keys()
     sys.exit(1)
 
-  print "copy pdk bins"
-  os.system("mkdir -p " + top_dir + "/out/host")
-  os.system("mkdir -p " + top_dir + "/out/target/common")
-  os.system("mkdir -p " + top_dir + "/out/target/product/" + target_hw)
-  pdk_bin_path = top_dir + PDK_BIN_TOP_DIR + PDK_BIN_PREFIX + cpu_conf
-  pdk_bin_target_name = get_target_name_from_pdk_bin(pdk_bin_path)
-  os.system("cp -a " + pdk_bin_path + "/raw_copy/host/* " + top_dir + "/out/host")
-# no target/common yet
-#  os.system("cp -a " + pdk_bin_path + "/raw_copy/target/common/* " + top_dir +
-#            "/out/target/common")
-  os.system("cp -a " + pdk_bin_path + "/raw_copy/target/product/" + pdk_bin_target_name + "/* "
-            + top_dir + "/out/target/product/" + target_hw)
-  os.system("touch " + top_dir + "/out/target/product/" + target_hw + "/PDK_BIN_COPIED")
+  pdk_bin_zip = pdk_bins_dict[cpu_conf]
+  pdk_data_zip = top_dir + PDK_DATA_TOP_DIR + "/pdk_data.zip"
+  pdk_partner_data_cpu_path = top_dir + PDK_CPU_ARCH_TOP_DIR + "/" + PDK_BIN_PREFIX + cpu_conf
+  PDK_BIN_COPIED = top_dir + "/out/target/product/" + target_hw + "/PDK_BIN_COPIED"
+  PDK_DATA_COPIED = top_dir + "/PDK_DATA_COPIED"
+
+  copy_out_dir = pu.src_newer_than_dest(pdk_bin_zip, PDK_BIN_COPIED)
+  copy_partner_data_cpu = pu.src_newer_than_dest(pdk_bin_zip, pdk_partner_data_cpu_path)
+  copy_pdk_data = pu.src_newer_than_dest(pdk_data_zip, PDK_DATA_COPIED)
+
+  if copy_out_dir:
+    print "copy pdk bins to out"
+    # clean out as binary is changed
+    pu.remove_if_exists(top_dir + "/out")
+    command = "mkdir -p " + top_dir + "/out && " \
+            + "cd " + top_dir + "/out && " \
+            + "rm -rf raw_copy && " \
+            + "unzip " + os.path.abspath(pdk_bin_zip) + " raw_copy/* && " \
+            + "mv raw_copy/target/product/pdk_target raw_copy/target/product/" + target_hw + " &&" \
+            + "mv -f raw_copy/* . && " \
+            + "touch " + os.path.abspath(PDK_BIN_COPIED)
+    os.system(command)
+
+  if copy_partner_data_cpu:
+    print "copy pdk bins to " + pdk_partner_data_cpu_path
+    pu.remove_if_exists(pdk_partner_data_cpu_path)
+    command = "mkdir -p " + pdk_partner_data_cpu_path + " && " \
+            + "cd " + pdk_partner_data_cpu_path + " && " \
+            + "unzip -o " + os.path.abspath(pdk_bin_zip) + " host/* target/* pdk_prebuilt.mk"
+    os.system(command)
+
+  if copy_pdk_data:
+    print "copy pdk data"
+    # first remove old files
+    pu.remove_files_listed(top_dir, pu.load_list(PDK_DATA_COPIED))
+    command = "cd " + top_dir + " && " \
+            + "unzip -o " + os.path.abspath(pdk_data_zip)
+    os.system(command)
+    # recorde copied files to delete correctly.
+    pu.save_list(pu.list_files_in_zip(pdk_data_zip), PDK_DATA_COPIED)
+
 
 if __name__ == '__main__':
   main(sys.argv)
