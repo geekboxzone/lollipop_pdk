@@ -134,6 +134,7 @@ BUILD_PDK_REL_SUBDIRS := \
 	external/wpa_supplicant_8 \
 	external/yaffs2 \
 	external/zlib \
+	frameworks/base/data \
 	frameworks/compile \
 	frameworks/native \
 	hardware/libhardware \
