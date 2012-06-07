@@ -91,19 +91,26 @@ def main(argv):
     manifestFile = ".repo/manifest.xml"
     groups = ["pdk"]
     if len(argv) < 2:
-        print "create_pdk_tree.py target_dir [-m manifest] pdk_groups"
+        print "create_pdk_tree.py target_dir [-m manifest] [-a dir_to_add] pdk_groups"
         print " ex) create_pdk_tree.py ../tmp grouper"
+        print " -a option is to include a directory which does not belong to specified group"
+        print "   multiple -a options can be specified like -a frameworks/base -a external/aaa"
         print " Note that pdk group is included by default"
         print " Do not create target_dir under the current source tree. This will cause build error."
         sys.exit(1)
     targetDir = argv[1]
     argc = 2
+    subdirs = []
     if len(argv) > 2:
         if argv[2] == "-m":
             manifestFile = argv[3]
             argc += 2
     while argc < len(argv):
-        groups.append(argv[argc])
+        if argv[argc] == "-a":
+            argc += 1
+            subdirs.append(argv[argc])
+        else:
+            groups.append(argv[argc])
         argc += 1
     sourceDir = os.path.abspath('.')
     targetDir = os.path.abspath(targetDir)
@@ -123,7 +130,7 @@ def main(argv):
         else:
             print "Will create scripts, but may need manual unmount"
 
-    subdirs = getPDKDirs(manifestFile, groups)
+    subdirs += getPDKDirs(manifestFile, groups)
     print subdirs
     os.system("mkdir -p " + targetDir)
     mountf = open(targetDir + '/' + MOUNT_FILE, 'w+')
@@ -134,7 +141,7 @@ def main(argv):
         os.system("mkdir -p " + targetDir + '/' + subdir)
         mountf.write("mount --bind " + sourceDir + "/" + subdir + " " + targetDir + "/" + subdir + \
                         "\n")
-        umountf.write("umount " + sourceDir + "/" + subdir + "\n")
+        umountf.write("umount " + targetDir + "/" + subdir + "\n")
     for file_name in copy_files_list:
         create_symbolic_link(sourceDir, targetDir, file_name)
     mountf.close()
