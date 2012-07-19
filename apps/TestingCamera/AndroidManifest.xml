@@ -22,11 +22,12 @@
   <uses-feature android:name="android.hardware.camera" />
   <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-  <uses-sdk android:minSdkVersion="3" />
+  <uses-sdk android:minSdkVersion="3" android:targetSdkVersion="16"/>
+  <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
   <application
        android:icon="@mipmap/launcher_testingcamera"
        android:label="@string/app_name"
-       android:debuggable="true">
+       android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen">
     <activity
          android:name=".TestingCamera"
          android:label="@string/app_name"
