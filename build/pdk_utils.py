@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-# copy relared utils for all PDK scripts
+# copy related utils for all PDK scripts
 
 import os, string, sys, shutil, zipfile
 
