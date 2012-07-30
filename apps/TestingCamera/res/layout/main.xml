@@ -44,13 +44,26 @@
         android:id="@+id/control_bar"
         android:layout_width="0px"
         android:layout_height="match_parent"
-        android:layout_weight="2" >
+        android:layout_weight="2"
+        android:fadingEdgeLength="100dp"
+        android:requiresFadingEdge="vertical"
+        android:scrollbarAlwaysDrawVerticalTrack="true" >
 
         <LinearLayout
             android:id="@+id/control_bar_contents"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="5dp"
             android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/camera_spinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:layout_weight="1"
+                android:text="@string/camera_selection_prompt"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
 
             <Spinner
                 android:id="@+id/camera_spinner"
@@ -58,6 +71,29 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:prompt="@string/camera_selection_prompt" />
+
+            <Button
+                android:id="@+id/info_button"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/show_info" />
+
+            <View
+                android:id="@+id/horizontal_rule_1"
+                android:layout_width="fill_parent"
+                android:layout_height="1dip"
+                android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
+                android:layout_marginTop="@dimen/horiz_rule_top_margin"
+                android:background="@color/horiz_rule_color" />
+
+            <TextView
+                android:id="@+id/preview_size_spinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/preview_resolution_prompt"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
 
             <Spinner
                 android:id="@+id/preview_size_spinner"
@@ -71,8 +107,32 @@
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:textColorLink="@android:color/holo_blue_light"
                 android:textOff="@string/preview_off_label"
                 android:textOn="@string/preview_on_label" />
+
+            <View
+                android:id="@+id/horizontal_rule_2"
+                android:layout_width="fill_parent"
+                android:layout_height="1dip"
+                android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
+                android:layout_marginTop="@dimen/horiz_rule_top_margin"
+                android:layout_weight="1"
+                android:background="@color/horiz_rule_color" />
+
+            <TextView
+                android:id="@+id/textView1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/snapshot_size_spinner_label"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <Spinner
+                android:id="@+id/snapshot_size_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
 
             <Button
                 android:id="@+id/take_picture"
@@ -81,6 +141,37 @@
                 android:layout_weight="1"
                 android:text="@string/take_picture_label" />
 
+            <View
+                android:id="@+id/horizontal_rule_3"
+                android:layout_width="fill_parent"
+                android:layout_height="1dip"
+                android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
+                android:layout_marginTop="@dimen/horiz_rule_top_margin"
+                android:layout_weight="1"
+                android:background="@color/horiz_rule_color" />
+
+            <TextView
+                android:id="@+id/camcorder_profile_spinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/camcorder_profile_prompt"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <Spinner
+                android:id="@+id/camcorder_profile_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <ToggleButton
+                android:id="@+id/start_record"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColorLink="@android:color/holo_red_dark"
+                android:textOff="@string/record_off_label"
+                android:textOn="@string/record_on_label" />
         </LinearLayout>
     </ScrollView>
 

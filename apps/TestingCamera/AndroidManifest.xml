@@ -22,7 +22,7 @@
   <uses-feature android:name="android.hardware.camera" />
   <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-  <uses-sdk android:minSdkVersion="3" android:targetSdkVersion="16"/>
+  <uses-sdk android:minSdkVersion="14" android:targetSdkVersion="16"/>
   <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
   <application
        android:icon="@mipmap/launcher_testingcamera"
