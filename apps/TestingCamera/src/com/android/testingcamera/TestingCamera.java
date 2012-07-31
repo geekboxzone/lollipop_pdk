@@ -44,6 +44,9 @@ import java.util.TreeSet;
 
 /**
  * A simple test application for the camera API.
+ *
+ * The goal of this application is to allow all camera API features to be
+ * excercised, and all information provided by the API to be shown.
  */
 public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 

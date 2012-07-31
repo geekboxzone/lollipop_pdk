@@ -14,18 +14,18 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="horizontal" >
 
-<LinearLayout
-     xmlns:android="http://schemas.android.com/apk/res/android"
-     android:orientation="horizontal"
-     android:layout_width="fill_parent"
-     android:layout_height="fill_parent">
     <LinearLayout
-         android:orientation="vertical"
-         android:layout_height="fill_parent"
-         android:layout_width="0px"
-         android:layout_weight="6"
-         >
+        android:id="@+id/preview_column"
+        android:layout_width="0px"
+        android:layout_height="fill_parent"
+        android:layout_weight="6"
+        android:orientation="vertical" >
+
         <SurfaceView
              android:id="@+id/preview"
              android:layout_width="fill_parent"
@@ -39,36 +39,49 @@
              android:layout_weight="1"
              />
     </LinearLayout>
-    <LinearLayout
-         android:orientation="vertical"
-         android:layout_height="wrap_content"
-         android:layout_width="0px"
-         android:layout_weight="2"
-         >
 
-        <Spinner
-             android:id="@+id/camera_spinner"
-             android:layout_width="fill_parent"
-             android:layout_height="wrap_content"
-             />
-        <Spinner
-             android:id="@+id/preview_size_spinner"
-             android:layout_width="fill_parent"
-             android:layout_height="wrap_content"
-             />
-        <ToggleButton
-             android:id="@+id/start_preview"
-             android:layout_width="fill_parent"
-             android:layout_height="wrap_content"
-             android:textOn="@string/preview_on_label"
-             android:textOff="@string/preview_off_label"
-             />
-        <Button
-             android:id="@+id/take_picture"
-             android:layout_width="fill_parent"
-             android:layout_height="wrap_content"
-             android:text="@string/take_picture_label"
-             />
-    </LinearLayout>
+    <ScrollView
+        android:id="@+id/control_bar"
+        android:layout_width="0px"
+        android:layout_height="match_parent"
+        android:layout_weight="2" >
+
+        <LinearLayout
+            android:id="@+id/control_bar_contents"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <Spinner
+                android:id="@+id/camera_spinner"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:prompt="@string/camera_selection_prompt" />
+
+            <Spinner
+                android:id="@+id/preview_size_spinner"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:prompt="@string/preview_resolution_prompt" />
+
+            <ToggleButton
+                android:id="@+id/start_preview"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textOff="@string/preview_off_label"
+                android:textOn="@string/preview_on_label" />
+
+            <Button
+                android:id="@+id/take_picture"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/take_picture_label" />
+
+        </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>
