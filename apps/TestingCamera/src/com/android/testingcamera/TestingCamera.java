@@ -21,12 +21,10 @@ import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
-import android.media.CamcorderProfile;
 import android.os.Bundle;
 import android.view.View;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -36,8 +34,6 @@ import android.widget.Spinner;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.ToggleButton;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentManager;
 import android.util.Log;
 
 import java.io.IOException;
@@ -52,20 +48,19 @@ import java.util.TreeSet;
  * The goal of this application is to allow all camera API features to be
  * excercised, and all information provided by the API to be shown.
  */
-public class TestingCamera extends FragmentActivity implements SurfaceHolder.Callback {
+public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     /** UI elements */
     private SurfaceView mPreviewView;
     private SurfaceHolder mPreviewHolder;
 
     private Spinner mCameraSpinner;
-    private Button mInfoButton;
     private Spinner mPreviewSizeSpinner;
     private ToggleButton mPreviewToggle;
-    private Spinner mSnapshotSizeSpinner;
     private Button  mTakePictureButton;
-    private Spinner mCamcorderProfileSpinner;
-    private ToggleButton mRecordToggle;
+
+    private TextView mSnapshotText;
+    private ImageView mSnapshotImg;
 
     /** Camera state */
     private int mCameraId = 0;
@@ -73,10 +68,6 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
     private Camera.Parameters mParams;
     private List<Camera.Size> mPreviewSizes;
     private int mPreviewSize = 0;
-    private List<Camera.Size> mSnapshotSizes;
-    private int mSnapshotSize = 0;
-    private List<CamcorderProfile> mCamcorderProfiles;
-    private int mCamcorderProfile = 0;
 
     private static final int CAMERA_UNINITIALIZED = 0;
     private static final int CAMERA_OPEN = 1;
@@ -101,26 +92,14 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
         mCameraSpinner = (Spinner) findViewById(R.id.camera_spinner);
         mCameraSpinner.setOnItemSelectedListener(mCameraSpinnerListener);
 
-        mInfoButton = (Button) findViewById(R.id.info_button);
-        mInfoButton.setOnClickListener(mInfoButtonListener);
-
         mPreviewSizeSpinner = (Spinner) findViewById(R.id.preview_size_spinner);
         mPreviewSizeSpinner.setOnItemSelectedListener(mPreviewSizeListener);
 
         mPreviewToggle = (ToggleButton) findViewById(R.id.start_preview);
         mPreviewToggle.setOnClickListener(mPreviewToggleListener);
 
-        mSnapshotSizeSpinner = (Spinner) findViewById(R.id.snapshot_size_spinner);
-        mSnapshotSizeSpinner.setOnItemSelectedListener(mSnapshotSizeListener);
-
         mTakePictureButton = (Button) findViewById(R.id.take_picture);
         mTakePictureButton.setOnClickListener(mTakePictureListener);
-
-        mCamcorderProfileSpinner = (Spinner) findViewById(R.id.camcorder_profile_spinner);
-        mCamcorderProfileSpinner.setOnItemSelectedListener(mCamcorderProfileListener);
-
-        mRecordToggle = (ToggleButton) findViewById(R.id.start_record);
-        mRecordToggle.setOnClickListener(mRecordToggleListener);
 
         int numCameras = Camera.getNumberOfCameras();
         String[] cameraNames = new String[numCameras];
@@ -146,6 +125,21 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
 
         mCamera.release();
         mState = CAMERA_UNINITIALIZED;
+    }
+
+    protected Dialog onCreateDialog(int id) {
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.snapshot_dialog);
+        dialog.setTitle("Snapshot");
+
+        mSnapshotText =
+                (TextView) dialog.findViewById(R.id.snapshot_text);
+        mSnapshotText.setText("Snapshot title");
+
+        mSnapshotImg =
+                (ImageView) dialog.findViewById(R.id.snapshot_image);
+
+        return dialog;
     }
 
     // SurfaceHolder.Callback methods
@@ -180,31 +174,19 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
     // UI listeners
 
     private AdapterView.OnItemSelectedListener mCameraSpinnerListener =
-                new AdapterView.OnItemSelectedListener() {
-        public void onItemSelected(AdapterView<?> parent,
+            new AdapterView.OnItemSelectedListener() {
+                public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
-                if (mCameraId != pos) {
+                    if (mCameraId != pos) {
                         mCameraId = pos;
                         setUpCamera();
-                }
-        }
-
-        public void onNothingSelected(AdapterView parent) {
-
-        }
-    };
-
-    private OnClickListener mInfoButtonListener = new OnClickListener() {
-
-                @Override
-                public void onClick(View v) {
-                        FragmentManager fm = getSupportFragmentManager();
-                InfoDialogFragment infoDialog = new InfoDialogFragment();
-                infoDialog.updateInfo(mCameraId, mCamera);
-                infoDialog.show(fm, "info_dialog_fragment");
+                    }
                 }
 
-    };
+                public void onNothingSelected(AdapterView parent) {
+
+                }
+            };
 
     private AdapterView.OnItemSelectedListener mPreviewSizeListener =
             new AdapterView.OnItemSelectedListener() {
@@ -259,26 +241,6 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
         }
     };
 
-    private AdapterView.OnItemSelectedListener mSnapshotSizeListener =
-            new AdapterView.OnItemSelectedListener() {
-                public void onItemSelected(AdapterView<?> parent,
-                        View view, int pos, long id) {
-                    if (pos == mSnapshotSize) return;
-                    Log.d(TAG, "Switching snapshot sizes");
-
-                    mSnapshotSize = pos;
-                    int width = mSnapshotSizes.get(mSnapshotSize).width;
-                    int height = mSnapshotSizes.get(mSnapshotSize).height;
-                    mParams.setPictureSize(width, height);
-
-                    mCamera.setParameters(mParams);
-                }
-
-                public void onNothingSelected(AdapterView parent) {
-
-                }
-            };
-
     private View.OnClickListener mTakePictureListener =
             new View.OnClickListener() {
         public void onClick(View v) {
@@ -294,24 +256,6 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
             } else {
                 Log.e(TAG, "Can't take picture while not running preview!");
             }
-        }
-    };
-
-    private AdapterView.OnItemSelectedListener mCamcorderProfileListener =
-                new AdapterView.OnItemSelectedListener() {
-        public void onItemSelected(AdapterView<?> parent,
-                        View view, int pos, long id) {
-                mCamcorderProfile = pos;
-        }
-
-        public void onNothingSelected(AdapterView parent) {
-
-        }
-    };
-
-    private View.OnClickListener mRecordToggleListener =
-                new View.OnClickListener() {
-        public void onClick(View v) {
         }
     };
 
@@ -336,12 +280,11 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
     private Camera.PictureCallback mJpegCb = new Camera.PictureCallback() {
         public void onPictureTaken(byte[] data, Camera camera) {
             Log.d(TAG, "JPEG cb fired");
-            FragmentManager fm = getSupportFragmentManager();
-                SnapshotDialogFragment snapshotDialog = new SnapshotDialogFragment();
+
+            showDialog(1);
 
             Bitmap img = BitmapFactory.decodeByteArray(data, 0, data.length);
-            snapshotDialog.updateImage(img);
-            snapshotDialog.show(fm, "snapshot_dialog_fragment");
+            mSnapshotImg.setImageBitmap(img);
 
             mPreviewToggle.setEnabled(true);
 
@@ -363,16 +306,13 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
         mState = CAMERA_OPEN;
 
         mParams = mCamera.getParameters();
-
-        // Set up preview size selection
         mPreviewSizes = mParams.getSupportedPreviewSizes();
 
         String[] availableSizeNames = new String[mPreviewSizes.size()];
-        int i = 0;
-        for (Camera.Size previewSize: mPreviewSizes) {
-            availableSizeNames[i++] =
-                    Integer.toString(previewSize.width) + " x " +
-                    Integer.toString(previewSize.height);
+        for (int i = 0; i < mPreviewSizes.size(); i++) {
+            availableSizeNames[i] =
+                    Integer.toString(mPreviewSizes.get(i).width) + " x " +
+                    Integer.toString(mPreviewSizes.get(i).height);
         }
         mPreviewSizeSpinner.setAdapter(
             new ArrayAdapter<String>(
@@ -383,32 +323,6 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
         int width = mPreviewSizes.get(mPreviewSize).width;
         int height = mPreviewSizes.get(mPreviewSize).height;
         mParams.setPreviewSize(width, height);
-
-        // Set up snapshot size selection
-
-        mSnapshotSizes = mParams.getSupportedPictureSizes();
-
-        availableSizeNames = new String[mSnapshotSizes.size()];
-        i = 0;
-        for (Camera.Size snapshotSize : mSnapshotSizes) {
-            availableSizeNames[i++] =
-                    Integer.toString(snapshotSize.width) + " x " +
-                    Integer.toString(snapshotSize.height);
-        }
-        mSnapshotSizeSpinner.setAdapter(
-            new ArrayAdapter<String>(
-                this, R.layout.spinner_item, availableSizeNames));
-
-        mSnapshotSize = 0;
-
-        width = mSnapshotSizes.get(mSnapshotSize).width;
-        height = mSnapshotSizes.get(mSnapshotSize).height;
-        mParams.setPictureSize(width, height);
-
-        // Set up camcorder profile selection
-        updateCamcorderProfile(mCameraId);
-
-        // Update parameters based on above defaults
 
         mCamera.setParameters(mParams);
 
@@ -430,61 +344,6 @@ public class TestingCamera extends FragmentActivity implements SurfaceHolder.Cal
              mCamera.startPreview();
             mState = CAMERA_PREVIEW;
         }
-    }
-
-    private void updateCamcorderProfile(int cameraId) {
-        // Have to query all of these individually,
-        final int PROFILES[] = new int[] {
-                        CamcorderProfile.QUALITY_1080P,
-                        CamcorderProfile.QUALITY_480P,
-                        CamcorderProfile.QUALITY_720P,
-                        CamcorderProfile.QUALITY_CIF,
-                        CamcorderProfile.QUALITY_HIGH,
-                        CamcorderProfile.QUALITY_LOW,
-                        CamcorderProfile.QUALITY_QCIF,
-                        CamcorderProfile.QUALITY_QVGA,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_1080P,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_480P,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_720P,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_CIF,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_HIGH,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_LOW,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_QCIF,
-                        CamcorderProfile.QUALITY_TIME_LAPSE_QVGA
-        };
-
-        final String PROFILE_NAMES[] = new String[] {
-                        "1080P",
-                        "480P",
-                        "720P",
-                        "CIF",
-                        "HIGH",
-                        "LOW",
-                        "QCIF",
-                        "QVGA",
-                        "TIME_LAPSE_1080P",
-                        "TIME_LAPSE_480P",
-                        "TIME_LAPSE_720P",
-                        "TIME_LAPSE_CIF",
-                        "TIME_LAPSE_HIGH",
-                        "TIME_LAPSE_LOW",
-                        "TIME_LAPSE_QCIF",
-                        "TIME_LAPSE_QVGA"
-        };
-
-        List<String> availableCamcorderProfileNames = new ArrayList<String>();
-        mCamcorderProfiles = new ArrayList<CamcorderProfile>();
-
-        for (int i = 0; i < PROFILES.length; i++) {
-                if (CamcorderProfile.hasProfile(cameraId, PROFILES[i])) {
-                        availableCamcorderProfileNames.add(PROFILE_NAMES[i]);
-                        mCamcorderProfiles.add(CamcorderProfile.get(cameraId, PROFILES[i]));
-                }
-        }
-        String[] nameArray = (String[])availableCamcorderProfileNames.toArray(new String[0]);
-        mCamcorderProfileSpinner.setAdapter(
-                        new ArrayAdapter<String>(
-                                        this, R.layout.spinner_item, nameArray));
     }
 
     void resizePreview(int width, int height) {
