@@ -17,16 +17,16 @@
 package com.android.testingcamera;
 
 import android.app.Activity;
-import android.app.Dialog;
 import android.app.FragmentManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.view.View;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -35,10 +35,8 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.Spinner;
-import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 import android.text.Layout;
@@ -46,19 +44,15 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.FieldPosition;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
 /**
  * A simple test application for the camera API.
@@ -102,6 +96,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private int mCamcorderProfile = 0;
 
     private MediaRecorder mRecorder;
+    private File mRecordingFile;
 
     private static final int CAMERA_UNINITIALIZED = 0;
     private static final int CAMERA_OPEN = 1;
@@ -412,7 +407,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             if (mState == CAMERA_PREVIEW) {
                 startRecording();
             } else if (mState == CAMERA_RECORD) {
-                stopRecording();
+                stopRecording(false);
             } else {
                 logE("Can't toggle recording in current state!");
             }
@@ -444,8 +439,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             FragmentManager fm = getFragmentManager();
             SnapshotDialogFragment snapshotDialog = new SnapshotDialogFragment();
 
-            Bitmap img = BitmapFactory.decodeByteArray(data, 0, data.length);
-            snapshotDialog.updateImage(img);
+            snapshotDialog.updateImage(data);
             snapshotDialog.show(fm, "snapshot_dialog_fragment");
 
             mPreviewToggle.setEnabled(true);
@@ -507,6 +501,8 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             log("Starting preview" );
             mCamera.startPreview();
             mState = CAMERA_PREVIEW;
+        } else {
+            mState = CAMERA_OPEN;
         }
         logIndent(-1);
     }
@@ -642,7 +638,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     static final int MEDIA_TYPE_IMAGE = 0;
     static final int MEDIA_TYPE_VIDEO = 1;
-    private File getOutputMediaFile(int type){
+    File getOutputMediaFile(int type){
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
 
@@ -652,7 +648,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         }
 
         File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
-                  Environment.DIRECTORY_PICTURES), "TestingCamera");
+                  Environment.DIRECTORY_DCIM), "TestingCamera");
         // This location works best if you want the created images to be shared
         // between applications and persist after your app has been uninstalled.
 
@@ -680,11 +676,42 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         return mediaFile;
     }
 
+    void notifyMediaScannerOfFile(File newFile,
+                final MediaScannerConnection.OnScanCompletedListener listener) {
+        final Handler h = new Handler();
+        MediaScannerConnection.scanFile(this,
+                new String[] { newFile.toString() },
+                null,
+                new MediaScannerConnection.OnScanCompletedListener() {
+                    public void onScanCompleted(final String path, final Uri uri) {
+                        h.post(new Runnable() {
+                            public void run() {
+                                log("MediaScanner notified: " +
+                                        path + " -> " + uri);
+                                if (listener != null)
+                                    listener.onScanCompleted(path, uri);
+                            }
+                        });
+                    }
+                });
+    }
+
+    private void deleteFile(File badFile) {
+        if (badFile.exists()) {
+            boolean success = badFile.delete();
+            if (success) log("Deleted file " + badFile.toString());
+            else log("Unable to delete file " + badFile.toString());
+        }
+    }
+
     private void startRecording() {
         log("Starting recording");
         logIndent(1);
         log("Configuring MediaRecoder");
         mCamera.unlock();
+        if (mRecorder != null) {
+            mRecorder.release();
+        }
         mRecorder = new MediaRecorder();
         mRecorder.setOnErrorListener(mRecordingErrorListener);
         mRecorder.setOnInfoListener(mRecordingInfoListener);
@@ -713,6 +740,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
                 mRecorder.start();
                 mState = CAMERA_RECORD;
                 log("Recording active");
+                mRecordingFile = outputFile;
             } catch (Exception e) {
                 StringWriter writer = new StringWriter();
                 e.printStackTrace(new PrintWriter(writer));
@@ -730,7 +758,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             logE("MediaRecorder reports error: " + what + ", extra "
                     + extra);
             if (mState == CAMERA_RECORD) {
-                stopRecording();
+                stopRecording(true);
             }
         }
     };
@@ -743,14 +771,18 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         }
     };
 
-    private void stopRecording() {
+    private void stopRecording(boolean error) {
         log("Stopping recording");
         if (mRecorder != null) {
             mRecorder.stop();
             mCamera.lock();
             mState = CAMERA_PREVIEW;
-            mRecorder.release();
-            mRecorder = null;
+            if (!error) {
+                notifyMediaScannerOfFile(mRecordingFile, null);
+            } else {
+                deleteFile(mRecordingFile);
+            }
+            mRecordingFile = null;
         } else {
             logE("Recorder is unexpectedly null!");
         }
@@ -759,7 +791,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private int mLogIndentLevel = 0;
     private String mLogIndent = "\t";
     /** Increment or decrement log indentation level */
-    private void logIndent(int delta) {
+    synchronized void logIndent(int delta) {
         mLogIndentLevel += delta;
         if (mLogIndentLevel < 0) mLogIndentLevel = 0;
         char[] mLogIndentArray = new char[mLogIndentLevel + 1];
@@ -771,17 +803,17 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     SimpleDateFormat mDateFormatter = new SimpleDateFormat("HH:mm:ss.SSS");
     /** Log both to log text view and to device logcat */
-    private void log(String logLine) {
+    void log(String logLine) {
         Log.d(TAG, logLine);
         logAndScrollToBottom(logLine, mLogIndent);
     }
 
-    private void logE(String logLine) {
+    void logE(String logLine) {
         Log.e(TAG, logLine);
         logAndScrollToBottom(logLine, mLogIndent + "!!! ");
     }
 
-    private void logAndScrollToBottom(String logLine, String logIndent) {
+    synchronized private void logAndScrollToBottom(String logLine, String logIndent) {
         StringBuffer logEntry = new StringBuffer(32);
         logEntry.append("\n").append(mDateFormatter.format(new Date())).append(logIndent);
         logEntry.append(logLine);
