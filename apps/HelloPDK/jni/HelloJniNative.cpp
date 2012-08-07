@@ -17,7 +17,7 @@
 #include <jni.h>
 
 extern "C" JNIEXPORT jboolean JNICALL
-    Java_com_example_android_helloPDK_HelloPDKNative_isPDK(
+    Java_com_example_android_helloPDK_jni_HelloJniNative_isPDK(
         JNIEnv *, jobject) {
     return JNI_TRUE;
 }

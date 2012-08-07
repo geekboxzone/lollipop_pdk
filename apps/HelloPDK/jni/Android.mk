@@ -20,12 +20,12 @@ ifneq ($(TARGET_BUILD_JAVA_SUPPORT_LEVEL),)
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libhellopdk_jni
+LOCAL_MODULE := libhellojni_jni
 
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_SRC_FILES := \
-		HelloPDKNative.cpp
+		HelloJniNative.cpp
 
 LOCAL_C_INCLUDES := $(JNI_H_INCLUDE)
 

@@ -13,12 +13,18 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
 
-<resources>
-    <string name="activity_jni">JNI</string>
-    <string name="activity_dialer">Dialer</string>
-    <string name="hello_pdk_text_text">Hello, PDK!</string>
-    <string name="button_hellojni">Jni Call</string>
-    <string name="dialer_call_button">Call</string>
-    <string name="dialer_call_default_number">123456789</string>
-</resources>
+    <Button
+        android:id="@+id/button_hellojni"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/button_hellojni" />
+
+</LinearLayout>
+
+

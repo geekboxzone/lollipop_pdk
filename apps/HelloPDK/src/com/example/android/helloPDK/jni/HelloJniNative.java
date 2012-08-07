@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.example.android.helloPDK;
+package com.example.android.helloPDK.jni;
 
-public class HelloPDKNative {
+public class HelloJniNative {
     static {
-        System.loadLibrary("hellopdk_jni");
+        System.loadLibrary("hellojni_jni");
     }
     native boolean isPDK();
 }
