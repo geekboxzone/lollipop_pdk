@@ -37,7 +37,6 @@ public class InfoDialogFragment extends DialogFragment implements View.OnClickLi
         return view;
     }
 
-    @Override
     public void onClick(View v) {
         this.dismiss();
     }

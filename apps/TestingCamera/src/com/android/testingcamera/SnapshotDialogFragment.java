@@ -41,9 +41,7 @@ public class SnapshotDialogFragment extends DialogFragment implements View.OnCli
         return view;
     }
 
-    @Override
     public void onClick(View v) {
-        // TODO Auto-generated method stub
         this.dismiss();
     }
 

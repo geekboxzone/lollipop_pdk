@@ -32,12 +32,14 @@
              android:layout_height="0px"
              android:layout_weight="6"
              />
+
         <TextView
-             android:id="@+id/log"
-             android:layout_height="wrap_content"
-             android:layout_width="fill_parent"
-             android:layout_weight="1"
-             />
+            android:id="@+id/log"
+            android:layout_width="fill_parent"
+            android:layout_height="0px"
+            android:layout_weight="1.5"
+            android:freezesText="true" />
+
     </LinearLayout>
 
     <ScrollView
@@ -74,8 +76,10 @@
 
             <Button
                 android:id="@+id/info_button"
+                style="?android:attr/buttonStyleSmall"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center"
                 android:layout_weight="1"
                 android:text="@string/show_info" />
 
@@ -106,6 +110,7 @@
                 android:id="@+id/start_preview"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center"
                 android:layout_weight="1"
                 android:textColorLink="@android:color/holo_blue_light"
                 android:textOff="@string/preview_off_label"
@@ -113,6 +118,47 @@
 
             <View
                 android:id="@+id/horizontal_rule_2"
+                android:layout_width="fill_parent"
+                android:layout_height="1dip"
+                android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
+                android:layout_marginTop="@dimen/horiz_rule_top_margin"
+                android:layout_weight="1"
+                android:background="@color/horiz_rule_color" />
+
+            <TextView
+                android:id="@+id/af_mode_spinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/af_mode_prompt"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <Spinner
+                android:id="@+id/af_mode_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/af_button"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_weight="1"
+                android:text="@string/trigger_autofocus" />
+
+            <Button
+                android:id="@+id/af_cancel_button"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_weight="1"
+                android:text="@string/cancel_autofocus" />
+
+            <View
+                android:id="@+id/horizontal_rule_3"
                 android:layout_width="fill_parent"
                 android:layout_height="1dip"
                 android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
@@ -136,13 +182,14 @@
 
             <Button
                 android:id="@+id/take_picture"
+                style="?android:attr/buttonStyleSmall"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/take_picture_label" />
 
             <View
-                android:id="@+id/horizontal_rule_3"
+                android:id="@+id/horizontal_rule_4"
                 android:layout_width="fill_parent"
                 android:layout_height="1dip"
                 android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
