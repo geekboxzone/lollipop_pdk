@@ -13,12 +13,27 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
-<EditText xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/text"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:textSize="18sp"
-    android:autoText="true"
-    android:capitalize="sentences"
-    android:text="@string/hello_pdk_text_text" />
+    android:orientation="vertical" >
 
+    <EditText
+        android:id="@+id/editText_dialer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="@string/dialer_call_default_number"
+        android:inputType="phone" >
+
+        <requestFocus />
+    </EditText>
+
+    <Button
+        android:id="@+id/button_dialer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/dialer_call_button" />
+
+</LinearLayout>

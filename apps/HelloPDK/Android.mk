@@ -26,7 +26,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_PACKAGE_NAME := HelloPDK
 
-LOCAL_JNI_SHARED_LIBRARIES := libhellopdk_jni
+LOCAL_JNI_SHARED_LIBRARIES := libhellojni_jni
 
 include $(BUILD_PACKAGE)
 
