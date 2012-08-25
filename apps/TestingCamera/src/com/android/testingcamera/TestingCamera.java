@@ -308,6 +308,10 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mAfMode = pos;
             String focusMode = mAfModes.get(mAfMode);
             log("Setting focus mode to " + focusMode);
+            if (focusMode == Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE ||
+                        focusMode == Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) {
+                mCamera.setAutoFocusMoveCallback(mAutofocusMoveCallback);
+            }
             mParams.setFocusMode(focusMode);
 
             mCamera.setParameters(mParams);
@@ -476,8 +480,6 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         // Update parameters based on above updates
         mCamera.setParameters(mParams);
-
-        mCamera.setAutoFocusMoveCallback(mAutofocusMoveCallback);
 
         if (mPreviewHolder != null) {
             log("Setting preview display");
