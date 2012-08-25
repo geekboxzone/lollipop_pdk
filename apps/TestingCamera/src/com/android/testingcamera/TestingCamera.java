@@ -16,8 +16,11 @@
 
 package com.android.testingcamera;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.FragmentManager;
+import android.content.res.Resources;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.media.CamcorderProfile;
@@ -27,6 +30,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.view.View;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -35,13 +39,16 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ToggleButton;
+import android.renderscript.RenderScript;
 import android.text.Layout;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.util.SparseArray;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,11 +67,16 @@ import java.util.Set;
  * The goal of this application is to allow all camera API features to be
  * exercised, and all information provided by the API to be shown.
  */
-public class TestingCamera extends Activity implements SurfaceHolder.Callback {
+public class TestingCamera extends Activity
+    implements SurfaceHolder.Callback, Camera.PreviewCallback {
 
     /** UI elements */
     private SurfaceView mPreviewView;
     private SurfaceHolder mPreviewHolder;
+    private LinearLayout mPreviewColumn;
+
+    private SurfaceView mCallbackView;
+    private SurfaceHolder mCallbackHolder;
 
     private Spinner mCameraSpinner;
     private Button mInfoButton;
@@ -82,10 +94,14 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Spinner mVideoFrameRateSpinner;
     private ToggleButton mRecordToggle;
     private ToggleButton mRecordStabilizationToggle;
+    private Spinner mCallbackFormatSpinner;
+    private ToggleButton mCallbackToggle;
 
     private TextView mLogView;
 
     private Set<View> mPreviewOnlyControls = new HashSet<View>();
+
+    private SparseArray<String> mFormatNames;
 
     /** Camera state */
     private int mCameraId = 0;
@@ -93,6 +109,8 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Camera.Parameters mParams;
     private List<Camera.Size> mPreviewSizes;
     private int mPreviewSize = 0;
+    private List<Integer> mPreviewFormats;
+    private int mPreviewFormat = 0;
     private List<String> mAfModes;
     private int mAfMode = 0;
     private List<String> mFlashModes;
@@ -109,12 +127,26 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private MediaRecorder mRecorder;
     private File mRecordingFile;
 
+    private RenderScript mRS;
+
+    private boolean mCallbacksEnabled = false;
+    private CallbackProcessor mCallbackProcessor = null;
+    long mLastCallbackTimestamp = -1;
+    float mCallbackAvgFrameDuration = 30;
+    int mCallbackFrameCount = 0;
+    private static final float MEAN_FPS_HISTORY_COEFF = 0.9f;
+    private static final float MEAN_FPS_MEASUREMENT_COEFF = 0.1f;
+    private static final int   FPS_REPORTING_PERIOD = 200; // frames
+    private static final int CALLBACK_BUFFER_COUNT = 3;
+
     private static final int CAMERA_UNINITIALIZED = 0;
     private static final int CAMERA_OPEN = 1;
     private static final int CAMERA_PREVIEW = 2;
     private static final int CAMERA_TAKE_PICTURE = 3;
     private static final int CAMERA_RECORD = 4;
     private int mState = CAMERA_UNINITIALIZED;
+
+
 
     /** Misc variables */
 
@@ -128,8 +160,12 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         setContentView(R.layout.main);
 
-        mPreviewView = (SurfaceView)findViewById(R.id.preview);
+        mPreviewColumn = (LinearLayout) findViewById(R.id.preview_column);
+
+        mPreviewView = (SurfaceView) findViewById(R.id.preview);
         mPreviewView.getHolder().addCallback(this);
+
+        mCallbackView = (SurfaceView)findViewById(R.id.callback_view);
 
         mCameraSpinner = (Spinner) findViewById(R.id.camera_spinner);
         mCameraSpinner.setOnItemSelectedListener(mCameraSpinnerListener);
@@ -183,8 +219,23 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mRecordStabilizationToggle = (ToggleButton) findViewById(R.id.record_stabilization);
         mRecordStabilizationToggle.setOnClickListener(mRecordStabilizationToggleListener);
 
+        mCallbackFormatSpinner = (Spinner) findViewById(R.id.callback_format_spinner);
+        mCallbackFormatSpinner.setOnItemSelectedListener(mCallbackFormatListener);
+
+        mCallbackToggle = (ToggleButton) findViewById(R.id.enable_callbacks);
+        mCallbackToggle.setOnClickListener(mCallbackToggleListener);
+
         mLogView = (TextView) findViewById(R.id.log);
         mLogView.setMovementMethod(new ScrollingMovementMethod());
+
+        mFormatNames = new SparseArray<String>(7);
+        mFormatNames.append(ImageFormat.JPEG, "JPEG");
+        mFormatNames.append(ImageFormat.NV16, "NV16");
+        mFormatNames.append(ImageFormat.NV21, "NV21");
+        mFormatNames.append(ImageFormat.RGB_565, "RGB_565");
+        mFormatNames.append(ImageFormat.UNKNOWN, "UNKNOWN");
+        mFormatNames.append(ImageFormat.YUY2, "YUY2");
+        mFormatNames.append(ImageFormat.YV12, "YV12");
 
         int numCameras = Camera.getNumberOfCameras();
         String[] cameraNames = new String[numCameras];
@@ -195,6 +246,8 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mCameraSpinner.setAdapter(
                 new ArrayAdapter<String>(this,
                         R.layout.spinner_item, cameraNames));
+
+        mRS = RenderScript.create(this);
     }
 
     @Override
@@ -214,25 +267,53 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     }
 
     /** SurfaceHolder.Callback methods */
+    @Override
     public void surfaceChanged(SurfaceHolder holder,
             int format,
             int width,
             int height) {
-        if (mPreviewHolder != null) return;
+        if (holder == mPreviewView.getHolder()) {
+            if (mState >= CAMERA_OPEN) {
+                final int previewWidth =
+                        mPreviewSizes.get(mPreviewSize).width;
+                final int previewHeight =
+                        mPreviewSizes.get(mPreviewSize).height;
 
-        log("Surface holder available: " + width + " x " + height);
-        mPreviewHolder = holder;
-        try {
-            mCamera.setPreviewDisplay(holder);
-        } catch (IOException e) {
-            logE("Unable to set up preview!");
+                if ( Math.abs((float)previewWidth / previewHeight -
+                        (float)width/height) > 0.01f) {
+                    Handler h = new Handler();
+                    h.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            layoutPreview();
+                        }
+                    });
+                }
+            }
+
+            if (mPreviewHolder != null) {
+                return;
+            }
+            log("Surface holder available: " + width + " x " + height);
+            mPreviewHolder = holder;
+            try {
+                if (mCamera != null) {
+                    mCamera.setPreviewDisplay(holder);
+                }
+            } catch (IOException e) {
+                logE("Unable to set up preview!");
+            }
+        } else if (holder == mCallbackView.getHolder()) {
+            mCallbackHolder = holder;
         }
     }
 
+    @Override
     public void surfaceCreated(SurfaceHolder holder) {
 
     }
 
+    @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         mPreviewHolder = null;
     }
@@ -248,6 +329,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private AdapterView.OnItemSelectedListener mCameraSpinnerListener =
                 new AdapterView.OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
             if (mCameraId != pos) {
@@ -256,12 +338,14 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             }
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
     };
 
     private OnClickListener mInfoButtonListener = new OnClickListener() {
+        @Override
         public void onClick(View v) {
             FragmentManager fm = getFragmentManager();
             InfoDialogFragment infoDialog = new InfoDialogFragment();
@@ -272,11 +356,13 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private AdapterView.OnItemSelectedListener mPreviewSizeListener =
         new AdapterView.OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                 View view, int pos, long id) {
             if (pos == mPreviewSize) return;
             if (mState == CAMERA_PREVIEW) {
-                log("Stopping preview to switch resolutions");
+                log("Stopping preview and callbacks to switch resolutions");
+                stopCallbacks();
                 mCamera.stopPreview();
             }
 
@@ -288,14 +374,15 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             log("Setting preview size to " + width + "x" + height);
 
             mCamera.setParameters(mParams);
+            resizePreview();
 
             if (mState == CAMERA_PREVIEW) {
                 log("Restarting preview");
-                resizePreview(width, height);
                 mCamera.startPreview();
             }
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
@@ -303,6 +390,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private View.OnClickListener mPreviewToggleListener =
             new View.OnClickListener() {
+        @Override
         public void onClick(View v) {
             if (mState == CAMERA_TAKE_PICTURE) {
                 logE("Can't change preview state while taking picture!");
@@ -310,8 +398,6 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             }
             if (mPreviewToggle.isChecked()) {
                 log("Starting preview");
-                resizePreview(mPreviewSizes.get(mPreviewSize).width,
-                        mPreviewSizes.get(mPreviewSize).height);
                 mCamera.startPreview();
                 mState = CAMERA_PREVIEW;
                 enablePreviewOnlyControls(true);
@@ -327,6 +413,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private OnItemSelectedListener mAutofocusModeListener =
                 new OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
             if (pos == mAfMode) return;
@@ -343,6 +430,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mCamera.setParameters(mParams);
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> arg0) {
 
         }
@@ -350,6 +438,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private OnClickListener mAutofocusButtonListener =
             new View.OnClickListener() {
+        @Override
         public void onClick(View v) {
             log("Triggering autofocus");
             mCamera.autoFocus(mAutofocusCallback);
@@ -358,6 +447,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private OnClickListener mCancelAutofocusButtonListener =
             new View.OnClickListener() {
+        @Override
         public void onClick(View v) {
             log("Cancelling autofocus");
             mCamera.cancelAutoFocus();
@@ -366,6 +456,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private Camera.AutoFocusCallback mAutofocusCallback =
             new Camera.AutoFocusCallback() {
+        @Override
         public void onAutoFocus(boolean success, Camera camera) {
             log("Autofocus completed: " + (success ? "success" : "failure") );
         }
@@ -373,6 +464,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private Camera.AutoFocusMoveCallback mAutofocusMoveCallback =
             new Camera.AutoFocusMoveCallback() {
+        @Override
         public void onAutoFocusMoving(boolean start, Camera camera) {
             log("Autofocus movement: " + (start ? "starting" : "stopped") );
         }
@@ -380,6 +472,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private OnItemSelectedListener mFlashModeListener =
                 new OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
             if (pos == mFlashMode) return;
@@ -391,6 +484,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mCamera.setParameters(mParams);
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> arg0) {
 
         }
@@ -399,6 +493,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private AdapterView.OnItemSelectedListener mSnapshotSizeListener =
             new AdapterView.OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                 View view, int pos, long id) {
             if (pos == mSnapshotSize) return;
@@ -413,6 +508,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mCamera.setParameters(mParams);
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
@@ -420,6 +516,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private View.OnClickListener mTakePictureListener =
             new View.OnClickListener() {
+        @Override
         public void onClick(View v) {
             log("Taking picture");
             if (mState == CAMERA_PREVIEW) {
@@ -436,6 +533,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private AdapterView.OnItemSelectedListener mCamcorderProfileListener =
                 new AdapterView.OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
             if (pos != mCamcorderProfile) {
@@ -458,6 +556,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mVideoRecordSizeSpinner.setSelection(mVideoRecordSize);
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
@@ -465,6 +564,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private AdapterView.OnItemSelectedListener mVideoRecordSizeListener =
                 new AdapterView.OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
             if (pos == mVideoRecordSize) return;
@@ -473,6 +573,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mVideoRecordSize = pos;
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
@@ -480,6 +581,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private AdapterView.OnItemSelectedListener mVideoFrameRateListener =
                 new AdapterView.OnItemSelectedListener() {
+        @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
             if (pos == mVideoFrameRate) return;
@@ -488,6 +590,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mVideoFrameRate = pos;
         }
 
+        @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
@@ -495,6 +598,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private View.OnClickListener mRecordToggleListener =
             new View.OnClickListener() {
+        @Override
         public void onClick(View v) {
             mPreviewToggle.setEnabled(false);
             if (mState == CAMERA_PREVIEW) {
@@ -510,31 +614,38 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private View.OnClickListener mRecordStabilizationToggleListener =
             new View.OnClickListener() {
+        @Override
         public void onClick(View v) {
             boolean on = ((ToggleButton) v).isChecked();
             mParams.setVideoStabilization(on);
+
+            mCamera.setParameters(mParams);
         }
     };
 
     private Camera.ShutterCallback mShutterCb = new Camera.ShutterCallback() {
+        @Override
         public void onShutter() {
             log("Shutter callback received");
         }
     };
 
     private Camera.PictureCallback mRawCb = new Camera.PictureCallback() {
+        @Override
         public void onPictureTaken(byte[] data, Camera camera) {
             log("Raw callback received");
         }
     };
 
     private Camera.PictureCallback mPostviewCb = new Camera.PictureCallback() {
+        @Override
         public void onPictureTaken(byte[] data, Camera camera) {
             log("Postview callback received");
         }
     };
 
     private Camera.PictureCallback mJpegCb = new Camera.PictureCallback() {
+        @Override
         public void onPictureTaken(byte[] data, Camera camera) {
             log("JPEG picture callback received");
             FragmentManager fm = getFragmentManager();
@@ -548,6 +659,70 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mState = CAMERA_OPEN;
         }
     };
+
+    private AdapterView.OnItemSelectedListener mCallbackFormatListener =
+            new AdapterView.OnItemSelectedListener() {
+        public void onItemSelected(AdapterView<?> parent,
+                        View view, int pos, long id) {
+            mPreviewFormat = pos;
+
+            log("Setting preview format to " +
+                    mFormatNames.get(mPreviewFormats.get(mPreviewFormat)));
+
+            switch (mState) {
+            case CAMERA_UNINITIALIZED:
+                return;
+            case CAMERA_OPEN:
+                break;
+            case CAMERA_PREVIEW:
+                if (mCallbacksEnabled) {
+                    log("Stopping preview and callbacks to switch formats");
+                    stopCallbacks();
+                    mCamera.stopPreview();
+                }
+                break;
+            case CAMERA_RECORD:
+                logE("Can't update format while recording active");
+                return;
+            }
+
+            mParams.setPreviewFormat(mPreviewFormats.get(mPreviewFormat));
+
+            if (mCallbacksEnabled) {
+                mCamera.setParameters(mParams);
+
+                if (mState == CAMERA_PREVIEW) {
+                    mCamera.startPreview();
+                }
+            }
+
+            configureCallbacks(mCallbackView.getWidth(), mCallbackView.getHeight());
+        }
+
+        public void onNothingSelected(AdapterView<?> parent) {
+
+        }
+    };
+
+    private View.OnClickListener mCallbackToggleListener =
+                new View.OnClickListener() {
+        public void onClick(View v) {
+            if (mCallbacksEnabled) {
+                log("Disabling preview callbacks");
+                stopCallbacks();
+                mCallbacksEnabled = false;
+                resizePreview();
+                mCallbackView.setVisibility(View.GONE);
+
+            } else {
+                log("Enabling preview callbacks");
+                mCallbacksEnabled = true;
+                resizePreview();
+                mCallbackView.setVisibility(View.VISIBLE);
+            }
+        }
+    };
+
 
     // Internal methods
 
@@ -571,6 +746,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         logIndent(1);
 
         updatePreviewSizes(mParams);
+        updatePreviewFormats(mParams);
         updateAfModes(mParams);
         updateFlashModes(mParams);
         updateSnapshotSizes(mParams);
@@ -615,9 +791,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mPreviewToggle.setChecked(false);
         enablePreviewOnlyControls(false);
 
-        int width = mPreviewSizes.get(mPreviewSize).width;
-        int height = mPreviewSizes.get(mPreviewSize).height;
-        resizePreview(width, height);
+        resizePreview();
         if (mPreviewToggle.isChecked()) {
             log("Starting preview" );
             mCamera.startPreview();
@@ -686,6 +860,28 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         int height = mPreviewSizes.get(mPreviewSize).height;
         params.setPreviewSize(width, height);
         log("Setting preview size to " + width + " x " + height);
+    }
+
+    private void updatePreviewFormats(Camera.Parameters params) {
+        mPreviewFormats = params.getSupportedPreviewFormats();
+
+        String[] availableFormatNames = new String[mPreviewFormats.size()];
+        int i = 0;
+        for (Integer previewFormat: mPreviewFormats) {
+            availableFormatNames[i++] = mFormatNames.get(previewFormat);
+        }
+        mCallbackFormatSpinner.setAdapter(
+                new ArrayAdapter<String>(
+                        this, R.layout.spinner_item, availableFormatNames));
+
+        mPreviewFormat = 0;
+        mCallbacksEnabled = false;
+        mCallbackToggle.setChecked(false);
+        mCallbackView.setVisibility(View.GONE);
+
+        params.setPreviewFormat(mPreviewFormats.get(mPreviewFormat));
+        log("Setting preview format to " +
+                mFormatNames.get(mPreviewFormats.get(mPreviewFormat)));
     }
 
     private void updateSnapshotSizes(Camera.Parameters params) {
@@ -816,22 +1012,114 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
                         this, R.layout.spinner_item, nameArray));
 
         mVideoFrameRate = 0;
-        log("Setting frame rate to " + nameArray[mVideoFrameRate]);
+        log("Setting recording frame rate to " + nameArray[mVideoFrameRate]);
     }
 
-    void resizePreview(int width, int height) {
-        if (mPreviewHolder != null) {
-            int viewHeight = mPreviewView.getHeight();
-            int viewWidth = (int)(((double)width)/height * viewHeight);
+    void resizePreview() {
+        // Reset preview layout parameters, to trigger layout pass
+        // This will eventually call layoutPreview below
+        Resources res = getResources();
+        mPreviewView.setLayoutParams(
+                new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0,
+                        mCallbacksEnabled ?
+                        res.getInteger(R.integer.preview_with_callback_weight):
+                        res.getInteger(R.integer.preview_only_weight) ));
+    }
 
-            mPreviewView.setLayoutParams(
-                new LayoutParams(viewWidth, viewHeight));
+    void layoutPreview() {
+        int width = mPreviewSizes.get(mPreviewSize).width;
+        int height = mPreviewSizes.get(mPreviewSize).height;
+        float previewAspect = ((float) width) / height;
+
+        int viewHeight = mPreviewView.getHeight();
+        int viewWidth = mPreviewView.getWidth();
+        float viewAspect = ((float) viewWidth) / viewHeight;
+        if ( previewAspect > viewAspect) {
+            viewHeight = (int) (viewWidth / previewAspect);
+        } else {
+            viewWidth = (int) (viewHeight * previewAspect);
         }
+        mPreviewView.setLayoutParams(
+                new LayoutParams(viewWidth, viewHeight));
 
+        if (mCallbacksEnabled) {
+            int callbackHeight = mCallbackView.getHeight();
+            int callbackWidth = mCallbackView.getWidth();
+            float callbackAspect = ((float) callbackWidth) / callbackHeight;
+            if ( previewAspect > callbackAspect) {
+                callbackHeight = (int) (callbackWidth / previewAspect);
+            } else {
+                callbackWidth = (int) (callbackHeight * previewAspect);
+            }
+            mCallbackView.setLayoutParams(
+                    new LayoutParams(callbackWidth, callbackHeight));
+            configureCallbacks(callbackWidth, callbackHeight);
+        }
+    }
+
+
+    private void configureCallbacks(int callbackWidth, int callbackHeight) {
+        if (mState >= CAMERA_OPEN && mCallbacksEnabled) {
+            mCamera.setPreviewCallbackWithBuffer(null);
+            int width = mPreviewSizes.get(mPreviewSize).width;
+            int height = mPreviewSizes.get(mPreviewSize).height;
+            int format = mPreviewFormats.get(mPreviewFormat);
+
+            mCallbackProcessor = new CallbackProcessor(width, height, format,
+                    getResources(), mCallbackView,
+                    callbackWidth, callbackHeight, mRS);
+
+            int size = getCallbackBufferSize(width, height, format);
+            log("Configuring callbacks:" + width + " x " + height +
+                    " , format " + format);
+            for (int i = 0; i < CALLBACK_BUFFER_COUNT; i++) {
+                mCamera.addCallbackBuffer(new byte[size]);
+            }
+            mCamera.setPreviewCallbackWithBuffer(this);
+        }
+        mLastCallbackTimestamp = -1;
+        mCallbackFrameCount = 0;
+        mCallbackAvgFrameDuration = 30;
+    }
+
+    private void stopCallbacks() {
+        if (mState >= CAMERA_OPEN) {
+            mCamera.setPreviewCallbackWithBuffer(null);
+            if (mCallbackProcessor != null) {
+                if (!mCallbackProcessor.stop()) {
+                    logE("Can't stop preview callback processing!");
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onPreviewFrame(byte[] data, Camera camera) {
+        long timestamp = SystemClock.elapsedRealtime();
+        if (mLastCallbackTimestamp != -1) {
+            long frameDuration = timestamp - mLastCallbackTimestamp;
+            mCallbackAvgFrameDuration =
+                    mCallbackAvgFrameDuration * MEAN_FPS_HISTORY_COEFF +
+                    frameDuration * MEAN_FPS_MEASUREMENT_COEFF;
+        }
+        mLastCallbackTimestamp = timestamp;
+        if (mState < CAMERA_PREVIEW || !mCallbacksEnabled) {
+            mCamera.addCallbackBuffer(data);
+            return;
+        }
+        mCallbackFrameCount++;
+        if (mCallbackFrameCount % FPS_REPORTING_PERIOD == 0) {
+            log("Got " + FPS_REPORTING_PERIOD + " callback frames, fps "
+                    + 1e3/mCallbackAvgFrameDuration);
+        }
+        mCallbackProcessor.displayCallback(data);
+
+        mCamera.addCallbackBuffer(data);
     }
 
     static final int MEDIA_TYPE_IMAGE = 0;
     static final int MEDIA_TYPE_VIDEO = 1;
+    @SuppressLint("SimpleDateFormat")
     File getOutputMediaFile(int type){
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
@@ -877,8 +1165,10 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
                 new String[] { newFile.toString() },
                 null,
                 new MediaScannerConnection.OnScanCompletedListener() {
+                    @Override
                     public void onScanCompleted(final String path, final Uri uri) {
                         h.post(new Runnable() {
+                            @Override
                             public void run() {
                                 log("MediaScanner notified: " +
                                         path + " -> " + uri);
@@ -955,6 +1245,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private MediaRecorder.OnErrorListener mRecordingErrorListener =
             new MediaRecorder.OnErrorListener() {
+        @Override
         public void onError(MediaRecorder mr, int what, int extra) {
             logE("MediaRecorder reports error: " + what + ", extra "
                     + extra);
@@ -966,6 +1257,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     private MediaRecorder.OnInfoListener mRecordingInfoListener =
             new MediaRecorder.OnInfoListener() {
+        @Override
         public void onInfo(MediaRecorder mr, int what, int extra) {
             log("MediaRecorder reports info: " + what + ", extra "
                     + extra);
@@ -989,6 +1281,36 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         }
     }
 
+    static int getCallbackBufferSize(int width, int height, int format) {
+        int size = -1;
+        switch (format) {
+        case ImageFormat.NV21:
+            size = width * height * 3 / 2;
+            break;
+        case ImageFormat.YV12:
+            int y_stride = (int) (Math.ceil( width / 16.) * 16);
+            int y_size = y_stride * height;
+            int c_stride = (int) (Math.ceil(y_stride / 32.) * 16);
+            int c_size = c_stride * height/2;
+            size = y_size + c_size * 2;
+            break;
+        case ImageFormat.NV16:
+        case ImageFormat.RGB_565:
+        case ImageFormat.YUY2:
+            size = 2 * width * height;
+            break;
+        case ImageFormat.JPEG:
+            Log.e(TAG, "JPEG callback buffers not supported!");
+            size = 0;
+            break;
+        case ImageFormat.UNKNOWN:
+            Log.e(TAG, "Unknown-format callback buffers not supported!");
+            size = 0;
+            break;
+        }
+        return size;
+    }
+
     private int mLogIndentLevel = 0;
     private String mLogIndent = "\t";
     /** Increment or decrement log indentation level */
@@ -1002,6 +1324,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mLogIndent = new String(mLogIndentArray);
     }
 
+    @SuppressLint("SimpleDateFormat")
     SimpleDateFormat mDateFormatter = new SimpleDateFormat("HH:mm:ss.SSS");
     /** Log both to log text view and to device logcat */
     void log(String logLine) {

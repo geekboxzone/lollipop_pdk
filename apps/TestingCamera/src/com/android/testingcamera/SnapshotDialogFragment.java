@@ -22,7 +22,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-public class SnapshotDialogFragment extends DialogFragment
+class SnapshotDialogFragment extends DialogFragment
                 implements OnScanCompletedListener{
 
     private ImageView mInfoImage;
@@ -81,6 +81,7 @@ public class SnapshotDialogFragment extends DialogFragment
                     return img;
                 }
 
+                @Override
                 protected void onPostExecute(Bitmap img) {
                     mInfoImage.setImageBitmap(img);
                 }
@@ -92,18 +93,21 @@ public class SnapshotDialogFragment extends DialogFragment
     }
 
     public OnClickListener mOkButtonListener = new OnClickListener() {
+        @Override
         public void onClick(View v) {
             dismiss();
         }
     };
 
     public OnClickListener mSaveButtonListener = new OnClickListener() {
+        @Override
         public void onClick(View v) {
             saveFile();
         }
     };
 
     public OnClickListener mSaveAndViewButtonListener = new OnClickListener() {
+        @Override
         public void onClick(View v) {
             saveFile();
             viewFile();
@@ -246,6 +250,7 @@ public class SnapshotDialogFragment extends DialogFragment
         }
     }
 
+    @Override
     public synchronized void onScanCompleted(String path, Uri uri) {
         mSavedUri = uri;
         if (mViewWhenReady) viewFile();

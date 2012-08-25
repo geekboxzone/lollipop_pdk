@@ -25,21 +25,33 @@
         android:layout_width="0dp"
         android:layout_height="fill_parent"
         android:layout_weight="6"
-        android:orientation="vertical" >
+        android:animateLayoutChanges="false"
+        android:orientation="vertical"
+        android:visibility="visible" >
 
         <SurfaceView
             android:id="@+id/preview"
             android:layout_width="fill_parent"
             android:layout_height="0dp"
-            android:layout_weight="6"
+            android:layout_weight="@integer/preview_only_weight"
             tools:ignore="NestedWeights" />
+
+        <SurfaceView
+            android:id="@+id/callback_view"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="@integer/preview_with_callback_weight"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/log"
             android:layout_width="fill_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1.5"
-            android:freezesText="true" />
+            android:layout_height="10dp"
+            android:layout_weight="1"
+            android:freezesText="true"
+            android:minLines="3"
+            android:typeface="normal" />
+
     </LinearLayout>
 
     <ScrollView
@@ -198,11 +210,11 @@
                 android:background="@color/horiz_rule_color" />
 
             <TextView
-                android:id="@+id/textView1"
+                android:id="@+id/snapshot_size_spinner_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/snapshot_size_spinner_label"
+                android:text="@string/snapshot_size_prompt"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
             <Spinner
@@ -287,6 +299,38 @@
                 android:textColorLink="@android:color/holo_blue_dark"
                 android:textOff="@string/record_stabilization_off_label"
                 android:textOn="@string/record_stabilization_on_label" />
+
+            <View
+                android:id="@+id/horizontal_rule_5"
+                android:layout_width="fill_parent"
+                android:layout_height="1dip"
+                android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
+                android:layout_marginTop="@dimen/horiz_rule_top_margin"
+                android:layout_weight="1"
+                android:background="@color/horiz_rule_color" />
+
+            <TextView
+                android:id="@+id/callback_format_spinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/callback_format_prompt"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <Spinner
+                android:id="@+id/callback_format_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <ToggleButton
+                android:id="@+id/enable_callbacks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textOff="@string/callbacks_off_label"
+                android:textOn="@string/callbacks_on_label" />
+
         </LinearLayout>
     </ScrollView>
 

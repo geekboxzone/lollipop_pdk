@@ -25,7 +25,7 @@
     <string name="camera_selection_prompt">Active camera</string>
     <string name="default_camera_entry">No cameras found</string>
     <string name="snapshot_text_default">Save to view EXIF.</string>
-    <string name="snapshot_size_spinner_label">Still capture size</string>
+    <string name="snapshot_size_prompt">Still capture size</string>
     <string name="record_on_label">Recording on</string>
     <string name="record_off_label">Recording off</string>
     <string name="record_stabilization_on_label">Video Stabilization on</string>
@@ -47,4 +47,7 @@
     <string name="exposure_label">Exposure</string>
     <string name="exposure_lock_on_label">Auto-Exposure Locked</string>
     <string name="exposure_lock_off_label">Auto-Exposure Unlocked</string>
+    <string name="callback_format_prompt">Preview callback format</string>
+    <string name="callbacks_on_label">Callbacks on</string>
+    <string name="callbacks_off_label">Callbacks off</string>
 </resources>
