@@ -29,6 +29,7 @@
     <string name="record_on_label">Recording on</string>
     <string name="record_off_label">Recording off</string>
     <string name="camcorder_profile_prompt">Camcorder profile</string>
+    <string name="video_record_size_prompt">Video Record size</string>
     <string name="horiz_rule_color">#777777</string>
     <string name="show_info">Info</string>
     <string name="info_ok_button_label">OK</string>

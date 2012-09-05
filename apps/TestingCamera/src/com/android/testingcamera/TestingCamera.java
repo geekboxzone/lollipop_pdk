@@ -77,6 +77,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Spinner mSnapshotSizeSpinner;
     private Button  mTakePictureButton;
     private Spinner mCamcorderProfileSpinner;
+    private Spinner mVideoRecordSizeSpinner;
     private ToggleButton mRecordToggle;
 
     private TextView mLogView;
@@ -97,6 +98,8 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private int mSnapshotSize = 0;
     private List<CamcorderProfile> mCamcorderProfiles;
     private int mCamcorderProfile = 0;
+    private List<Camera.Size> mVideoRecordSizes;
+    private int mVideoRecordSize = 0;
 
     private MediaRecorder mRecorder;
     private File mRecordingFile;
@@ -158,6 +161,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         mCamcorderProfileSpinner = (Spinner) findViewById(R.id.camcorder_profile_spinner);
         mCamcorderProfileSpinner.setOnItemSelectedListener(mCamcorderProfileListener);
+
+        mVideoRecordSizeSpinner = (Spinner) findViewById(R.id.video_record_size_spinner);
+        mVideoRecordSizeSpinner.setOnItemSelectedListener(mVideoRecordSizeListener);
 
         mRecordToggle = (ToggleButton) findViewById(R.id.start_record);
         mRecordToggle.setOnClickListener(mRecordToggleListener);
@@ -422,6 +428,35 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
             log("Setting camcorder profile to " + ((TextView)view).getText());
             mCamcorderProfile = pos;
+
+            // Additionally change video recording size to match
+            mVideoRecordSize = 0; // "default", in case it's not found
+            int width = mCamcorderProfiles.get(pos).videoFrameWidth;
+            int height = mCamcorderProfiles.get(pos).videoFrameHeight;
+            for (int i = 0; i < mVideoRecordSizes.size(); i++) {
+                Camera.Size s = mVideoRecordSizes.get(i);
+                if (width == s.width && height == s.height) {
+                    mVideoRecordSize = i;
+                    break;
+                }
+            }
+            log("Setting video record size to " + mVideoRecordSize);
+            mVideoRecordSizeSpinner.setSelection(mVideoRecordSize);
+        }
+
+        public void onNothingSelected(AdapterView<?> parent) {
+
+        }
+    };
+
+    private AdapterView.OnItemSelectedListener mVideoRecordSizeListener =
+                new AdapterView.OnItemSelectedListener() {
+        public void onItemSelected(AdapterView<?> parent,
+                        View view, int pos, long id) {
+            if (pos == mVideoRecordSize) return;
+
+            log("Setting video record size to " + ((TextView)view).getText());
+            mVideoRecordSize = pos;
         }
 
         public void onNothingSelected(AdapterView<?> parent) {
@@ -503,6 +538,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         updateFlashModes(mParams);
         updateSnapshotSizes(mParams);
         updateCamcorderProfile(mCameraId);
+        updateVideoRecordSize(mCameraId);
 
         // Update parameters based on above updates
         mCamera.setParameters(mParams);
@@ -667,6 +703,32 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
     }
 
+    private void updateVideoRecordSize(int cameraId) {
+        List<Camera.Size> videoSizes = mParams.getSupportedVideoSizes();
+        if (videoSizes == null) { // TODO: surface this to the user
+            log("Failed to get video size list, using preview sizes instead");
+            videoSizes = mParams.getSupportedPreviewSizes();
+        }
+
+        List<String> availableVideoRecordSizes = new ArrayList<String>();
+        mVideoRecordSizes = new ArrayList<Camera.Size>();
+
+        availableVideoRecordSizes.add("Default");
+        mVideoRecordSizes.add(mCamera.new Size(0,0));
+
+        for (Camera.Size s : videoSizes) {
+              availableVideoRecordSizes.add(s.width + "x" + s.height);
+              mVideoRecordSizes.add(s);
+        }
+        String[] nameArray = (String[])availableVideoRecordSizes.toArray(new String[0]);
+        mVideoRecordSizeSpinner.setAdapter(
+                new ArrayAdapter<String>(
+                        this, R.layout.spinner_item, nameArray));
+
+        mVideoRecordSize = 0;
+        log("Setting video record profile to " + nameArray[mVideoRecordSize]);
+    }
+
     void resizePreview(int width, int height) {
         if (mPreviewHolder != null) {
             int viewHeight = mPreviewView.getHeight();
@@ -761,6 +823,10 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
         mRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
         mRecorder.setProfile(mCamcorderProfiles.get(mCamcorderProfile));
+        Camera.Size videoRecordSize = mVideoRecordSizes.get(mVideoRecordSize);
+        if (videoRecordSize.width > 0 && videoRecordSize.height > 0) {
+            mRecorder.setVideoSize(videoRecordSize.width, videoRecordSize.height);
+        }
         File outputFile = getOutputMediaFile(MEDIA_TYPE_VIDEO);
         log("File name:" + outputFile.toString());
         mRecorder.setOutputFile(outputFile.toString());
