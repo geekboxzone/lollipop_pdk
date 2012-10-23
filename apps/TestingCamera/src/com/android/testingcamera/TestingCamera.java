@@ -80,6 +80,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Spinner mVideoRecordSizeSpinner;
     private Spinner mVideoFrameRateSpinner;
     private ToggleButton mRecordToggle;
+    private ToggleButton mRecordStabilizationToggle;
 
     private TextView mLogView;
 
@@ -174,6 +175,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mRecordToggle = (ToggleButton) findViewById(R.id.start_record);
         mRecordToggle.setOnClickListener(mRecordToggleListener);
         mPreviewOnlyControls.add(mRecordToggle);
+
+        mRecordStabilizationToggle = (ToggleButton) findViewById(R.id.record_stabilization);
+        mRecordStabilizationToggle.setOnClickListener(mRecordStabilizationToggleListener);
 
         mLogView = (TextView) findViewById(R.id.log);
         mLogView.setMovementMethod(new ScrollingMovementMethod());
@@ -500,6 +504,14 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         }
     };
 
+    private View.OnClickListener mRecordStabilizationToggleListener =
+            new View.OnClickListener() {
+        public void onClick(View v) {
+            boolean on = ((ToggleButton) v).isChecked();
+            mParams.setVideoStabilization(on);
+        }
+    };
+
     private Camera.ShutterCallback mShutterCb = new Camera.ShutterCallback() {
         public void onShutter() {
             log("Shutter callback received");
@@ -564,6 +576,14 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         // Trigger updating video record size to match camcorder profile
         mCamcorderProfileSpinner.setSelection(mCamcorderProfile);
+
+        if (mParams.isVideoStabilizationSupported()) {
+            log("Video stabilization is supported");
+            mRecordStabilizationToggle.setEnabled(true);
+        } else {
+            log("Video stabilization not supported");
+            mRecordStabilizationToggle.setEnabled(false);
+        }
 
         // Update parameters based on above updates
         mCamera.setParameters(mParams);

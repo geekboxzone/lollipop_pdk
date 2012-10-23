@@ -28,6 +28,8 @@
     <string name="snapshot_size_spinner_label">Still capture size</string>
     <string name="record_on_label">Recording on</string>
     <string name="record_off_label">Recording off</string>
+    <string name="record_stabilization_on_label">Video Stabilization on</string>
+    <string name="record_stabilization_off_label">Video Stabilization off</string>
     <string name="camcorder_profile_prompt">Camcorder profile</string>
     <string name="video_record_size_prompt">Video Record size</string>
     <string name="video_frame_rate_prompt">Video Frame Rate</string>
