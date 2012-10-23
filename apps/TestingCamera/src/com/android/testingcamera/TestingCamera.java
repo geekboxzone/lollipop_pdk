@@ -78,6 +78,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Button  mTakePictureButton;
     private Spinner mCamcorderProfileSpinner;
     private Spinner mVideoRecordSizeSpinner;
+    private Spinner mVideoFrameRateSpinner;
     private ToggleButton mRecordToggle;
 
     private TextView mLogView;
@@ -100,6 +101,8 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private int mCamcorderProfile = 0;
     private List<Camera.Size> mVideoRecordSizes;
     private int mVideoRecordSize = 0;
+    private List<Integer> mVideoFrameRates;
+    private int mVideoFrameRate = 0;
 
     private MediaRecorder mRecorder;
     private File mRecordingFile;
@@ -164,6 +167,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         mVideoRecordSizeSpinner = (Spinner) findViewById(R.id.video_record_size_spinner);
         mVideoRecordSizeSpinner.setOnItemSelectedListener(mVideoRecordSizeListener);
+
+        mVideoFrameRateSpinner = (Spinner) findViewById(R.id.video_frame_rate_spinner);
+        mVideoFrameRateSpinner.setOnItemSelectedListener(mVideoFrameRateListener);
 
         mRecordToggle = (ToggleButton) findViewById(R.id.start_record);
         mRecordToggle.setOnClickListener(mRecordToggleListener);
@@ -464,6 +470,21 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         }
     };
 
+    private AdapterView.OnItemSelectedListener mVideoFrameRateListener =
+                new AdapterView.OnItemSelectedListener() {
+        public void onItemSelected(AdapterView<?> parent,
+                        View view, int pos, long id) {
+            if (pos == mVideoFrameRate) return;
+
+            log("Setting video frame rate to " + ((TextView)view).getText());
+            mVideoFrameRate = pos;
+        }
+
+        public void onNothingSelected(AdapterView<?> parent) {
+
+        }
+    };
+
     private View.OnClickListener mRecordToggleListener =
             new View.OnClickListener() {
         public void onClick(View v) {
@@ -539,6 +560,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         updateSnapshotSizes(mParams);
         updateCamcorderProfile(mCameraId);
         updateVideoRecordSize(mCameraId);
+        updateVideoFrameRate(mCameraId);
 
         // Update parameters based on above updates
         mCamera.setParameters(mParams);
@@ -729,6 +751,29 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         log("Setting video record profile to " + nameArray[mVideoRecordSize]);
     }
 
+    private void updateVideoFrameRate(int cameraId) {
+        // Use preview framerates as video framerates
+        List<Integer> frameRates = mParams.getSupportedPreviewFrameRates();
+
+        List<String> frameRateStrings = new ArrayList<String>();
+        mVideoFrameRates = new ArrayList<Integer>();
+
+        frameRateStrings.add("Default");
+        mVideoFrameRates.add(0);
+
+        for (Integer frameRate : frameRates) {
+            frameRateStrings.add(frameRate.toString());
+            mVideoFrameRates.add(frameRate);
+        }
+        String[] nameArray = (String[])frameRateStrings.toArray(new String[0]);
+        mVideoFrameRateSpinner.setAdapter(
+                new ArrayAdapter<String>(
+                        this, R.layout.spinner_item, nameArray));
+
+        mVideoFrameRate = 0;
+        log("Setting frame rate to " + nameArray[mVideoFrameRate]);
+    }
+
     void resizePreview(int width, int height) {
         if (mPreviewHolder != null) {
             int viewHeight = mPreviewView.getHeight();
@@ -826,6 +871,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         Camera.Size videoRecordSize = mVideoRecordSizes.get(mVideoRecordSize);
         if (videoRecordSize.width > 0 && videoRecordSize.height > 0) {
             mRecorder.setVideoSize(videoRecordSize.width, videoRecordSize.height);
+        }
+        if (mVideoFrameRates.get(mVideoFrameRate) > 0) {
+            mRecorder.setVideoFrameRate(mVideoFrameRates.get(mVideoFrameRate));
         }
         File outputFile = getOutputMediaFile(MEDIA_TYPE_VIDEO);
         log("File name:" + outputFile.toString());
