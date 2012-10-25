@@ -35,6 +35,7 @@
     <string name="snapshot_ok_label">OK</string>
     <string name="still_image_description">Captured still image</string>
     <string name="af_mode_prompt">Autofocus mode</string>
+    <string name="flash_mode_label">Flash mode</string>
     <string name="trigger_autofocus">Trigger autofocus</string>
     <string name="cancel_autofocus">Cancel Autofocus</string>
     <string name="snapshot_save_label">Save</string>

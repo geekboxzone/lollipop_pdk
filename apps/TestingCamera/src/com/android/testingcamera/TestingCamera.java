@@ -73,6 +73,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Spinner mAutofocusModeSpinner;
     private Button mAutofocusButton;
     private Button mCancelAutofocusButton;
+    private Spinner mFlashModeSpinner;
     private Spinner mSnapshotSizeSpinner;
     private Button  mTakePictureButton;
     private Spinner mCamcorderProfileSpinner;
@@ -90,6 +91,8 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private int mPreviewSize = 0;
     private List<String> mAfModes;
     private int mAfMode = 0;
+    private List<String> mFlashModes;
+    private int mFlashMode = 0;
     private List<Camera.Size> mSnapshotSizes;
     private int mSnapshotSize = 0;
     private List<CamcorderProfile> mCamcorderProfiles;
@@ -142,6 +145,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         mCancelAutofocusButton = (Button) findViewById(R.id.af_cancel_button);
         mCancelAutofocusButton.setOnClickListener(mCancelAutofocusButtonListener);
         mPreviewOnlyControls.add(mCancelAutofocusButton);
+
+        mFlashModeSpinner = (Spinner) findViewById(R.id.flash_mode_spinner);
+        mFlashModeSpinner.setOnItemSelectedListener(mFlashModeListener);
 
         mSnapshotSizeSpinner = (Spinner) findViewById(R.id.snapshot_size_spinner);
         mSnapshotSizeSpinner.setOnItemSelectedListener(mSnapshotSizeListener);
@@ -352,6 +358,25 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         }
     };
 
+    private OnItemSelectedListener mFlashModeListener =
+                new OnItemSelectedListener() {
+        public void onItemSelected(AdapterView<?> parent,
+                        View view, int pos, long id) {
+            if (pos == mFlashMode) return;
+
+            mFlashMode = pos;
+            String flashMode = mFlashModes.get(mFlashMode);
+            log("Setting flash mode to " + flashMode);
+            mParams.setFlashMode(flashMode);
+            mCamera.setParameters(mParams);
+        }
+
+        public void onNothingSelected(AdapterView<?> arg0) {
+
+        }
+    };
+
+
     private AdapterView.OnItemSelectedListener mSnapshotSizeListener =
             new AdapterView.OnItemSelectedListener() {
         public void onItemSelected(AdapterView<?> parent,
@@ -475,6 +500,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         updatePreviewSizes(mParams);
         updateAfModes(mParams);
+        updateFlashModes(mParams);
         updateSnapshotSizes(mParams);
         updateCamcorderProfile(mCameraId);
 
@@ -521,6 +547,20 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         params.setFocusMode(mAfModes.get(mAfMode));
 
         log("Setting AF mode to " + mAfModes.get(mAfMode));
+    }
+
+    private void updateFlashModes(Parameters params) {
+        mFlashModes = params.getSupportedFlashModes();
+
+        mFlashModeSpinner.setAdapter(
+                new ArrayAdapter<String>(this, R.layout.spinner_item,
+                        mFlashModes.toArray(new String[0])));
+
+        mFlashMode = 0;
+
+        params.setFlashMode(mFlashModes.get(mFlashMode));
+
+        log("Setting Flash mode to " + mFlashModes.get(mFlashMode));
     }
 
     private void updatePreviewSizes(Camera.Parameters params) {
