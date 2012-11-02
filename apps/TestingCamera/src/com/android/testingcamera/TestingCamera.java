@@ -430,10 +430,10 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
                 new AdapterView.OnItemSelectedListener() {
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
-            if (pos == mCamcorderProfile) return;
-
-            log("Setting camcorder profile to " + ((TextView)view).getText());
-            mCamcorderProfile = pos;
+            if (pos != mCamcorderProfile) {
+                log("Setting camcorder profile to " + ((TextView)view).getText());
+                mCamcorderProfile = pos;
+            }
 
             // Additionally change video recording size to match
             mVideoRecordSize = 0; // "default", in case it's not found
@@ -561,6 +561,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
         updateCamcorderProfile(mCameraId);
         updateVideoRecordSize(mCameraId);
         updateVideoFrameRate(mCameraId);
+
+        // Trigger updating video record size to match camcorder profile
+        mCamcorderProfileSpinner.setSelection(mCamcorderProfile);
 
         // Update parameters based on above updates
         mCamera.setParameters(mParams);
