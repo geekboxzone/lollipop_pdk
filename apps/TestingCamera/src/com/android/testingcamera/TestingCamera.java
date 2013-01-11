@@ -74,6 +74,7 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
     private Button mAutofocusButton;
     private Button mCancelAutofocusButton;
     private Spinner mFlashModeSpinner;
+    private ToggleButton mExposureLockToggle;
     private Spinner mSnapshotSizeSpinner;
     private Button  mTakePictureButton;
     private Spinner mCamcorderProfileSpinner;
@@ -155,6 +156,9 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         mFlashModeSpinner = (Spinner) findViewById(R.id.flash_mode_spinner);
         mFlashModeSpinner.setOnItemSelectedListener(mFlashModeListener);
+
+        mExposureLockToggle = (ToggleButton) findViewById(R.id.exposure_lock);
+        mExposureLockToggle.setOnClickListener(mExposureLockToggleListener);
 
         mSnapshotSizeSpinner = (Spinner) findViewById(R.id.snapshot_size_spinner);
         mSnapshotSizeSpinner.setOnItemSelectedListener(mSnapshotSizeListener);
@@ -585,6 +589,14 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
             mRecordStabilizationToggle.setEnabled(false);
         }
 
+        if (mParams.isAutoExposureLockSupported()) {
+            log("Auto-Exposure locking is supported");
+            mExposureLockToggle.setEnabled(true);
+        } else {
+            log("Auto-Exposure locking is not supported");
+            mExposureLockToggle.setEnabled(false);
+        }
+
         // Update parameters based on above updates
         mCamera.setParameters(mParams);
 
@@ -643,6 +655,16 @@ public class TestingCamera extends Activity implements SurfaceHolder.Callback {
 
         log("Setting Flash mode to " + mFlashModes.get(mFlashMode));
     }
+
+    private View.OnClickListener mExposureLockToggleListener =
+            new View.OnClickListener() {
+        public void onClick(View v) {
+            boolean on = ((ToggleButton) v).isChecked();
+            log("Auto-Exposure was " + mParams.getAutoExposureLock());
+            mParams.setAutoExposureLock(on);
+            log("Auto-Exposure is now " + mParams.getAutoExposureLock());
+        }
+    };
 
     private void updatePreviewSizes(Camera.Parameters params) {
         mPreviewSizes = params.getSupportedPreviewSizes();
