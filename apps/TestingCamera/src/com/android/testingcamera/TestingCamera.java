@@ -81,10 +81,12 @@ public class TestingCamera extends Activity
     private Spinner mCameraSpinner;
     private Button mInfoButton;
     private Spinner mPreviewSizeSpinner;
+    private Spinner mPreviewFrameRateSpinner;
     private ToggleButton mPreviewToggle;
     private Spinner mAutofocusModeSpinner;
     private Button mAutofocusButton;
     private Button mCancelAutofocusButton;
+    private TextView mFlashModeSpinnerLabel;
     private Spinner mFlashModeSpinner;
     private ToggleButton mExposureLockToggle;
     private Spinner mSnapshotSizeSpinner;
@@ -109,6 +111,8 @@ public class TestingCamera extends Activity
     private Camera.Parameters mParams;
     private List<Camera.Size> mPreviewSizes;
     private int mPreviewSize = 0;
+    private List<Integer> mPreviewFrameRates;
+    private int mPreviewFrameRate = 0;
     private List<Integer> mPreviewFormats;
     private int mPreviewFormat = 0;
     private List<String> mAfModes;
@@ -176,6 +180,9 @@ public class TestingCamera extends Activity
         mPreviewSizeSpinner = (Spinner) findViewById(R.id.preview_size_spinner);
         mPreviewSizeSpinner.setOnItemSelectedListener(mPreviewSizeListener);
 
+        mPreviewFrameRateSpinner = (Spinner) findViewById(R.id.preview_frame_rate_spinner);
+        mPreviewFrameRateSpinner.setOnItemSelectedListener(mPreviewFrameRateListener);
+
         mPreviewToggle = (ToggleButton) findViewById(R.id.start_preview);
         mPreviewToggle.setOnClickListener(mPreviewToggleListener);
 
@@ -189,6 +196,8 @@ public class TestingCamera extends Activity
         mCancelAutofocusButton = (Button) findViewById(R.id.af_cancel_button);
         mCancelAutofocusButton.setOnClickListener(mCancelAutofocusButtonListener);
         mPreviewOnlyControls.add(mCancelAutofocusButton);
+
+        mFlashModeSpinnerLabel = (TextView) findViewById(R.id.flash_mode_spinner_label);
 
         mFlashModeSpinner = (Spinner) findViewById(R.id.flash_mode_spinner);
         mFlashModeSpinner.setOnItemSelectedListener(mFlashModeListener);
@@ -380,6 +389,26 @@ public class TestingCamera extends Activity
                 log("Restarting preview");
                 mCamera.startPreview();
             }
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {
+
+        }
+    };
+
+    private AdapterView.OnItemSelectedListener mPreviewFrameRateListener =
+                new AdapterView.OnItemSelectedListener() {
+        @Override
+        public void onItemSelected(AdapterView<?> parent,
+                        View view, int pos, long id) {
+            if (pos == mPreviewFrameRate) return;
+            mPreviewFrameRate = pos;
+            mParams.setPreviewFrameRate(mPreviewFrameRates.get(mPreviewFrameRate));
+
+            log("Setting preview frame rate to " + ((TextView)view).getText());
+
+            mCamera.setParameters(mParams);
         }
 
         @Override
@@ -746,6 +775,7 @@ public class TestingCamera extends Activity
         logIndent(1);
 
         updatePreviewSizes(mParams);
+        updatePreviewFrameRate(mCameraId);
         updatePreviewFormats(mParams);
         updateAfModes(mParams);
         updateFlashModes(mParams);
@@ -819,15 +849,23 @@ public class TestingCamera extends Activity
     private void updateFlashModes(Parameters params) {
         mFlashModes = params.getSupportedFlashModes();
 
-        mFlashModeSpinner.setAdapter(
-                new ArrayAdapter<String>(this, R.layout.spinner_item,
-                        mFlashModes.toArray(new String[0])));
+        if (mFlashModes != null) {
+            mFlashModeSpinnerLabel.setVisibility(View.VISIBLE);
+            mFlashModeSpinner.setVisibility(View.VISIBLE);
+            mFlashModeSpinner.setAdapter(
+                    new ArrayAdapter<String>(this, R.layout.spinner_item,
+                            mFlashModes.toArray(new String[0])));
 
-        mFlashMode = 0;
+            mFlashMode = 0;
 
-        params.setFlashMode(mFlashModes.get(mFlashMode));
+            params.setFlashMode(mFlashModes.get(mFlashMode));
 
-        log("Setting Flash mode to " + mFlashModes.get(mFlashMode));
+            log("Setting Flash mode to " + mFlashModes.get(mFlashMode));
+        } else {
+            // this camera has no flash
+            mFlashModeSpinnerLabel.setVisibility(View.GONE);
+            mFlashModeSpinner.setVisibility(View.GONE);
+        }
     }
 
     private View.OnClickListener mExposureLockToggleListener =
@@ -860,6 +898,34 @@ public class TestingCamera extends Activity
         int height = mPreviewSizes.get(mPreviewSize).height;
         params.setPreviewSize(width, height);
         log("Setting preview size to " + width + " x " + height);
+    }
+
+    private void updatePreviewFrameRate(int cameraId) {
+        List<Integer> frameRates = mParams.getSupportedPreviewFrameRates();
+        int defaultPreviewFrameRate = mParams.getPreviewFrameRate();
+
+        List<String> frameRateStrings = new ArrayList<String>();
+        mPreviewFrameRates = new ArrayList<Integer>();
+
+        int currentIndex = 0;
+        for (Integer frameRate : frameRates) {
+            mPreviewFrameRates.add(frameRate);
+            if(frameRate == defaultPreviewFrameRate) {
+                frameRateStrings.add(frameRate.toString() + " (Default)");
+                mPreviewFrameRate = currentIndex;
+            } else {
+                frameRateStrings.add(frameRate.toString());
+            }
+            currentIndex++;
+        }
+
+        String[] nameArray = (String[])frameRateStrings.toArray(new String[0]);
+        mPreviewFrameRateSpinner.setAdapter(
+                new ArrayAdapter<String>(
+                        this, R.layout.spinner_item, nameArray));
+
+        mPreviewFrameRateSpinner.setSelection(mPreviewFrameRate);
+        log("Setting preview frame rate to " + nameArray[mPreviewFrameRate]);
     }
 
     private void updatePreviewFormats(Camera.Parameters params) {
