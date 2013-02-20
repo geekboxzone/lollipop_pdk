@@ -23,6 +23,7 @@ import android.content.res.Resources;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
+import android.hardware.Camera.ErrorCallback;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
@@ -39,6 +40,7 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.Spinner;
@@ -68,7 +70,8 @@ import java.util.Set;
  * exercised, and all information provided by the API to be shown.
  */
 public class TestingCamera extends Activity
-    implements SurfaceHolder.Callback, Camera.PreviewCallback {
+    implements SurfaceHolder.Callback, Camera.PreviewCallback,
+        Camera.ErrorCallback {
 
     /** UI elements */
     private SurfaceView mPreviewView;
@@ -79,6 +82,7 @@ public class TestingCamera extends Activity
     private SurfaceHolder mCallbackHolder;
 
     private Spinner mCameraSpinner;
+    private CheckBox mKeepOpenCheckBox;
     private Button mInfoButton;
     private Spinner mPreviewSizeSpinner;
     private Spinner mPreviewFrameRateSpinner;
@@ -95,18 +99,20 @@ public class TestingCamera extends Activity
     private Spinner mVideoRecordSizeSpinner;
     private Spinner mVideoFrameRateSpinner;
     private ToggleButton mRecordToggle;
+    private CheckBox mRecordHandoffCheckBox;
     private ToggleButton mRecordStabilizationToggle;
     private Spinner mCallbackFormatSpinner;
     private ToggleButton mCallbackToggle;
 
     private TextView mLogView;
 
+    private Set<View> mOpenOnlyControls = new HashSet<View>();
     private Set<View> mPreviewOnlyControls = new HashSet<View>();
 
     private SparseArray<String> mFormatNames;
 
     /** Camera state */
-    private int mCameraId = 0;
+    private int mCameraId;
     private Camera mCamera;
     private Camera.Parameters mParams;
     private List<Camera.Size> mPreviewSizes;
@@ -150,11 +156,12 @@ public class TestingCamera extends Activity
     private static final int CAMERA_RECORD = 4;
     private int mState = CAMERA_UNINITIALIZED;
 
-
+    private static final int NO_CAMERA_ID = -1;
 
     /** Misc variables */
 
     private static final String TAG = "TestingCamera";
+
 
     /** Activity lifecycle */
 
@@ -174,20 +181,27 @@ public class TestingCamera extends Activity
         mCameraSpinner = (Spinner) findViewById(R.id.camera_spinner);
         mCameraSpinner.setOnItemSelectedListener(mCameraSpinnerListener);
 
+        mKeepOpenCheckBox = (CheckBox) findViewById(R.id.keep_open_checkbox);
+
         mInfoButton = (Button) findViewById(R.id.info_button);
         mInfoButton.setOnClickListener(mInfoButtonListener);
+        mOpenOnlyControls.add(mInfoButton);
 
         mPreviewSizeSpinner = (Spinner) findViewById(R.id.preview_size_spinner);
         mPreviewSizeSpinner.setOnItemSelectedListener(mPreviewSizeListener);
+        mOpenOnlyControls.add(mPreviewSizeSpinner);
 
         mPreviewFrameRateSpinner = (Spinner) findViewById(R.id.preview_frame_rate_spinner);
         mPreviewFrameRateSpinner.setOnItemSelectedListener(mPreviewFrameRateListener);
+        mOpenOnlyControls.add(mPreviewFrameRateSpinner);
 
         mPreviewToggle = (ToggleButton) findViewById(R.id.start_preview);
         mPreviewToggle.setOnClickListener(mPreviewToggleListener);
+        mOpenOnlyControls.add(mPreviewToggle);
 
         mAutofocusModeSpinner = (Spinner) findViewById(R.id.af_mode_spinner);
         mAutofocusModeSpinner.setOnItemSelectedListener(mAutofocusModeListener);
+        mOpenOnlyControls.add(mAutofocusModeSpinner);
 
         mAutofocusButton = (Button) findViewById(R.id.af_button);
         mAutofocusButton.setOnClickListener(mAutofocusButtonListener);
@@ -201,12 +215,15 @@ public class TestingCamera extends Activity
 
         mFlashModeSpinner = (Spinner) findViewById(R.id.flash_mode_spinner);
         mFlashModeSpinner.setOnItemSelectedListener(mFlashModeListener);
+        mOpenOnlyControls.add(mFlashModeSpinner);
 
         mExposureLockToggle = (ToggleButton) findViewById(R.id.exposure_lock);
         mExposureLockToggle.setOnClickListener(mExposureLockToggleListener);
+        mOpenOnlyControls.add(mExposureLockToggle);
 
         mSnapshotSizeSpinner = (Spinner) findViewById(R.id.snapshot_size_spinner);
         mSnapshotSizeSpinner.setOnItemSelectedListener(mSnapshotSizeListener);
+        mOpenOnlyControls.add(mSnapshotSizeSpinner);
 
         mTakePictureButton = (Button) findViewById(R.id.take_picture);
         mTakePictureButton.setOnClickListener(mTakePictureListener);
@@ -214,28 +231,38 @@ public class TestingCamera extends Activity
 
         mCamcorderProfileSpinner = (Spinner) findViewById(R.id.camcorder_profile_spinner);
         mCamcorderProfileSpinner.setOnItemSelectedListener(mCamcorderProfileListener);
+        mOpenOnlyControls.add(mCamcorderProfileSpinner);
 
         mVideoRecordSizeSpinner = (Spinner) findViewById(R.id.video_record_size_spinner);
         mVideoRecordSizeSpinner.setOnItemSelectedListener(mVideoRecordSizeListener);
+        mOpenOnlyControls.add(mVideoRecordSizeSpinner);
 
         mVideoFrameRateSpinner = (Spinner) findViewById(R.id.video_frame_rate_spinner);
         mVideoFrameRateSpinner.setOnItemSelectedListener(mVideoFrameRateListener);
+        mOpenOnlyControls.add(mVideoFrameRateSpinner);
 
         mRecordToggle = (ToggleButton) findViewById(R.id.start_record);
         mRecordToggle.setOnClickListener(mRecordToggleListener);
         mPreviewOnlyControls.add(mRecordToggle);
 
+        mRecordHandoffCheckBox = (CheckBox) findViewById(R.id.record_handoff_checkbox);
+
         mRecordStabilizationToggle = (ToggleButton) findViewById(R.id.record_stabilization);
         mRecordStabilizationToggle.setOnClickListener(mRecordStabilizationToggleListener);
+        mOpenOnlyControls.add(mRecordStabilizationToggle);
 
         mCallbackFormatSpinner = (Spinner) findViewById(R.id.callback_format_spinner);
         mCallbackFormatSpinner.setOnItemSelectedListener(mCallbackFormatListener);
+        mOpenOnlyControls.add(mCallbackFormatSpinner);
 
         mCallbackToggle = (ToggleButton) findViewById(R.id.enable_callbacks);
         mCallbackToggle.setOnClickListener(mCallbackToggleListener);
+        mOpenOnlyControls.add(mCallbackToggle);
 
         mLogView = (TextView) findViewById(R.id.log);
         mLogView.setMovementMethod(new ScrollingMovementMethod());
+
+        mOpenOnlyControls.addAll(mPreviewOnlyControls);
 
         mFormatNames = new SparseArray<String>(7);
         mFormatNames.append(ImageFormat.JPEG, "JPEG");
@@ -247,14 +274,22 @@ public class TestingCamera extends Activity
         mFormatNames.append(ImageFormat.YV12, "YV12");
 
         int numCameras = Camera.getNumberOfCameras();
-        String[] cameraNames = new String[numCameras];
+        String[] cameraNames = new String[numCameras + 1];
+        cameraNames[0] = "None";
         for (int i = 0; i < numCameras; i++) {
-            cameraNames[i] = "Camera " + i;
+            cameraNames[i + 1] = "Camera " + i;
         }
 
         mCameraSpinner.setAdapter(
                 new ArrayAdapter<String>(this,
                         R.layout.spinner_item, cameraNames));
+        if (numCameras > 0) {
+            mCameraId = 0;
+            mCameraSpinner.setSelection(mCameraId + 1);
+        } else {
+            resetCamera();
+            mCameraSpinner.setSelection(0);
+        }
 
         mRS = RenderScript.create(this);
     }
@@ -262,7 +297,7 @@ public class TestingCamera extends Activity
     @Override
     public void onResume() {
         super.onResume();
-        log("onResume: Setting up camera");
+        log("onResume: Setting up");
         mPreviewHolder = null;
         setUpCamera();
     }
@@ -270,9 +305,24 @@ public class TestingCamera extends Activity
     @Override
     public void onPause() {
         super.onPause();
-        log("onPause: Releasing camera");
-        mCamera.release();
-        mState = CAMERA_UNINITIALIZED;
+        if (mState == CAMERA_RECORD) {
+            stopRecording(false);
+        }
+        if (mKeepOpenCheckBox.isChecked()) {
+            log("onPause: Not releasing camera");
+
+            if (mState == CAMERA_PREVIEW) {
+                mCamera.stopPreview();
+                mState = CAMERA_OPEN;
+            }
+        } else {
+            log("onPause: Releasing camera");
+
+            if (mCamera != null) {
+                mCamera.release();
+            }
+            mState = CAMERA_UNINITIALIZED;
+        }
     }
 
     /** SurfaceHolder.Callback methods */
@@ -327,7 +377,14 @@ public class TestingCamera extends Activity
         mPreviewHolder = null;
     }
 
-    /** UI controls enable/disable */
+    /** UI controls enable/disable for all open-only controls */
+    private void enableOpenOnlyControls(boolean enabled) {
+        for (View v : mOpenOnlyControls) {
+                v.setEnabled(enabled);
+        }
+    }
+
+    /** UI controls enable/disable for all preview-only controls */
     private void enablePreviewOnlyControls(boolean enabled) {
         for (View v : mPreviewOnlyControls) {
                 v.setEnabled(enabled);
@@ -341,8 +398,11 @@ public class TestingCamera extends Activity
         @Override
         public void onItemSelected(AdapterView<?> parent,
                         View view, int pos, long id) {
-            if (mCameraId != pos) {
-                mCameraId = pos;
+            int cameraId = pos - 1;
+            if (mCameraId != cameraId) {
+                resetCamera();
+                mCameraId = cameraId;
+                mPreviewToggle.setChecked(false);
                 setUpCamera();
             }
         }
@@ -356,10 +416,12 @@ public class TestingCamera extends Activity
     private OnClickListener mInfoButtonListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
-            FragmentManager fm = getFragmentManager();
-            InfoDialogFragment infoDialog = new InfoDialogFragment();
-            infoDialog.updateInfo(mCameraId, mCamera);
-            infoDialog.show(fm, "info_dialog_fragment");
+            if (mCameraId != NO_CAMERA_ID) {
+                FragmentManager fm = getFragmentManager();
+                InfoDialogFragment infoDialog = new InfoDialogFragment();
+                infoDialog.updateInfo(mCameraId, mCamera);
+                infoDialog.show(fm, "info_dialog_fragment");
+            }
         }
     };
 
@@ -756,17 +818,27 @@ public class TestingCamera extends Activity
     // Internal methods
 
     void setUpCamera() {
+        if (mCameraId == NO_CAMERA_ID) return;
+
         log("Setting up camera " + mCameraId);
         logIndent(1);
-        if (mState >= CAMERA_OPEN) {
-            log("Closing old camera");
-            mCamera.release();
-            mState = CAMERA_UNINITIALIZED;
-        }
-        log("Opening camera " + mCameraId);
-        mCamera = Camera.open(mCameraId);
-        mState = CAMERA_OPEN;
 
+        if (mState < CAMERA_OPEN) {
+            log("Opening camera " + mCameraId);
+
+            try {
+                mCamera = Camera.open(mCameraId);
+            } catch (RuntimeException e) {
+                logE("Exception opening camera: " + e.getMessage());
+                resetCamera();
+                mCameraSpinner.setSelection(0);
+                logIndent(-1);
+                return;
+            }
+            mState = CAMERA_OPEN;
+        }
+
+        mCamera.setErrorCallback(this);
         mParams = mCamera.getParameters();
 
         // Set up preview size selection
@@ -817,9 +889,7 @@ public class TestingCamera extends Activity
 
         logIndent(-1);
 
-        mPreviewToggle.setEnabled(true);
-        mPreviewToggle.setChecked(false);
-        enablePreviewOnlyControls(false);
+        enableOpenOnlyControls(true);
 
         resizePreview();
         if (mPreviewToggle.isChecked()) {
@@ -828,8 +898,21 @@ public class TestingCamera extends Activity
             mState = CAMERA_PREVIEW;
         } else {
             mState = CAMERA_OPEN;
+            enablePreviewOnlyControls(false);
         }
         logIndent(-1);
+    }
+
+    private void resetCamera() {
+        if (mState >= CAMERA_OPEN) {
+            log("Closing old camera");
+            mCamera.release();
+        }
+        mCamera = null;
+        mCameraId = NO_CAMERA_ID;
+        mState = CAMERA_UNINITIALIZED;
+
+        enableOpenOnlyControls(false);
     }
 
     private void updateAfModes(Parameters params) {
@@ -1183,6 +1266,26 @@ public class TestingCamera extends Activity
         mCamera.addCallbackBuffer(data);
     }
 
+    @Override
+    public void onError(int error, Camera camera) {
+        String errorName;
+        switch (error) {
+        case Camera.CAMERA_ERROR_SERVER_DIED:
+            errorName = "SERVER_DIED";
+            break;
+        case Camera.CAMERA_ERROR_UNKNOWN:
+            errorName = "UNKNOWN";
+            break;
+        default:
+            errorName = "?";
+            break;
+        }
+        logE("Camera error received: " + errorName + " (" + error + ")" );
+        logE("Shutting down camera");
+        resetCamera();
+        mCameraSpinner.setSelection(0);
+    }
+
     static final int MEDIA_TYPE_IMAGE = 0;
     static final int MEDIA_TYPE_VIDEO = 1;
     @SuppressLint("SimpleDateFormat")
@@ -1258,14 +1361,26 @@ public class TestingCamera extends Activity
         log("Starting recording");
         logIndent(1);
         log("Configuring MediaRecoder");
-        mCamera.unlock();
+
+        mRecordHandoffCheckBox.setEnabled(false);
+        if (mRecordHandoffCheckBox.isChecked()) {
+            mCamera.release();
+        } else {
+            mCamera.unlock();
+        }
+
         if (mRecorder != null) {
             mRecorder.release();
         }
+
         mRecorder = new MediaRecorder();
         mRecorder.setOnErrorListener(mRecordingErrorListener);
         mRecorder.setOnInfoListener(mRecordingInfoListener);
-        mRecorder.setCamera(mCamera);
+        if (!mRecordHandoffCheckBox.isChecked()) {
+            mRecorder.setCamera(mCamera);
+        }
+        mRecorder.setPreviewDisplay(mPreviewHolder.getSurface());
+
         mRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
         mRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
         mRecorder.setProfile(mCamcorderProfiles.get(mCamcorderProfile));
@@ -1302,9 +1417,18 @@ public class TestingCamera extends Activity
                 StringWriter writer = new StringWriter();
                 e.printStackTrace(new PrintWriter(writer));
                 logE("Exception starting MediaRecorder:\n" + writer.toString());
+                ready = false;
             }
-        } else {
-            mPreviewToggle.setChecked(false);
+        }
+
+        if (!ready) {
+            mRecordToggle.setChecked(false);
+            mRecordHandoffCheckBox.setEnabled(true);
+
+            if (mRecordHandoffCheckBox.isChecked()) {
+                mState = CAMERA_UNINITIALIZED;
+                setUpCamera();
+            }
         }
         logIndent(-1);
     }
@@ -1332,10 +1456,19 @@ public class TestingCamera extends Activity
 
     private void stopRecording(boolean error) {
         log("Stopping recording");
+        mRecordHandoffCheckBox.setEnabled(true);
+        mRecordToggle.setChecked(false);
         if (mRecorder != null) {
             mRecorder.stop();
-            mCamera.lock();
-            mState = CAMERA_PREVIEW;
+
+            if (mRecordHandoffCheckBox.isChecked()) {
+                mState = CAMERA_UNINITIALIZED;
+                setUpCamera();
+            } else {
+                mCamera.lock();
+                mState = CAMERA_PREVIEW;
+            }
+
             if (!error) {
                 notifyMediaScannerOfFile(mRecordingFile, null);
             } else {
@@ -1417,5 +1550,4 @@ public class TestingCamera extends Activity
             }
         }
     }
-
 }

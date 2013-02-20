@@ -51,4 +51,6 @@
     <string name="callback_format_prompt">Preview callback format</string>
     <string name="callbacks_on_label">Callbacks on</string>
     <string name="callbacks_off_label">Callbacks off</string>
+    <string name="keep_open_prompt">Keep open on exit</string>
+    <string name="record_handoff_prompt">No camera recording handoff</string>
 </resources>

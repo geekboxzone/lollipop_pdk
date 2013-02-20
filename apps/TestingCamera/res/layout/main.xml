@@ -86,6 +86,13 @@
                 android:layout_weight="1"
                 android:prompt="@string/camera_selection_prompt" />
 
+            <CheckBox
+                android:id="@+id/keep_open_checkbox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/keep_open_prompt" />
+
             <Button
                 android:id="@+id/info_button"
                 style="?android:attr/buttonStyleSmall"
@@ -304,6 +311,13 @@
                 android:textColorLink="@android:color/holo_red_dark"
                 android:textOff="@string/record_off_label"
                 android:textOn="@string/record_on_label" />
+
+            <CheckBox
+                android:id="@+id/record_handoff_checkbox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/record_handoff_prompt" />
 
             <ToggleButton
                 android:id="@+id/record_stabilization"
