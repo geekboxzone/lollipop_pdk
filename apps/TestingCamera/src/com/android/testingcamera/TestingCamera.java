@@ -778,10 +778,9 @@ public class TestingCamera extends Activity
             }
 
             mParams.setPreviewFormat(mPreviewFormats.get(mPreviewFormat));
+            mCamera.setParameters(mParams);
 
             if (mCallbacksEnabled) {
-                mCamera.setParameters(mParams);
-
                 if (mState == CAMERA_PREVIEW) {
                     mCamera.startPreview();
                 }
