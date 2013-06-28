@@ -17,5 +17,5 @@
 
 <resources>
     <string name="app_name">TestingCam2</string>
-
+    <string name="info_button_label">JPEG!</string>
 </resources>

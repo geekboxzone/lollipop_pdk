@@ -17,6 +17,7 @@
 package com.android.testingcamera2;
 
 import android.content.Context;
+import android.graphics.ImageFormat;
 import android.hardware.photography.CameraAccessException;
 import android.hardware.photography.CameraDevice;
 import android.hardware.photography.CameraManager;
@@ -24,6 +25,8 @@ import android.hardware.photography.CameraProperties;
 import android.hardware.photography.CaptureRequest;
 import android.hardware.photography.CaptureResult;
 import android.hardware.photography.Size;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -45,6 +48,11 @@ public class CameraOps {
 
     private CameraManager mCameraManager;
     private CameraDevice  mCamera;
+
+    private ImageReader mCaptureReader;
+
+    // How many JPEG buffers do we want to hold on to at once
+    private static final int MAX_CONCURRENT_JPEGS = 2;
 
     private static final int STATUS_ERROR = 0;
     private static final int STATUS_UNINITIALIZED = 1;
@@ -135,10 +143,7 @@ public class CameraOps {
         mCamera = null;
     }
 
-    /**
-     * Just run preview to a SurfaceView
-     */
-    public void minimalPreview(SurfaceHolder previewHolder) throws ApiFailureException {
+    private void minimalOpenCamera() throws ApiFailureException {
         if (mCamera == null) {
             try {
                 String[] devices = mCameraManager.getDeviceIdList();
@@ -152,11 +157,15 @@ public class CameraOps {
         }
 
         mStatus = STATUS_OK;
+    }
 
+    /**
+     * Set up SurfaceView dimensions for camera preview
+     */
+    public void minimalPreviewConfig(SurfaceHolder previewHolder) throws ApiFailureException {
+
+        minimalOpenCamera();
         try {
-            mCamera.stopRepeating();
-            mCamera.waitUntilIdle();
-
             CameraProperties properties = mCamera.getProperties();
 
             Size[] previewSizes = null;
@@ -170,6 +179,20 @@ public class CameraOps {
             } else {
                 previewHolder.setFixedSize(previewSizes[0].getWidth(), previewSizes[0].getHeight());
             }
+        }  catch (CameraAccessException e) {
+            throw new ApiFailureException("Error setting up minimal preview", e);
+        }
+    }
+
+    /**
+     * Configure streams and run minimal preview
+     */
+    public void minimalPreview(SurfaceHolder previewHolder) throws ApiFailureException {
+
+        minimalOpenCamera();
+        try {
+            mCamera.stopRepeating();
+            mCamera.waitUntilIdle();
 
             Surface previewSurface = previewHolder.getSurface();
 
@@ -188,4 +211,65 @@ public class CameraOps {
         }
     }
 
+    public void minimalJpegCapture(final CaptureListener listener, Handler h)
+            throws ApiFailureException {
+        minimalOpenCamera();
+
+        try {
+            mCamera.stopRepeating();
+            mCamera.waitUntilIdle();
+
+            CameraProperties properties = mCamera.getProperties();
+            Size[] jpegSizes = null;
+            if (properties != null) {
+                jpegSizes = properties.get(
+                    CameraProperties.SCALER_AVAILABLE_JPEG_SIZES);
+            }
+            int width = 640;
+            int height = 480;
+
+            if (jpegSizes != null && jpegSizes.length > 0) {
+                width = jpegSizes[0].getWidth();
+                height = jpegSizes[0].getHeight();
+            }
+
+            if (mCaptureReader == null || mCaptureReader.getWidth() != width ||
+                    mCaptureReader.getHeight() != height) {
+                if (mCaptureReader != null) {
+                    mCaptureReader.close();
+                }
+                mCaptureReader = new ImageReader(width, height,
+                        ImageFormat.JPEG, MAX_CONCURRENT_JPEGS);
+            }
+
+            List<Surface> outputSurfaces = new ArrayList(1);
+            outputSurfaces.add(mCaptureReader.getSurface());
+
+            mCamera.configureOutputs(outputSurfaces);
+
+            CaptureRequest captureRequest =
+                    mCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+
+            captureRequest.addTarget(mCaptureReader.getSurface());
+
+            ImageReader.OnImageAvailableListener readerListener =
+                    new ImageReader.OnImageAvailableListener() {
+                public void onImageAvailable(ImageReader reader) {
+                    Image i = reader.getNextImage();
+                    listener.onCaptureAvailable(i);
+                    i.close();
+                }
+            };
+            mCaptureReader.setImageAvailableListener(readerListener, h);
+
+            mCamera.capture(captureRequest, null);
+
+        } catch (CameraAccessException e) {
+            throw new ApiFailureException("Error in minimal JPEG capture", e);
+        }
+    }
+
+    public interface CaptureListener {
+        void onCaptureAvailable(Image capture);
+    }
 }
