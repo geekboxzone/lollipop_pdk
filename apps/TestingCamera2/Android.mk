@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ifneq ($(TARGET_BUILD_JAVA_SUPPORT_LEVEL),)
+ifeq ($(TARGET_BUILD_JAVA_SUPPORT_LEVEL),platform)
 
 LOCAL_PATH := $(call my-dir)
 
