@@ -20,7 +20,7 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
-import android.hardware.photography.CameraAccessException;
+import android.hardware.camera2.CameraAccessException;
 import android.media.Image;
 import android.os.AsyncTask;
 import android.os.Bundle;
