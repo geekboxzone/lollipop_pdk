@@ -23,17 +23,17 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraProperties;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.CaptureRequestKeys;
 import android.hardware.camera2.Size;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.view.SurfaceHolder;
+import android.util.Log;
 import android.view.Surface;
+import android.view.SurfaceHolder;
 
-import java.lang.Thread;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,13 +50,16 @@ public class CameraOps {
     private CameraDevice  mCamera;
 
     private ImageReader mCaptureReader;
+    private CameraProperties mCameraProperties = null;
 
+    private CaptureRequest mPreviewRequest;
     // How many JPEG buffers do we want to hold on to at once
     private static final int MAX_CONCURRENT_JPEGS = 2;
 
     private static final int STATUS_ERROR = 0;
     private static final int STATUS_UNINITIALIZED = 1;
     private static final int STATUS_OK = 2;
+    private static final String TAG = "CameraOps";
 
     private int mStatus = STATUS_UNINITIALIZED;
 
@@ -111,10 +114,12 @@ public class CameraOps {
         mCameraManager.registerCameraListener(listener);
     }
 
-    public CameraProperties getDeviceProperties(String cameraId)
-            throws CameraAccessException, ApiFailureException {
+    public CameraProperties getCameraProperties() {
         checkOk();
-        return mCameraManager.getCameraProperties(cameraId);
+        if (mCameraProperties == null) {
+            throw new IllegalStateException("CameraProperties is not available");
+        }
+        return mCameraProperties;
     }
 
     public void openDevice(String cameraId)
@@ -131,6 +136,7 @@ public class CameraOps {
     public void closeDevice()
             throws ApiFailureException {
         checkOk();
+        mCameraProperties = null;
 
         if (mCamera == null) return;
 
@@ -151,6 +157,7 @@ public class CameraOps {
                     throw new ApiFailureException("no devices");
                 }
                 mCamera = mCameraManager.openCamera(devices[0]);
+                mCameraProperties = mCamera.getProperties();
             } catch (CameraAccessException e) {
                 throw new ApiFailureException("open failure", e);
             }
@@ -175,12 +182,28 @@ public class CameraOps {
             }
 
             if (previewSizes == null || previewSizes.length == 0) {
+                Log.w(TAG, "Unable to get preview sizes, use default one: 640x480");
                 previewHolder.setFixedSize(640, 480);
             } else {
                 previewHolder.setFixedSize(previewSizes[0].getWidth(), previewSizes[0].getHeight());
             }
         }  catch (CameraAccessException e) {
             throw new ApiFailureException("Error setting up minimal preview", e);
+        }
+    }
+
+
+    /**
+     * Update current preview with manual control inputs.
+     */
+    public void updatePreview(CameraControls manualCtrl) {
+        updateCaptureRequest(mPreviewRequest, manualCtrl);
+
+        try {
+            // TODO: add capture result listener
+            mCamera.setRepeatingRequest(mPreviewRequest, null);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "Update camera preview failed");
         }
     }
 
@@ -201,18 +224,18 @@ public class CameraOps {
 
             mCamera.configureOutputs(outputSurfaces);
 
-            CaptureRequest previewRequest = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            mPreviewRequest = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
-            previewRequest.addTarget(previewSurface);
+            mPreviewRequest.addTarget(previewSurface);
 
-            mCamera.setRepeatingRequest(previewRequest, null);
+            mCamera.setRepeatingRequest(mPreviewRequest, null);
         } catch (CameraAccessException e) {
             throw new ApiFailureException("Error setting up minimal preview", e);
         }
     }
 
-    public void minimalJpegCapture(final CaptureListener listener, Handler h)
-            throws ApiFailureException {
+    public void minimalJpegCapture(final CaptureListener listener, CaptureResultListener l,
+            Handler h, CameraControls cameraControl) throws ApiFailureException {
         minimalOpenCamera();
 
         try {
@@ -252,8 +275,11 @@ public class CameraOps {
 
             captureRequest.addTarget(mCaptureReader.getSurface());
 
+            updateCaptureRequest(captureRequest, cameraControl);
+
             ImageReader.OnImageAvailableListener readerListener =
                     new ImageReader.OnImageAvailableListener() {
+                @Override
                 public void onImageAvailable(ImageReader reader) {
                     Image i = reader.getNextImage();
                     listener.onCaptureAvailable(i);
@@ -262,14 +288,37 @@ public class CameraOps {
             };
             mCaptureReader.setImageAvailableListener(readerListener, h);
 
-            mCamera.capture(captureRequest, null);
+            mCamera.capture(captureRequest, l);
 
         } catch (CameraAccessException e) {
             throw new ApiFailureException("Error in minimal JPEG capture", e);
         }
     }
 
+    private void updateCaptureRequest(CaptureRequest request, CameraControls cameraControl) {
+        if (cameraControl != null) {
+            // Update the manual control metadata for capture request
+            // Disable 3A routines.
+            if (cameraControl.isManualControlEnabled()) {
+                Log.e(TAG, "update request: " + cameraControl.getSensitivity());
+                request.set(CaptureRequestKeys.Control.MODE,
+                        CaptureRequestKeys.Control.ModeKey.OFF);
+                request.set(CaptureRequestKeys.Sensor.SENSITIVITY,
+                        cameraControl.getSensitivity());
+                request.set(CaptureRequestKeys.Sensor.FRAME_DURATION,
+                        cameraControl.getFrameDuration());
+                request.set(CaptureRequestKeys.Sensor.EXPOSURE_TIME,
+                        cameraControl.getExposure());
+            } else {
+                request.set(CaptureRequestKeys.Control.MODE,
+                        CaptureRequestKeys.Control.ModeKey.AUTO);
+            }
+        }
+    }
+
     public interface CaptureListener {
         void onCaptureAvailable(Image capture);
     }
+
+    public interface CaptureResultListener extends CameraDevice.CaptureListener {}
 }

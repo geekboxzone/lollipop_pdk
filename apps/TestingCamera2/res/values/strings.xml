@@ -18,4 +18,13 @@
 <resources>
     <string name="app_name">TestingCam2</string>
     <string name="info_button_label">JPEG!</string>
+    <string name="recording_on_label">Recording On</string>
+    <string name="recording_off_label">Recording Off</string>
+    <string name="auto_control_label">Auto</string>
+    <string name="manual_control_label">Manual Control</string>
+    <string name="sensitivity_value_prompt">Sensitivity(ISO): </string>
+    <string name="exposure_time_prompt">Exposure Time: </string>
+    <string name="frame_duration_value_prompt">Frame Duration: </string>
+    <string name="capture_result_prompt">Capture Result: </string>
+    <string name="manual_ctrl_prompt">Manual Control</string>
 </resources>
