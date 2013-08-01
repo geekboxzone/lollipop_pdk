@@ -89,6 +89,7 @@ def parseProduct(productPath, productData, overrideProperty = False):
             if line_.endswith("\\"):
                 multiLineBuffer.append(line_[:-1])
             else:
+                multiLineBuffer.append(line_)
                 parseLine(" ".join(multiLineBuffer), productData, productPath)
                 inMultiLine = False
         else:
