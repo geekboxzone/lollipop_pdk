@@ -414,9 +414,17 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         @Override
         public void onClick(View v) {
             if (mRecordingToggle.isChecked()) {
-                //TODO: start recording and set its states
+                try {
+                    mCameraOps.startRecording(/*useMediaCodec*/true);
+                } catch (ApiFailureException e) {
+                    logException("Failed to start recording", e);
+                }
             } else {
-                // TODO: stop recording and set its states
+                try {
+                    mCameraOps.stopRecording();
+                } catch (ApiFailureException e) {
+                    logException("Failed to stop recording", e);
+                }
             }
         }
     };

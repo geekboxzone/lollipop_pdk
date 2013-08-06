@@ -35,6 +35,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -43,25 +44,39 @@ import java.util.List;
  */
 public class CameraOps {
 
+    private static final String TAG = "CameraOps";
+
     private Thread mOpsThread;
     private Handler mOpsHandler;
 
     private CameraManager mCameraManager;
-    private CameraDevice  mCamera;
+    private CameraDevice mCamera;
 
     private ImageReader mCaptureReader;
-    private CameraProperties mCameraProperties = null;
+    private CameraProperties mCameraProperties;
+
+    private int mEncodingBitRate;
 
     private CaptureRequest mPreviewRequest;
+    private CaptureRequest mRecordingRequest;
+    List<Surface> mOutputSurfaces = new ArrayList<Surface>(2);
+    private Surface mPreviewSurface;
     // How many JPEG buffers do we want to hold on to at once
     private static final int MAX_CONCURRENT_JPEGS = 2;
 
     private static final int STATUS_ERROR = 0;
     private static final int STATUS_UNINITIALIZED = 1;
     private static final int STATUS_OK = 2;
-    private static final String TAG = "CameraOps";
+    // low encoding bitrate(bps), used by small resolution like 640x480.
+    private static final int ENC_BIT_RATE_LOW = 2000000;
+    // high encoding bitrate(bps), used by large resolution like 1080p.
+    private static final int ENC_BIT_RATE_HIGH = 10000000;
+    private static final Size DEFAULT_SIZE = new Size(640, 480);
+    private static final Size HIGH_RESOLUTION_SIZE = new Size(1920, 1080);
 
     private int mStatus = STATUS_UNINITIALIZED;
+
+    CameraRecordingStream mRecordingStream;
 
     private void checkOk() {
         if (mStatus < STATUS_OK) {
@@ -92,6 +107,7 @@ public class CameraOps {
         }, "CameraOpsThread");
         mOpsThread.start();
 
+        mRecordingStream = new CameraRecordingStream();
         mStatus = STATUS_OK;
     }
 
@@ -178,7 +194,7 @@ public class CameraOps {
             Size[] previewSizes = null;
             if (properties != null) {
                 previewSizes = properties.get(
-                    CameraProperties.SCALER_AVAILABLE_PROCESSED_SIZES);
+                        CameraProperties.SCALER_AVAILABLE_PROCESSED_SIZES);
             }
 
             if (previewSizes == null || previewSizes.length == 0) {
@@ -187,6 +203,7 @@ public class CameraOps {
             } else {
                 previewHolder.setFixedSize(previewSizes[0].getWidth(), previewSizes[0].getHeight());
             }
+            mPreviewSurface = previewHolder.getSurface();
         }  catch (CameraAccessException e) {
             throw new ApiFailureException("Error setting up minimal preview", e);
         }
@@ -213,20 +230,21 @@ public class CameraOps {
     public void minimalPreview(SurfaceHolder previewHolder) throws ApiFailureException {
 
         minimalOpenCamera();
+        if (mPreviewSurface == null) {
+            throw new ApiFailureException("Preview surface is not created");
+        }
         try {
             mCamera.stopRepeating();
             mCamera.waitUntilIdle();
 
-            Surface previewSurface = previewHolder.getSurface();
-
             List<Surface> outputSurfaces = new ArrayList(1);
-            outputSurfaces.add(previewSurface);
+            outputSurfaces.add(mPreviewSurface);
 
             mCamera.configureOutputs(outputSurfaces);
 
             mPreviewRequest = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
-            mPreviewRequest.addTarget(previewSurface);
+            mPreviewRequest.addTarget(mPreviewSurface);
 
             mCamera.setRepeatingRequest(mPreviewRequest, null);
         } catch (CameraAccessException e) {
@@ -246,7 +264,7 @@ public class CameraOps {
             Size[] jpegSizes = null;
             if (properties != null) {
                 jpegSizes = properties.get(
-                    CameraProperties.SCALER_AVAILABLE_JPEG_SIZES);
+                        CameraProperties.SCALER_AVAILABLE_JPEG_SIZES);
             }
             int width = 640;
             int height = 480;
@@ -292,6 +310,95 @@ public class CameraOps {
 
         } catch (CameraAccessException e) {
             throw new ApiFailureException("Error in minimal JPEG capture", e);
+        }
+    }
+
+    public void startRecording(boolean useMediaCodec) throws ApiFailureException {
+        minimalOpenCamera();
+        Size recordingSize = getRecordingSize();
+        CaptureRequest request;
+        try {
+            if (mRecordingRequest == null) {
+                mRecordingRequest = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+            }
+            // Setup output stream first
+            mRecordingStream.configure(recordingSize, useMediaCodec, mEncodingBitRate);
+            mRecordingStream.onConfiguringOutputs(mOutputSurfaces, /* detach */false);
+            mRecordingStream.onConfiguringRequest(mRecordingRequest, /* detach */false);
+
+            // TODO: For preview, create preview stream class, and do the same thing like recording.
+            mOutputSurfaces.add(mPreviewSurface);
+            mRecordingRequest.addTarget(mPreviewSurface);
+
+            // Start camera streaming and recording.
+            mCamera.configureOutputs(mOutputSurfaces);
+            mCamera.setRepeatingRequest(mRecordingRequest, null);
+            mRecordingStream.start();
+        } catch (CameraAccessException e) {
+            throw new ApiFailureException("Error start recording", e);
+        }
+    }
+
+    public void stopRecording() throws ApiFailureException {
+        try {
+            /**
+             * <p>
+             * Only stop camera recording stream.
+             * </p>
+             * <p>
+             * FIXME: There is a race condition to be fixed in CameraDevice.
+             * Basically, when stream closes, encoder and its surface is
+             * released, while it still takes some time for camera to finish the
+             * output to that surface. Then it cause camera in bad state.
+             * </p>
+             */
+            mRecordingStream.onConfiguringRequest(mRecordingRequest, /* detach */true);
+            mRecordingStream.onConfiguringOutputs(mOutputSurfaces, /* detach */true);
+            mCamera.stopRepeating();
+            mCamera.waitUntilIdle();
+            mRecordingStream.stop();
+
+            mCamera.configureOutputs(mOutputSurfaces);
+            mCamera.setRepeatingRequest(mRecordingRequest, null);
+        } catch (CameraAccessException e) {
+            throw new ApiFailureException("Error stop recording", e);
+        }
+    }
+
+    private Size getRecordingSize() throws ApiFailureException {
+        try {
+            CameraProperties properties = mCamera.getProperties();
+
+            Size[] recordingSizes = null;
+            if (properties != null) {
+                recordingSizes = properties.get(
+                        CameraProperties.SCALER_AVAILABLE_PROCESSED_SIZES);
+            }
+
+            mEncodingBitRate = ENC_BIT_RATE_LOW;
+            if (recordingSizes == null || recordingSizes.length == 0) {
+                Log.w(TAG, "Unable to get recording sizes, default to 640x480");
+                return DEFAULT_SIZE;
+            } else {
+                /**
+                 * TODO: create resolution selection widget on UI, then use the
+                 * select size. For now, return HIGH_RESOLUTION_SIZE if it
+                 * exists in the processed size list, otherwise return default
+                 * size
+                 */
+                if (Arrays.asList(recordingSizes).contains(HIGH_RESOLUTION_SIZE)) {
+                    mEncodingBitRate = ENC_BIT_RATE_HIGH;
+                    return HIGH_RESOLUTION_SIZE;
+                } else {
+                    // Fallback to default size when HD size is not found.
+                    Log.w(TAG,
+                            "Unable to find the requested size " + HIGH_RESOLUTION_SIZE.toString()
+                            + " Fallback to " + DEFAULT_SIZE.toString());
+                    return DEFAULT_SIZE;
+                }
+            }
+        } catch (CameraAccessException e) {
+            throw new ApiFailureException("Error setting up video recording", e);
         }
     }
 
