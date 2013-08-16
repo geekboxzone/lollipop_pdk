@@ -22,10 +22,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraProperties;
-import android.hardware.camera2.CameraPropertiesKeys;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureRequestKeys;
-import android.hardware.camera2.CaptureRequestKeys.Control.ModeKey.Enum;
 import android.hardware.camera2.CaptureResult;
 import android.media.Image;
 import android.os.AsyncTask;
@@ -240,32 +237,32 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                 public void onCaptureComplete(
                         CameraDevice camera, CaptureRequest request, CaptureResult result) {
                     Log.i(TAG, "Capture result is available");
-                    Enum reqCtrlMode;
-                    Enum resCtrlMode;
+                    int reqCtrlMode;
+                    int resCtrlMode;
                     if (request == null || result ==null) {
                         Log.e(TAG, "request/result is invalid");
                         return;
                     }
                     Log.i(TAG, "Capture complete");
                     final StringBuffer info = new StringBuffer("Capture Result:\n");
-                    reqCtrlMode = request.get(CaptureRequestKeys.Control.MODE);
-                    resCtrlMode = result.get(CaptureRequestKeys.Control.MODE);
+                    reqCtrlMode = request.get(CaptureRequest.CONTROL_MODE);
+                    resCtrlMode = result.get(CaptureResult.CONTROL_MODE);
                     info.append("Control mode: request " + reqCtrlMode + ". result " + resCtrlMode);
                     info.append("\n");
 
-                    int reqSen = request.get(CaptureRequestKeys.Sensor.SENSITIVITY);
-                    int resSen = result.get(CaptureRequestKeys.Sensor.SENSITIVITY);
+                    int reqSen = request.get(CaptureRequest.SENSOR_SENSITIVITY);
+                    int resSen = result.get(CaptureResult.SENSOR_SENSITIVITY);
                     info.append("Sensitivity: request " + reqSen + ". result " + resSen);
                     info.append("\n");
 
-                    long reqExp = request.get(CaptureRequestKeys.Sensor.EXPOSURE_TIME);
-                    long resExp = result.get(CaptureRequestKeys.Sensor.EXPOSURE_TIME);
+                    long reqExp = request.get(CaptureRequest.SENSOR_EXPOSURE_TIME);
+                    long resExp = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
                     info.append("Exposure: request " + reqExp + ". result " + resExp);
                     info.append("\n");
 
-                    long reqFD = request.get(CaptureRequestKeys.Sensor.FRAME_DURATION);
-                    long resFD = result.get(CaptureRequestKeys.Sensor.FRAME_DURATION);
-                    info.append("Control mode: request " + reqFD + ". result " + resFD);
+                    long reqFD = request.get(CaptureRequest.SENSOR_FRAME_DURATION);
+                    long resFD = result.get(CaptureResult.SENSOR_FRAME_DURATION);
+                    info.append("Frame duration: request " + reqFD + ". result " + resFD);
                     info.append("\n");
 
                     if (mMainHandler != null) {
@@ -297,7 +294,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                   int[] defaultRange = {MIN_SENSITIVITY, MAX_SENSITIVITY};
                   CameraProperties properties = mCameraOps.getCameraProperties();
                   int[] sensitivityRange = properties.get(
-                          CameraPropertiesKeys.Sensor.Info.SENSITIVITY_RANGE);
+                          CameraProperties.SENSOR_INFO_SENSITIVITY_RANGE);
                   if (sensitivityRange == null || sensitivityRange.length < 2 ||
                           sensitivityRange[0] > MIN_SENSITIVITY || sensitivityRange[1] < MAX_SENSITIVITY) {
                       Log.e(TAG, "unable to get sensitivity range, use default range");
@@ -333,7 +330,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                   long[] defaultRange = {MIN_EXPOSURE, MAX_EXPOSURE};
                   CameraProperties properties = mCameraOps.getCameraProperties();
                   long[] exposureRange = properties.get(
-                          CameraPropertiesKeys.Sensor.Info.EXPOSURE_TIME_RANGE);
+                          CameraProperties.SENSOR_INFO_EXPOSURE_TIME_RANGE);
                   // Not enforce the max value check here, most of the devices don't support
                   // larger than 30s exposure time
                   if (exposureRange == null || exposureRange.length < 2 ||
@@ -369,7 +366,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
               public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                   CameraProperties properties = mCameraOps.getCameraProperties();
                   Long frameDurationMax = properties.get(
-                          CameraPropertiesKeys.Sensor.Info.MAX_FRAME_DURATION);
+                          CameraProperties.SENSOR_INFO_MAX_FRAME_DURATION);
                   if (frameDurationMax == null || frameDurationMax <= 0) {
                       frameDurationMax = MAX_FRAME_DURATION;
                       Log.e(TAG, "max frame duration is invalid, set to " + frameDurationMax);

@@ -20,8 +20,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE_TAGS := optional
 
-# comment it out for now since we need use some hidden APIs
-#LOCAL_SDK_VERSION := current
+LOCAL_SDK_VERSION := current
 
 LOCAL_SRC_FILES := \
 	$(call all-java-files-under, src) \

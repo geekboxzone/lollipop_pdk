@@ -21,9 +21,9 @@ import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CameraProperties;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureRequestKeys;
 import android.hardware.camera2.Size;
 import android.media.Image;
 import android.media.ImageReader;
@@ -301,17 +301,17 @@ public class CameraOps {
             // Disable 3A routines.
             if (cameraControl.isManualControlEnabled()) {
                 Log.e(TAG, "update request: " + cameraControl.getSensitivity());
-                request.set(CaptureRequestKeys.Control.MODE,
-                        CaptureRequestKeys.Control.ModeKey.OFF);
-                request.set(CaptureRequestKeys.Sensor.SENSITIVITY,
+                request.set(CaptureRequest.CONTROL_MODE,
+                        CameraMetadata.CONTROL_MODE_OFF);
+                request.set(CaptureRequest.SENSOR_SENSITIVITY,
                         cameraControl.getSensitivity());
-                request.set(CaptureRequestKeys.Sensor.FRAME_DURATION,
+                request.set(CaptureRequest.SENSOR_FRAME_DURATION,
                         cameraControl.getFrameDuration());
-                request.set(CaptureRequestKeys.Sensor.EXPOSURE_TIME,
+                request.set(CaptureRequest.SENSOR_EXPOSURE_TIME,
                         cameraControl.getExposure());
             } else {
-                request.set(CaptureRequestKeys.Control.MODE,
-                        CaptureRequestKeys.Control.ModeKey.AUTO);
+                request.set(CaptureRequest.CONTROL_MODE,
+                        CameraMetadata.CONTROL_MODE_AUTO);
             }
         }
     }
