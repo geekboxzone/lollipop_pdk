@@ -192,17 +192,18 @@ public class CameraOps {
             CameraProperties properties = mCamera.getProperties();
 
             Size[] previewSizes = null;
+            Size sz = DEFAULT_SIZE;
             if (properties != null) {
                 previewSizes = properties.get(
                         CameraProperties.SCALER_AVAILABLE_PROCESSED_SIZES);
             }
 
-            if (previewSizes == null || previewSizes.length == 0) {
-                Log.w(TAG, "Unable to get preview sizes, use default one: 640x480");
-                previewHolder.setFixedSize(640, 480);
-            } else {
-                previewHolder.setFixedSize(previewSizes[0].getWidth(), previewSizes[0].getHeight());
+            if (previewSizes != null && previewSizes.length != 0 &&
+                    Arrays.asList(previewSizes).contains(HIGH_RESOLUTION_SIZE)) {
+                sz = HIGH_RESOLUTION_SIZE;
             }
+            Log.i(TAG, "Set preview size to " + sz.toString());
+            previewHolder.setFixedSize(sz.getWidth(), sz.getHeight());
             mPreviewSurface = previewHolder.getSurface();
         }  catch (CameraAccessException e) {
             throw new ApiFailureException("Error setting up minimal preview", e);
