@@ -23,6 +23,12 @@ def main():
         props = cam.get_camera_properties()
         pprint.pprint(props)
 
+        # Test that a handful of required keys are present.
+        assert(props.has_key('android.sensor.info.sensitivityRange'))
+        assert(props.has_key('android.sensor.orientation'))
+        assert(props.has_key('android.scaler.availableProcessedSizes'))
+        assert(props.has_key('android.lens.facing'))
+
 if __name__ == '__main__':
     main()
 

@@ -26,41 +26,82 @@ import os.path
 def main():
     """Test that the android.tonemap.mode param is applied.
 
-    Applies three different tonemap curves (linear, and clamped to zero and
-    one), and saves the resultant images.
+    Applies different tonemap curves to each R,G,B channel, and checks
+    that the output images are modified as expected.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # TODO: Query the allowable tonemap curve sizes; here, it's hardcoded to
-    # a length=32 list of tuples. The max allowed length should be inside the
-    # camera properties object.
-    TMLEN = 32
-    TMSCALE = float(TMLEN-1)
+    THRESHOLD_RATIO_MIN_DIFF = 0.1
+    THRESHOLD_DIFF_MAX_DIFF = 0.05
 
-    # Tonemap curves.
-    tonemap_linear = sum([[i/TMSCALE, i/TMSCALE] for i in range(TMLEN)], [])
-    tonemap_zero = sum([[i/TMSCALE, 0] for i in range(TMLEN)], [])
-    tonemap_one = sum([[i/TMSCALE, 1] for i in range(TMLEN)], [])
-    tonemaps = [tonemap_linear, tonemap_zero, tonemap_one]
+    # TODO: Query the allowable tonemap curve sizes; here, it's hardcoded to
+    # a length=64 list of tuples. The max allowed length should be inside the
+    # camera properties object.
+    L = 32
+    LM1 = float(L-1)
 
     req = its.objects.capture_request( {
+        "android.tonemap.mode": 0,
+        "android.control.mode": 0,
         "android.control.aeMode": 0,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.sensitivity": 100,
-        "android.sensor.exposureTime": 100*1000*1000,
+        "android.sensor.exposureTime": 50*1000*1000,
         "android.sensor.frameDuration": 0
         })
 
     with its.device.ItsSession() as cam:
-        for mode in [0,1,2]:
-            for i, t in enumerate(tonemaps):
-                req["captureRequest"]["android.tonemap.mode"] = mode
-                req["captureRequest"]["android.tonemap.curveRed"] = t
-                req["captureRequest"]["android.tonemap.curveGreen"] = t
-                req["captureRequest"]["android.tonemap.curveBlue"] = t
-                fname, w, h, md = cam.do_capture(req)
-                img = its.image.load_yuv420_to_rgb_image(fname, w, h)
-                its.image.write_image(
-                        img, "%s_mode=%d_curve=%d.jpg" %(NAME, mode,i))
+
+        # Test 1: that the tonemap curves have the expected effect. Take two
+        # shots, with n in [0,1], where each has a linear tonemap, with the
+        # n=1 shot having a steeper gradient. The gradient for each R,G,B
+        # channel increases (i.e.) R[n=1] should be brighter than R[n=0],
+        # and G[n=1] should be brighter than G[n=0] by a larger margin, etc.
+        rgb_means = []
+
+        for n in [0,1]:
+            req["captureRequest"]["android.tonemap.curveRed"] = (
+                    sum([[i/LM1, (1+0.5*n)*i/LM1] for i in range(L)], []))
+            req["captureRequest"]["android.tonemap.curveGreen"] = (
+                    sum([[i/LM1, (1+1.0*n)*i/LM1] for i in range(L)], []))
+            req["captureRequest"]["android.tonemap.curveBlue"] = (
+                    sum([[i/LM1, (1+1.5*n)*i/LM1] for i in range(L)], []))
+            fname, w, h, md = cam.do_capture(req)
+            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            its.image.write_image(
+                    img, "%s_n=%d.jpg" %(NAME, n))
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            rgb_means.append(its.image.compute_image_means(tile))
+
+        rgb_ratios = [rgb_means[1][i] / rgb_means[0][i] for i in xrange(3)]
+        print "Test 1: RGB ratios:", rgb_ratios
+        assert(rgb_ratios[0] + THRESHOLD_RATIO_MIN_DIFF < rgb_ratios[1])
+        assert(rgb_ratios[1] + THRESHOLD_RATIO_MIN_DIFF < rgb_ratios[2])
+
+
+        # Test 2: that the length of the tonemap curve (i.e. number of control
+        # points) doesn't affect the output.
+        rgb_means = []
+
+        for size in [32,64]:
+            m = float(size-1)
+            curve = sum([[i/m, i/m] for i in range(size)], [])
+            req["captureRequest"]["android.tonemap.curveRed"] = curve
+            req["captureRequest"]["android.tonemap.curveGreen"] = curve
+            req["captureRequest"]["android.tonemap.curveBlue"] = curve
+            fname, w, h, md = cam.do_capture(req)
+            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            its.image.write_image(
+                    img, "%s_size=%02d.jpg" %(NAME, size))
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            rgb_means.append(its.image.compute_image_means(tile))
+
+        rgb_diffs = [rgb_means[1][i] - rgb_means[0][i] for i in xrange(3)]
+        print "Test 2: RGB diffs:", rgb_diffs
+        assert(abs(rgb_diffs[0]) < THRESHOLD_DIFF_MAX_DIFF)
+        assert(abs(rgb_diffs[1]) < THRESHOLD_DIFF_MAX_DIFF)
+        assert(abs(rgb_diffs[2]) < THRESHOLD_DIFF_MAX_DIFF)
 
 if __name__ == '__main__':
     main()

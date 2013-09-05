@@ -61,7 +61,11 @@ class ItsSession(object):
     MSG_CAPT = "CAPT"
     MSG_DONE = "DONE"
     MSG_FAIL = "FAIL"
-    MSGS = [MSG_RECV, MSG_SIZE, MSG_FILE, MSG_CAPT, MSG_DONE, MSG_FAIL]
+    MSG_AF   = "3A-F"
+    MSG_AE   = "3A-E"
+    MSG_AWB  = "3A-W"
+    MSGS = [MSG_RECV, MSG_SIZE, MSG_FILE, MSG_CAPT, MSG_DONE,
+            MSG_FAIL, MSG_AE,   MSG_AF,   MSG_AWB]
 
     def __init__(self):
         self.proc = None
@@ -313,10 +317,7 @@ class ItsSession(object):
             _run('%s pull %s .' % (
                        self.ADB, self.__get_json_path(fname)))
             local_fnames.append(os.path.basename(fname))
-        _run('%s shell "[[ -d %s && -n %s ]] && rm -rf %s/%s"' % (
-              self.ADB,
-              self.DEVICE_FOLDER_ROOT, self.DEVICE_FOLDER_CAPTURE,
-              self.DEVICE_FOLDER_ROOT, self.DEVICE_FOLDER_CAPTURE))
+        _run('%s shell rm -rf %s/*' % (self.ADB, self.DEVICE_FOLDER_ROOT))
         return local_fnames
 
     def __parse_captured_json(self, local_fnames):
@@ -343,11 +344,14 @@ class ItsSession(object):
         local_fname = os.path.basename(remote_fname)
         return self.__parse_captured_json([local_fname])[0]['cameraProperties']
 
-    def do_3a(self, region_ae, region_af, region_awb):
+    def do_3a(self, region_ae, region_af, region_awb,
+              do_ae=True, do_awb=True, do_af=True):
         """Perform a 3A operation on the device.
 
-        Triggers AE, AWB, and AF, and returns once they have all converged.
-        Uses the vendor 3A that is implemented inside the HAL.
+        Triggers some or all of AE, AWB, and AF, and returns once they have
+        converged. Uses the vendor 3A that is implemented inside the HAL.
+
+        Throws an assertion if 3A fails to converge.
 
         Args:
             region_ae: Normalized rect. (x,y,w,h) specifying the AE region.
@@ -355,16 +359,41 @@ class ItsSession(object):
             region_awb: Normalized rect. (x,y,w,h) specifying the AWB region.
 
         Returns:
-            TODO
+            Five values:
+            * AE sensitivity; None if do_ae is False
+            * AE exposure time; None if do_ae is False
+            * AWB gains (list); None if do_awb is False
+            * AWB transform (list); None if do_awb is false
+            * AF focus position; None if do_af is false
         """
         params = {"regions" : {"ae": region_ae,
                                "awb": region_awb,
-                               "af": region_af } }
+                               "af": region_af },
+                  "triggers": {"ae": do_ae,
+                               "af": do_af } }
         print "Running vendor 3A on device"
         self.__start_3a(params)
-        #
-        # TODO: Finish do_3a
-        #
+        ae_sens = None
+        ae_exp = None
+        awb_gains = None
+        awb_transform = None
+        af_dist = None
+        while True:
+            msg = self.__get_next_msg()
+            msgtype, msgparams = self.__unpack_msg(msg)
+            if msgtype == self.MSG_AE:
+                ae_sens = int(msgparams[0])
+                ae_exp = int(msgparams[1])
+            elif msgtype == self.MSG_AWB:
+                awb_gains = [float(x) for x in msgparams[:4]]
+                awb_transform = [float(x) for x in msgparams[4:]]
+            elif msgtype == self.MSG_AF:
+                af_dist = float(msgparams[0])
+            elif msgtype == self.MSG_DONE:
+                if (do_ae and ae_sens == None or do_awb and awb_gains == None
+                                              or do_af and af_dist == None):
+                    raise its.error.Error('3A failed to converge')
+                return ae_sens, ae_exp, awb_gains, awb_transform, af_dist
 
     def do_capture(self, request, out_fname_prefix=None):
         """Issue capture request(s), and read back the image(s) and metadata.

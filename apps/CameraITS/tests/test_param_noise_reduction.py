@@ -32,8 +32,13 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    THRESHOLD_MIN_VARIANCE_RATIO = 0.5
+
     req = its.objects.capture_request( {
+        "android.control.mode": 0,
         "android.control.aeMode": 0,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.frameDuration": 0
         })
 
@@ -47,7 +52,7 @@ def main():
         # NR mode 0 with low gain
         req["captureRequest"]["android.noiseReduction.mode"] = 0
         req["captureRequest"]["android.sensor.sensitivity"] = 100
-        req["captureRequest"]["android.sensor.exposureTime"] = 100*1000*1000
+        req["captureRequest"]["android.sensor.exposureTime"] = 20*1000*1000
         fname, w, h, md_obj = cam.do_capture(req)
         its.image.write_image(
                 its.image.load_yuv420_to_rgb_image(fname, w, h),
@@ -63,7 +68,7 @@ def main():
             req["captureRequest"]["android.noiseReduction.mode"] = i
             req["captureRequest"]["android.sensor.sensitivity"] = 1600
             req["captureRequest"]["android.sensor.exposureTime"] = (
-                    100*1000*1000/16)
+                    20*1000*1000/16)
             fname, w, h, md_obj = cam.do_capture(req)
             its.image.write_image(
                     its.image.load_yuv420_to_rgb_image(fname, w, h),
@@ -79,6 +84,13 @@ def main():
     for j in range(3):
         pylab.plot(range(3), variances[j], "rgb"[j])
     matplotlib.pyplot.savefig("%s_plot_variances.png" % (NAME))
+
+    # Check that the variance of the NR=0 image is much higher than for the
+    # NR=1 and NR=2 images.
+    for j in range(3):
+        for i in range(1,3):
+            assert(variances[j][i] / variances[j][0] <
+                   THRESHOLD_MIN_VARIANCE_RATIO)
 
 if __name__ == '__main__':
     main()

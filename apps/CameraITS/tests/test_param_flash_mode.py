@@ -26,7 +26,10 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     req = its.objects.capture_request( {
+        "android.control.mode": 0,
         "android.control.aeMode": 0,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.exposureTime": 100*1000*1000,
         "android.sensor.sensitivity": 100

@@ -16,6 +16,7 @@ import its.image
 import its.device
 import its.objects
 import pylab
+import numpy
 import os.path
 import matplotlib
 import matplotlib.pyplot
@@ -29,12 +30,20 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    THRESHOLD_MAX_OUTLIER_DIFF = 0.1
+    THRESHOLD_MIN_LEVEL = 0.1
+    THRESHOLD_MAX_LEVEL = 0.9
+    THRESHOLD_MAX_ABS_GRAD = 0.001
+
     req = its.objects.capture_request( {
+        "android.control.mode": 0,
         "android.control.aeMode": 0,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.frameDuration": 0
         })
 
-    mults = range(1, 16, 2)
+    mults = range(1, 100, 9)
     r_means = []
     g_means = []
     b_means = []
@@ -42,7 +51,7 @@ def main():
     with its.device.ItsSession() as cam:
         for m in mults:
             req["captureRequest"]["android.sensor.sensitivity"] = 100*m
-            req["captureRequest"]["android.sensor.exposureTime"] = 100*1000*1000/m
+            req["captureRequest"]["android.sensor.exposureTime"] = 40*1000*1000/m
             fname, w, h, md_obj = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(img, "%s_mult=%02d.jpg" % (NAME, m))
@@ -56,7 +65,23 @@ def main():
     pylab.plot(mults, r_means, 'r')
     pylab.plot(mults, g_means, 'g')
     pylab.plot(mults, b_means, 'b')
+    pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+
+    
+    # Check for linearity. For each R,G,B channel, fit a line y=mx+b, and
+    # assert that the gradient is close to 0 (flat) and that there are no
+    # crazy outliers. Also ensure that the images aren't clamped to 0 or 1
+    # (which would make them look like flat lines).
+    for chan in xrange(3):
+        values = [r_means, g_means, b_means][chan]
+        m, b = numpy.polyfit(mults, values, 1).tolist()
+        print "Channel %d line fit (y = mx+b): m = %f, b = %f" % (chan, m, b)
+        assert(abs(m) < THRESHOLD_MAX_ABS_GRAD)
+        assert(b > THRESHOLD_MIN_LEVEL and b < THRESHOLD_MAX_LEVEL)
+        for v in values:
+            assert(v > THRESHOLD_MIN_LEVEL and v < THRESHOLD_MAX_LEVEL)
+            assert(abs(v - b) < THRESHOLD_MAX_OUTLIER_DIFF)
 
 if __name__ == '__main__':
     main()

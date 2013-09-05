@@ -22,39 +22,54 @@ import matplotlib.pyplot
 import numpy
 
 def main():
-    """Test that the android.blackLevel.lock parameter has an effect.
+    """Test that when the black level is locked, it doesn't change.
 
-    Take shots with varying sensor sensitivity, with and without the black
-    level lock being set. Plot the resultant luma histogram of each shot.
-
-    Shoot with the camera covered (i.e.) dark/black.
+    Shoot with the camera covered (i.e.) dark/black. The test varies the
+    sensitivity parameter and checks if the black level changes.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    NUM_STEPS = 5
+
     req = its.objects.capture_request( {
+        "android.blackLevel.lock": True,
+        "android.control.mode": 0,
         "android.control.aeMode": 0,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.exposureTime": 10*1000*1000
         })
 
-    with its.device.ItsSession() as cam:
-        for b in [0,1]:
-            for si, s in enumerate([3200, 800, 100]):
-                req["captureRequest"]["android.blackLevel.lock"] = (b==1)
-                req["captureRequest"]["android.sensor.sensitivity"] = s
-                fname, w, h, cap_md = cam.do_capture(req)
-                yimg,_,_ = its.image.load_yuv420_to_yuv_planes(fname, w, h)
-                hist,_ = numpy.histogram(yimg*255, 256, (0,256))
+    # The most frequent pixel value in each image; assume this is the black
+    # level, since the images are all dark (shot with the lens covered).
+    modes = []
 
-                # Add this histogram to a plot; solid for shots without BL
-                # lock, dashes for shots with BL lock
-                pylab.plot(range(16), hist.tolist()[:16],
-                           ['rgb'[si], 'k--'][b])
+    with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        sens_range = props['android.sensor.info.sensitivityRange']
+        sensitivities = range(sens_range[0],
+                              sens_range[1]+1,
+                              int((sens_range[1] - sens_range[0]) / NUM_STEPS))
+        for si, s in enumerate(sensitivities):
+            req["captureRequest"]["android.sensor.sensitivity"] = s
+            fname, w, h, cap_md = cam.do_capture(req)
+            yimg,_,_ = its.image.load_yuv420_to_yuv_planes(fname, w, h)
+            hist,_ = numpy.histogram(yimg*255, 256, (0,256))
+            modes.append(numpy.argmax(hist))
+
+            # Add this histogram to a plot; solid for shots without BL
+            # lock, dashes for shots with BL lock
+            pylab.plot(range(16), hist.tolist()[:16])
 
     pylab.xlabel("Luma DN, showing [0:16] out of full [0:256] range")
     pylab.ylabel("Pixel count")
-    pylab.title("Histogram for different BL mode and sensitivity")
+    pylab.title("Histograms for different sensitivities")
     matplotlib.pyplot.savefig("%s_plot_histograms.png" % (NAME))
+
+    # Check that the black levels are all the same.
+    print "Black levels:", modes
+    assert(all([modes[i] == modes[0] for i in range(len(modes))]))
 
 if __name__ == '__main__':
     main()

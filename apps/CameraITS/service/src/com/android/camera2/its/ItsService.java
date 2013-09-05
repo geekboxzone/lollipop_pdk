@@ -26,6 +26,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraProperties;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.Rational;
 import android.media.Image;
 import android.media.ImageReader;
 import android.net.Uri;
@@ -69,6 +70,9 @@ public class ItsService extends Service {
     public static final String REGION_AE_KEY = "ae";
     public static final String REGION_AWB_KEY = "awb";
     public static final String REGION_AF_KEY = "af";
+    public static final String TRIGGER_KEY = "triggers";
+    public static final String TRIGGER_AE_KEY = "ae";
+    public static final String TRIGGER_AF_KEY = "af";
 
     private CameraManager mCameraManager = null;
     private CameraDevice mCamera = null;
@@ -314,25 +318,38 @@ public class ItsService extends Service {
             JSONObject params = ItsUtils.loadJsonFile(uri);
             if (params.has(REGION_KEY)) {
                 JSONObject regions = params.getJSONObject(REGION_KEY);
-                if (params.has(REGION_AE_KEY)) {
+                if (regions.has(REGION_AE_KEY)) {
                     int[] r = ItsUtils.getJsonRectFromArray(
-                            params.getJSONArray(REGION_AE_KEY), true, width, height);
+                            regions.getJSONArray(REGION_AE_KEY), true, width, height);
                     regionAE = new int[]{r[0],r[1],r[0]+r[2]-1,r[1]+r[3]-1,1};
                 }
-                if (params.has(REGION_AF_KEY)) {
+                if (regions.has(REGION_AF_KEY)) {
                     int[] r = ItsUtils.getJsonRectFromArray(
-                            params.getJSONArray(REGION_AF_KEY), true, width, height);
+                            regions.getJSONArray(REGION_AF_KEY), true, width, height);
                     regionAF = new int[]{r[0],r[1],r[0]+r[2]-1,r[1]+r[3]-1,1};
                 }
-                if (params.has(REGION_AWB_KEY)) {
+                if (regions.has(REGION_AWB_KEY)) {
                     int[] r = ItsUtils.getJsonRectFromArray(
-                            params.getJSONArray(REGION_AWB_KEY), true, width, height);
+                            regions.getJSONArray(REGION_AWB_KEY), true, width, height);
                     regionAWB = new int[]{r[0],r[1],r[0]+r[2]-1,r[1]+r[3]-1,1};
                 }
             }
             Log.i(TAG, "AE region: " + Arrays.toString(regionAE));
             Log.i(TAG, "AF region: " + Arrays.toString(regionAF));
             Log.i(TAG, "AWB region: " + Arrays.toString(regionAWB));
+
+            // By default, AE and AF both get triggered, but the user can optionally override this.
+            boolean doAE = true;
+            boolean doAF = true;
+            if (params.has(TRIGGER_KEY)) {
+                JSONObject triggers = params.getJSONObject(TRIGGER_KEY);
+                if (triggers.has(TRIGGER_AE_KEY)) {
+                    doAE = triggers.getBoolean(TRIGGER_AE_KEY);
+                }
+                if (triggers.has(TRIGGER_AF_KEY)) {
+                    doAF = triggers.getBoolean(TRIGGER_AF_KEY);
+                }
+            }
 
             mInterlock3A.open();
             mIssuedRequest3A = false;
@@ -356,7 +373,7 @@ public class ItsService extends Service {
                 mInterlock3A.close();
 
                 // If not converged yet, issue another capture request.
-                if (!mConvergedAE || !mConvergedAWB || !mConvergedAF) {
+                if ((doAE && !mConvergedAE) || !mConvergedAWB || (doAF && !mConvergedAF)) {
 
                     // Baseline capture request for 3A.
                     CaptureRequest.Builder req = mCamera.createCaptureRequest(
@@ -379,7 +396,7 @@ public class ItsService extends Service {
                     req.set(CaptureRequest.CONTROL_AWB_REGIONS, regionAWB);
 
                     // Trigger AE first.
-                    if (!triggeredAE) {
+                    if (doAE && !triggeredAE) {
                         Log.i(TAG, "Triggering AE");
                         req.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                                 CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
@@ -387,7 +404,7 @@ public class ItsService extends Service {
                     }
 
                     // After AE has converged, trigger AF.
-                    if (!triggeredAF && triggeredAE && mConvergedAE) {
+                    if (doAF && !triggeredAF && (!doAE || (triggeredAE && mConvergedAE))) {
                         Log.i(TAG, "Triggering AF");
                         req.set(CaptureRequest.CONTROL_AF_TRIGGER,
                                 CaptureRequest.CONTROL_AF_TRIGGER_START);
@@ -527,6 +544,10 @@ public class ItsService extends Service {
         }
     };
 
+    private static float r2f(Rational r) {
+        return (float)r.getNumerator() / (float)r.getDenominator();
+    }
+
     private final CaptureResultListener mCaptureResultListener = new CaptureResultListener() {
         @Override
         public void onCaptureStarted(CameraDevice camera, CaptureRequest request, long timestamp) {
@@ -542,13 +563,31 @@ public class ItsService extends Service {
                 }
 
                 Log.i(TAG, String.format(
-                        "Capture result: AE=%d, AF=%d, AWB=%d, sens=%d, exp=%dms, dur=%dms",
+                        "Capt result: AE=%d, AF=%d, AWB=%d, sens=%d, exp=%.1fms, dur=%.1fms, " +
+                        "gains=[%.1f, %.1f, %.1f, %.1f], " +
+                        "xform=[%.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f], " +
+                        "foc=%.1f",
                          result.get(CaptureResult.CONTROL_AE_STATE),
                          result.get(CaptureResult.CONTROL_AF_STATE),
                          result.get(CaptureResult.CONTROL_AWB_STATE),
                          result.get(CaptureResult.SENSOR_SENSITIVITY),
-                         result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue(),
-                         result.get(CaptureResult.SENSOR_FRAME_DURATION).intValue()));
+                         result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue() / 1000000.0f,
+                         result.get(CaptureResult.SENSOR_FRAME_DURATION).intValue() / 1000000.0f,
+                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
+                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
+                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
+                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[3],
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[0]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[1]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[2]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[3]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[4]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[5]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[6]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[7]),
+                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[8]),
+                         result.get(CaptureResult.LENS_FOCUS_DISTANCE)
+                         ));
 
                 mConvergedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
                                           CaptureResult.CONTROL_AE_STATE_CONVERGED;
@@ -556,6 +595,40 @@ public class ItsService extends Service {
                                           CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED;
                 mConvergedAWB = result.get(CaptureResult.CONTROL_AWB_STATE) ==
                                            CaptureResult.CONTROL_AWB_STATE_CONVERGED;
+
+                if (mConvergedAE) {
+                    Log.i(PYTAG, String.format(
+                            "### 3A-E %d %d",
+                            result.get(CaptureResult.SENSOR_SENSITIVITY).intValue(),
+                            result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue()
+                            ));
+                }
+
+                if (mConvergedAF) {
+                    Log.i(PYTAG, String.format(
+                            "### 3A-F %f",
+                            result.get(CaptureResult.LENS_FOCUS_DISTANCE)
+                            ));
+                }
+
+                if (mConvergedAWB) {
+                    Log.i(PYTAG, String.format(
+                            "### 3A-W %f %f %f %f %f %f %f %f %f %f %f %f %f",
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[3],
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[0]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[1]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[2]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[3]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[4]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[5]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[6]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[7]),
+                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[8])
+                            ));
+                }
 
                 if (mIssuedRequest3A) {
                     mIssuedRequest3A = false;

@@ -25,20 +25,32 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    # Pass/fail thresholds.
+    THRESHOLD_MAX_MIN_DIFF = 0.3
+    THRESHOLD_MAX_MIN_RATIO = 2.0
+
+    NUM_STEPS = 5
+
     req = its.objects.capture_request( {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
-        "android.control.aeLock": False,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
-        "android.sensor.exposureTime": 100*1000*1000
+        "android.sensor.exposureTime": 1*1000*1000
         })
 
-    sensitivities = [100,200,400,800,1600]
+    sensitivities = None
     r_means = []
     g_means = []
     b_means = []
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        sens_range = props['android.sensor.info.sensitivityRange']
+        sensitivities = range(sens_range[0],
+                              sens_range[1]+1,
+                              int((sens_range[1] - sens_range[0]) / NUM_STEPS))
         for s in sensitivities:
             req["captureRequest"]["android.sensor.sensitivity"] = s
             fname, w, h, cap_md = cam.do_capture(req)
@@ -55,7 +67,21 @@ def main():
     pylab.plot(sensitivities, r_means, 'r')
     pylab.plot(sensitivities, g_means, 'g')
     pylab.plot(sensitivities, b_means, 'b')
+    pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+
+    # Test for pass/fail: just check that that images get brighter by an amount
+    # that is more than could be expected by random noise. Don't assume the
+    # curve has any specific shape or gradient. This test is just checking that
+    # the sensitivity parameter actually does something. Note the intensity
+    # may be clamped to 0 or 1 for part of the ramp, so only test that the
+    # brightness difference between the first and last samples are above a
+    # given threshold.
+    for means in [r_means, g_means, b_means]:
+        for i in range(len(means)-1):
+            assert(means[i] <= means[i+1])
+        assert(means[-1] - means[0] > THRESHOLD_MAX_MIN_DIFF)
+        assert(means[-1] / means[0] > THRESHOLD_MAX_MIN_RATIO)
 
 if __name__ == '__main__':
     main()

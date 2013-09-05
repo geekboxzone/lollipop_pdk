@@ -25,8 +25,18 @@ def main():
     # TODO: Finish this test
 
     with its.device.ItsSession() as cam:
-        full_rect = [0,0,1,1]
-        cam.do_3a(full_rect, full_rect, full_rect)
+        rect = [0,0,1,1]
+        sens, exp, gains, xform, focus = cam.do_3a(rect, rect, rect)
+        print "AE: sensitivity %d, exposure %dms" % (sens, exp/1000000)
+        print "AWB: gains", gains, "transform", xform
+        print "AF: distance", focus
+        assert(sens > 0)
+        assert(exp > 0)
+        assert(len(gains) == 4)
+        assert(len(xform) == 9)
+
+        # TODO: Uncomment assertion once AF returns the focus distance.
+        #assert(focus > 0)
 
 if __name__ == '__main__':
     main()

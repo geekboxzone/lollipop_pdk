@@ -25,15 +25,20 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    # Pass/fail thresholds.
+    THRESHOLD_MAX_MIN_DIFF = 0.3
+    THRESHOLD_MAX_MIN_RATIO = 2.0
+
     req = its.objects.capture_request( {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
-        "android.control.aeLock": False,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.sensitivity": 100
         })
 
-    exposures = range(20,120,20) # ms
+    exposures = range(1,101,20) # ms
     r_means = []
     g_means = []
     b_means = []
@@ -55,7 +60,21 @@ def main():
     pylab.plot(exposures, r_means, 'r')
     pylab.plot(exposures, g_means, 'g')
     pylab.plot(exposures, b_means, 'b')
+    pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+
+    # Test for pass/fail: just check that that images get brighter by an amount
+    # that is more than could be expected by random noise. Don't assume the
+    # curve has any specific shape or gradient. This test is just checking that
+    # the sensitivity parameter actually does something. Note the intensity
+    # may be clamped to 0 or 1 for part of the ramp, so only test that the
+    # brightness difference between the first and last samples are above a
+    # given threshold.
+    for means in [r_means, g_means, b_means]:
+        for i in range(len(means)-1):
+            assert(means[i] <= means[i+1])
+        assert(means[-1] - means[0] > THRESHOLD_MAX_MIN_DIFF)
+        assert(means[-1] / means[0] > THRESHOLD_MAX_MIN_RATIO)
 
 if __name__ == '__main__':
     main()
