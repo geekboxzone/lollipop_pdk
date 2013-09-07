@@ -256,6 +256,19 @@ public class ItsService extends Service {
                             ItsUtils.getExternallyVisiblePath(ItsService.this, mdFile.toString())));
     }
 
+    private void prepareCaptureReader(int width, int height, int format) {
+        if (mCaptureReader == null
+                || mCaptureReader.getWidth() != width
+                || mCaptureReader.getHeight() != height
+                || mCaptureReader.getImageFormat() != format) {
+            if (mCaptureReader != null) {
+                mCaptureReader.close();
+            }
+            mCaptureReader = new ImageReader(width, height, format,
+                    MAX_CONCURRENT_READER_BUFFERS);
+        }
+    }
+
     private void do3A(Uri uri) throws ItsException {
         try {
             if (uri == null || !uri.toString().endsWith(".json")) {
@@ -274,15 +287,7 @@ public class ItsService extends Service {
             int height = sizes[0].getHeight();
             int format = ImageFormat.YUV_420_888;
 
-            if (mCaptureReader == null || mCaptureReader.getWidth() != width
-                    || mCaptureReader.getHeight() != height) {
-                if (mCaptureReader != null) {
-                    mCaptureReader.close();
-                }
-                mCaptureReader = new ImageReader(width, height, format,
-                        MAX_CONCURRENT_READER_BUFFERS);
-            }
-
+            prepareCaptureReader(width, height, format);
             List<Surface> outputSurfaces = new ArrayList<Surface>(1);
             outputSurfaces.add(mCaptureReader.getSurface());
             mCamera.configureOutputs(outputSurfaces);
@@ -446,16 +451,7 @@ public class ItsService extends Service {
 
                 Log.i(PYTAG, String.format("### SIZE %d %d", width, height));
 
-                if (mCaptureReader == null || mCaptureReader.getWidth() != width
-                        || mCaptureReader.getHeight() != height) {
-                    if (mCaptureReader != null) {
-                        mCaptureReader.close();
-                    }
-                    mCaptureReader = new ImageReader(width, height, format,
-                            MAX_CONCURRENT_READER_BUFFERS);
-                }
-
-                // TODO: support multiple surfaces
+                prepareCaptureReader(width, height, format);
                 List<Surface> outputSurfaces = new ArrayList<Surface>(1);
                 outputSurfaces.add(mCaptureReader.getSurface());
                 mCamera.configureOutputs(outputSurfaces);
