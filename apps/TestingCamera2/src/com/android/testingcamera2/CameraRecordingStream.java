@@ -148,22 +148,23 @@ public class CameraRecordingStream {
     /**
      * Update capture request with configuration required for recording stream.
      *
-     * @param request Capture request that is need update for recording specific
-     * camera settings.
+     * @param requestBuilder Capture request builder that needs to be updated
+     * for recording specific camera settings.
      * @param detach Detach the recording surface from the capture request.
      */
-    public synchronized void onConfiguringRequest(CaptureRequest request, boolean detach) {
+    public synchronized void onConfiguringRequest(CaptureRequest.Builder requestBuilder,
+            boolean detach) {
         if (detach) {
             // Can detach the surface in CONFIGURED and RECORDING state
             if (getStreamState() != STREAM_STATE_IDLE) {
-                request.removeTarget(mRecordingSurface);
+                requestBuilder.removeTarget(mRecordingSurface);
             } else {
                 Log.w(TAG, "Can not detach surface when recording stream is in IDLE state");
             }
         } else {
             // Can add surface only in CONFIGURED state.
             if (getStreamState() == STREAM_STATE_CONFIGURED) {
-                request.addTarget(mRecordingSurface);
+                requestBuilder.addTarget(mRecordingSurface);
             } else {
                 Log.w(TAG, "Can only add surface when recording stream is in CONFIGURED state");
             }

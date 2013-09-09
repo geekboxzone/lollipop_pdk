@@ -185,13 +185,13 @@ public class ItsSerializer {
     }
 
     @SuppressWarnings("unchecked")
-    public static CameraMetadata deserialize(CameraMetadata mdDefault, JSONObject jsonReq)
-            throws ItsException {
+    public static CaptureRequest.Builder deserialize(CaptureRequest.Builder mdDefault,
+            JSONObject jsonReq) throws ItsException {
         try {
             Log.i(TAG, "Parsing JSON capture request ...");
 
             // Iterate over the CameraMetadata reflected fields.
-            CameraMetadata md = mdDefault;
+            CaptureRequest.Builder md = mdDefault;
             Field[] allFields = md.getClass().getDeclaredFields();
             for (Field field : allFields) {
                 if (Modifier.isPublic(field.getModifiers()) &&
@@ -314,25 +314,25 @@ public class ItsSerializer {
     }
 
     @SuppressWarnings("unchecked")
-    public static List<CaptureRequest> deserializeRequestList(
+    public static List<CaptureRequest.Builder> deserializeRequestList(
             CameraDevice device, JSONObject jsonObjTop)
             throws ItsException {
         try {
-            List<CaptureRequest> requests = null;
+            List<CaptureRequest.Builder> requests = null;
             if (jsonObjTop.has("captureRequest")) {
                 JSONObject jsonReq = jsonObjTop.getJSONObject("captureRequest");
-                CaptureRequest templateReq = device.createCaptureRequest(
+                CaptureRequest.Builder templateReq = device.createCaptureRequest(
                         CameraDevice.TEMPLATE_STILL_CAPTURE);
-                requests = new LinkedList<CaptureRequest>();
-                requests.add((CaptureRequest)deserialize(templateReq, jsonReq));
+                requests = new LinkedList<CaptureRequest.Builder>();
+                requests.add(deserialize(templateReq, jsonReq));
             } else if (jsonObjTop.has("captureRequestList")) {
                 JSONArray jsonReqs = jsonObjTop.getJSONArray("captureRequestList");
-                requests = new LinkedList<CaptureRequest>();
+                requests = new LinkedList<CaptureRequest.Builder>();
                 for (int i = 0; i < jsonReqs.length(); i++) {
-                    CaptureRequest templateReq = device.createCaptureRequest(
+                    CaptureRequest.Builder templateReq = device.createCaptureRequest(
                             CameraDevice.TEMPLATE_STILL_CAPTURE);
-                    requests.add((CaptureRequest)
-                            deserialize(templateReq, jsonReqs.getJSONObject(i)));
+                    requests.add(
+                        deserialize(templateReq, jsonReqs.getJSONObject(i)));
                 }
             }
             return requests;
@@ -343,4 +343,3 @@ public class ItsSerializer {
         }
     }
 }
-

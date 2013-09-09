@@ -234,7 +234,12 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             new CameraOps.CaptureResultListener() {
 
                 @Override
-                public void onCaptureComplete(
+                public void onCaptureStarted(CameraDevice camera, CaptureRequest request,
+                        long timestamp) {
+                }
+
+                @Override
+                public void onCaptureCompleted(
                         CameraDevice camera, CaptureRequest request, CaptureResult result) {
                     Log.i(TAG, "Capture result is available");
                     int reqCtrlMode;

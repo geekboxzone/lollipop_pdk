@@ -110,7 +110,7 @@ public class ItsUtils {
         }
     }
 
-    public static List<CaptureRequest> loadRequestList(CameraDevice device, Uri uri)
+    public static List<CaptureRequest.Builder> loadRequestList(CameraDevice device, Uri uri)
             throws ItsException {
         return ItsSerializer.deserializeRequestList(device, loadJsonFile(uri));
     }
@@ -350,4 +350,3 @@ public class ItsUtils {
         return getExternallyVisiblePath(context, imgFile.toString());
     }
 }
-

@@ -92,7 +92,7 @@ public class ItsService extends Service {
         void onCaptureAvailable(Image capture);
     }
 
-    public interface CaptureResultListener extends CameraDevice.CaptureListener {}
+    public abstract class CaptureResultListener extends CameraDevice.CaptureListener {}
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -112,7 +112,7 @@ public class ItsService extends Service {
             // Open the camera device, and get its properties.
             String[] devices;
             try {
-                devices = mCameraManager.getDeviceIdList();
+                devices = mCameraManager.getCameraIdList();
                 if (devices == null || devices.length == 0) {
                     throw new ItsException("No camera devices");
                 }
@@ -352,7 +352,7 @@ public class ItsService extends Service {
                 if (!mConvergedAE || !mConvergedAWB || !mConvergedAF) {
 
                     // Baseline capture request for 3A.
-                    CaptureRequest req = mCamera.createCaptureRequest(
+                    CaptureRequest.Builder req = mCamera.createCaptureRequest(
                             CameraDevice.TEMPLATE_PREVIEW);
                     req.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
                     req.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
@@ -390,7 +390,7 @@ public class ItsService extends Service {
                     req.addTarget(mCaptureReader.getSurface());
 
                     mIssuedRequest3A = true;
-                    mCamera.capture(req, mCaptureResultListener);
+                    mCamera.capture(req.build(), mCaptureResultListener, null);
                 } else {
                     Log.i(TAG, "3A converged");
                     break;
@@ -412,7 +412,7 @@ public class ItsService extends Service {
             idleCamera();
 
             // Parse the JSON to get the list of capture requests.
-            List<CaptureRequest> requests = ItsUtils.loadRequestList(mCamera, uri);
+            List<CaptureRequest.Builder> requests = ItsUtils.loadRequestList(mCamera, uri);
 
             // Set the output surface and listeners.
             try {
@@ -472,10 +472,10 @@ public class ItsService extends Service {
 
             // Initiate the captures.
             for (int i = 0; i < requests.size(); i++) {
-                CaptureRequest req = requests.get(i);
+                CaptureRequest.Builder req = requests.get(i);
                 Log.i(PYTAG, String.format("### CAPT %d of %d", i+1, requests.size()));
                 req.addTarget(mCaptureReader.getSurface());
-                mCamera.capture(req, mCaptureResultListener);
+                mCamera.capture(req.build(), mCaptureResultListener, null);
             }
 
             // Make sure all callbacks have been hit (wait until captures are done).
@@ -522,7 +522,11 @@ public class ItsService extends Service {
 
     private final CaptureResultListener mCaptureResultListener = new CaptureResultListener() {
         @Override
-        public void onCaptureComplete(CameraDevice camera, CaptureRequest request,
+        public void onCaptureStarted(CameraDevice camera, CaptureRequest request, long timestamp) {
+        }
+
+        @Override
+        public void onCaptureCompleted(CameraDevice camera, CaptureRequest request,
                 CaptureResult result) {
             try {
                 // Currently result has all 0 values.
@@ -574,4 +578,3 @@ public class ItsService extends Service {
     };
 
 }
-
