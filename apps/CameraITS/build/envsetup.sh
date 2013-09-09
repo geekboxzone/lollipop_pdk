@@ -17,6 +17,9 @@
 # and that the unit tests for the modules passed (indicating that the setup
 # is correct).
 
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || \
+    { echo ">> Script must be sourced with 'source $0'" >&2; exit 1; }
+
 command -v adb >/dev/null 2>&1 || \
     echo ">> Require adb executable to be in path" >&2
 
@@ -29,7 +32,7 @@ python -V 2>&1 | grep -q "Python 2.7" || \
 python -c 'import numpy, PIL, Image, matplotlib, pylab' >/dev/null 2>&1 || \
     echo ">> Require scipy stack" >&2
 
-export PYTHONPATH="$PWD"/pymodules
+export PYTHONPATH="$PWD/pymodules:$PYTHONPATH"
 
 for M in device objects image
 do

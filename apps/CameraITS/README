@@ -54,6 +54,13 @@ the device.
 
 The test framework is based on Python on the host machine. It requires
 Python 2.7 and the scipy/numpy stack, including the Python Imaging Library.
+
+(For Ubuntu users)
+
+    sudo apt-get install python-numpy python-scipy python-matplotlib
+
+(For other users)
+
 All of these pieces can be installed on your host machine separately,
 however it is highly recommended to install a bundled distribution of
 Python that comes with these modules. Some different bundles are listed
