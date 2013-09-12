@@ -79,6 +79,8 @@ public class ItsService extends Service {
     private Handler mCommandHandler;
     private HandlerThread mSaveThread;
     private Handler mSaveHandler;
+    private HandlerThread mResultThread;
+    private Handler mResultHandler;
 
     private ConditionVariable mInterlock3A = new ConditionVariable(true);
     private volatile boolean mIssuedRequest3A = false;
@@ -128,6 +130,11 @@ public class ItsService extends Service {
             mSaveThread = new HandlerThread("SaveThread");
             mSaveThread.start();
             mSaveHandler = new Handler(mSaveThread.getLooper());
+
+            // Create a thread to receive capture results and process them
+            mResultThread = new HandlerThread("ResultThread");
+            mResultThread.start();
+            mResultHandler = new Handler(mResultThread.getLooper());
 
             // Create a thread to process commands.
             mCommandThread = new HandlerThread("CaptureThread");
@@ -390,7 +397,7 @@ public class ItsService extends Service {
                     req.addTarget(mCaptureReader.getSurface());
 
                     mIssuedRequest3A = true;
-                    mCamera.capture(req.build(), mCaptureResultListener, null);
+                    mCamera.capture(req.build(), mCaptureResultListener, mResultHandler);
                 } else {
                     Log.i(TAG, "3A converged");
                     break;
@@ -475,7 +482,7 @@ public class ItsService extends Service {
                 CaptureRequest.Builder req = requests.get(i);
                 Log.i(PYTAG, String.format("### CAPT %d of %d", i+1, requests.size()));
                 req.addTarget(mCaptureReader.getSurface());
-                mCamera.capture(req.build(), mCaptureResultListener, null);
+                mCamera.capture(req.build(), mCaptureResultListener, mResultHandler);
             }
 
             // Make sure all callbacks have been hit (wait until captures are done).
