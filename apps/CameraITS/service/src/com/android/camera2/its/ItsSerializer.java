@@ -192,7 +192,7 @@ public class ItsSerializer {
 
             // Iterate over the CameraMetadata reflected fields.
             CaptureRequest.Builder md = mdDefault;
-            Field[] allFields = md.getClass().getDeclaredFields();
+            Field[] allFields = CaptureRequest.class.getDeclaredFields();
             for (Field field : allFields) {
                 if (Modifier.isPublic(field.getModifiers()) &&
                         Modifier.isStatic(field.getModifiers()) &&
