@@ -101,15 +101,11 @@ def main():
         cap_res = md_obj["captureResult"]
         gains = cap_res["android.colorCorrection.gains"]
         transform = cap_res["android.colorCorrection.transform"]
-        curves = [cap_res["android.tonemap.curveRed"],
-                  cap_res["android.tonemap.curveGreen"],
-                  cap_res["android.tonemap.curveBlue"]]
         exp_time = cap_res['android.sensor.exposureTime']
         lsc_map = cap_res["android.statistics.lensShadingMap"]
 
         print "Gains:", gains
         print "Transform:", [r2f(t) for t in transform]
-        print "Tonemap:", curves[0][1::16]
         print "AE region:", cap_res['android.control.aeRegions']
         print "AF region:", cap_res['android.control.afRegions']
         print "AWB region:", cap_res['android.control.awbRegions']
@@ -126,10 +122,6 @@ def main():
                     for i in xrange(4)]))
         assert(any([not is_close_rational(transform[i], manual_transform[i])
                     for i in xrange(9)]))
-
-        # Tonemap need not be valid, but if it is, it should hold useful values.
-        if any([len(c) > 0 for c in curves]):
-            assert(all([len(c) > 0 for c in curves]))
 
         # Exposure time must be valid.
         assert(exp_time > 0)

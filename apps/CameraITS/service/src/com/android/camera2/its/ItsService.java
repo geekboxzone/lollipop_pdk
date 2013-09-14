@@ -562,32 +562,44 @@ public class ItsService extends Service {
                     throw new ItsException("Request/result is invalid");
                 }
 
-                Log.i(TAG, String.format(
-                        "Capt result: AE=%d, AF=%d, AWB=%d, sens=%d, exp=%.1fms, dur=%.1fms, " +
-                        "gains=[%.1f, %.1f, %.1f, %.1f], " +
-                        "xform=[%.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f], " +
+                StringBuilder logMsg = new StringBuilder();
+                logMsg.append(String.format(
+                        "Capt result: AE=%d, AF=%d, AWB=%d, sens=%d, exp=%.1fms, dur=%.1fms, ",
+                        result.get(CaptureResult.CONTROL_AE_STATE),
+                        result.get(CaptureResult.CONTROL_AF_STATE),
+                        result.get(CaptureResult.CONTROL_AWB_STATE),
+                        result.get(CaptureResult.SENSOR_SENSITIVITY),
+                        result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue() / 1000000.0f,
+                        result.get(CaptureResult.SENSOR_FRAME_DURATION).intValue() / 1000000.0f));
+                if (result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null) {
+                    logMsg.append(String.format(
+                            "gains=[%.1f, %.1f, %.1f, %.1f], ",
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
+                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[3]));
+                } else {
+                    logMsg.append("gains=[], ");
+                }
+                if (result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
+                    logMsg.append(String.format(
+                            "xform=[%.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f], ",
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[0]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[1]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[2]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[3]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[4]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[5]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[6]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[7]),
+                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[8])));
+                } else {
+                    logMsg.append("xform=[], ");
+                }
+                logMsg.append(String.format(
                         "foc=%.1f",
-                         result.get(CaptureResult.CONTROL_AE_STATE),
-                         result.get(CaptureResult.CONTROL_AF_STATE),
-                         result.get(CaptureResult.CONTROL_AWB_STATE),
-                         result.get(CaptureResult.SENSOR_SENSITIVITY),
-                         result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue() / 1000000.0f,
-                         result.get(CaptureResult.SENSOR_FRAME_DURATION).intValue() / 1000000.0f,
-                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
-                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
-                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
-                         result.get(CaptureResult.COLOR_CORRECTION_GAINS)[3],
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[0]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[1]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[2]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[3]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[4]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[5]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[6]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[7]),
-                         r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[8]),
-                         result.get(CaptureResult.LENS_FOCUS_DISTANCE)
-                         ));
+                        result.get(CaptureResult.LENS_FOCUS_DISTANCE)));
+                Log.i(TAG, logMsg.toString());
 
                 mConvergedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
                                           CaptureResult.CONTROL_AE_STATE_CONVERGED;
@@ -611,7 +623,8 @@ public class ItsService extends Service {
                             ));
                 }
 
-                if (mConvergedAWB) {
+                if (mConvergedAWB && result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null
+                        && result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
                     Log.i(PYTAG, String.format(
                             "### 3A-W %f %f %f %f %f %f %f %f %f %f %f %f %f",
                             result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],

@@ -388,7 +388,7 @@ class ItsSession(object):
                 awb_gains = [float(x) for x in msgparams[:4]]
                 awb_transform = [float(x) for x in msgparams[4:]]
             elif msgtype == self.MSG_AF:
-                af_dist = float(msgparams[0])
+                af_dist = float(msgparams[0]) if msgparams[0] != "null" else 0
             elif msgtype == self.MSG_DONE:
                 if (do_ae and ae_sens == None or do_awb and awb_gains == None
                                               or do_af and af_dist == None):
