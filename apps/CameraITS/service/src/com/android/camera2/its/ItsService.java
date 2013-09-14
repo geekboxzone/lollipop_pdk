@@ -244,8 +244,6 @@ public class ItsService extends Service {
                 try {
                     i = reader.acquireNextImage();
                     listener.onCaptureAvailable(i);
-                } catch(ImageReader.MaxImagesAcquiredException e) {
-                    throw new IllegalStateException(e);
                 } finally {
                     if (i != null) {
                         i.close();
@@ -260,12 +258,8 @@ public class ItsService extends Service {
         return new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
-                try {
-                    Image i = reader.acquireNextImage();
-                    i.close();
-                } catch (ImageReader.MaxImagesAcquiredException e) {
-                    // OK: don't need to drop it if we couldn't acquire it.
-                }
+                Image i = reader.acquireNextImage();
+                i.close();
             }
         };
     }

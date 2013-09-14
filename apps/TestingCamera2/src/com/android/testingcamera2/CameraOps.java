@@ -305,8 +305,6 @@ public class CameraOps {
                     try {
                         i = reader.acquireNextImage();
                         listener.onCaptureAvailable(i);
-                    } catch (ImageReader.MaxImagesAcquiredException e) {
-                        throw new IllegalStateException("Too many JPEGs in flight", e);
                     } finally {
                         if (i != null) {
                             i.close();
