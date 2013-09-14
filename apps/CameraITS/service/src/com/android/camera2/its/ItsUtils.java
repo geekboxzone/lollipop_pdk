@@ -19,7 +19,7 @@ package com.android.camera2.its;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraProperties;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.media.Image;
@@ -61,7 +61,7 @@ public class ItsUtils {
     // The indent amount to use when printing the JSON objects out as strings.
     private static final int PPRINT_JSON_INDENT = 2;
 
-    public static void storeCameraProperties(CameraProperties props,
+    public static void storeCameraCharacteristics(CameraCharacteristics props,
                                                File file)
             throws ItsException {
         try {
@@ -73,7 +73,7 @@ public class ItsUtils {
         }
     }
 
-    public static void storeResults(CameraProperties props,
+    public static void storeResults(CameraCharacteristics props,
                                       CaptureRequest request,
                                       CaptureResult result,
                                       File file)

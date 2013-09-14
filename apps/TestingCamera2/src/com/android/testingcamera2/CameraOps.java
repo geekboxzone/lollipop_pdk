@@ -22,7 +22,7 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
-import android.hardware.camera2.CameraProperties;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.Size;
 import android.media.Image;
@@ -57,7 +57,7 @@ public class CameraOps {
     private CameraDevice mCamera;
 
     private ImageReader mCaptureReader;
-    private CameraProperties mCameraProperties;
+    private CameraCharacteristics mCameraCharacteristics;
 
     private int mEncodingBitRate;
 
@@ -135,18 +135,18 @@ public class CameraOps {
         mCameraManager.addAvailabilityListener(listener, mOpsHandler);
     }
 
-    public CameraProperties getCameraProperties() {
+    public CameraCharacteristics getCameraCharacteristics() {
         checkOk();
-        if (mCameraProperties == null) {
-            throw new IllegalStateException("CameraProperties is not available");
+        if (mCameraCharacteristics == null) {
+            throw new IllegalStateException("CameraCharacteristics is not available");
         }
-        return mCameraProperties;
+        return mCameraCharacteristics;
     }
 
     public void closeDevice()
             throws ApiFailureException {
         checkOk();
-        mCameraProperties = null;
+        mCameraCharacteristics = null;
 
         if (mCamera == null) return;
 
@@ -168,7 +168,7 @@ public class CameraOps {
                 }
                 mCamera = mBlockingCameraManager.openCamera(devices[0],
                         /*listener*/null, mOpsHandler);
-                mCameraProperties = mCamera.getProperties();
+                mCameraCharacteristics = mCamera.getProperties();
             } catch (CameraAccessException e) {
                 throw new ApiFailureException("open failure", e);
             } catch (BlockingOpenException e) {
@@ -186,13 +186,13 @@ public class CameraOps {
 
         minimalOpenCamera();
         try {
-            CameraProperties properties = mCamera.getProperties();
+            CameraCharacteristics properties = mCamera.getProperties();
 
             Size[] previewSizes = null;
             Size sz = DEFAULT_SIZE;
             if (properties != null) {
                 previewSizes = properties.get(
-                        CameraProperties.SCALER_AVAILABLE_PROCESSED_SIZES);
+                        CameraCharacteristics.SCALER_AVAILABLE_PROCESSED_SIZES);
             }
 
             if (previewSizes != null && previewSizes.length != 0 &&
@@ -259,11 +259,11 @@ public class CameraOps {
             mCamera.stopRepeating();
             mCamera.waitUntilIdle();
 
-            CameraProperties properties = mCamera.getProperties();
+            CameraCharacteristics properties = mCamera.getProperties();
             Size[] jpegSizes = null;
             if (properties != null) {
                 jpegSizes = properties.get(
-                        CameraProperties.SCALER_AVAILABLE_JPEG_SIZES);
+                        CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
             }
             int width = 640;
             int height = 480;
@@ -372,12 +372,12 @@ public class CameraOps {
 
     private Size getRecordingSize() throws ApiFailureException {
         try {
-            CameraProperties properties = mCamera.getProperties();
+            CameraCharacteristics properties = mCamera.getProperties();
 
             Size[] recordingSizes = null;
             if (properties != null) {
                 recordingSizes = properties.get(
-                        CameraProperties.SCALER_AVAILABLE_PROCESSED_SIZES);
+                        CameraCharacteristics.SCALER_AVAILABLE_PROCESSED_SIZES);
             }
 
             mEncodingBitRate = ENC_BIT_RATE_LOW;

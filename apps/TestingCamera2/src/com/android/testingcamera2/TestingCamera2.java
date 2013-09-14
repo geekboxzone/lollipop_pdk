@@ -21,8 +21,8 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraProperties;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
@@ -381,9 +381,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
               @Override
               public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                   int[] defaultRange = {MIN_SENSITIVITY, MAX_SENSITIVITY};
-                  CameraProperties properties = mCameraOps.getCameraProperties();
+                  CameraCharacteristics properties = mCameraOps.getCameraCharacteristics();
                   int[] sensitivityRange = properties.get(
-                          CameraProperties.SENSOR_INFO_SENSITIVITY_RANGE);
+                          CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE);
                   if (sensitivityRange == null || sensitivityRange.length < 2 ||
                           sensitivityRange[0] > MIN_SENSITIVITY || sensitivityRange[1] < MAX_SENSITIVITY) {
                       Log.e(TAG, "unable to get sensitivity range, use default range");
@@ -417,9 +417,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
               @Override
               public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                   long[] defaultRange = {MIN_EXPOSURE, MAX_EXPOSURE};
-                  CameraProperties properties = mCameraOps.getCameraProperties();
+                  CameraCharacteristics properties = mCameraOps.getCameraCharacteristics();
                   long[] exposureRange = properties.get(
-                          CameraProperties.SENSOR_INFO_EXPOSURE_TIME_RANGE);
+                          CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);
                   // Not enforce the max value check here, most of the devices don't support
                   // larger than 30s exposure time
                   if (exposureRange == null || exposureRange.length < 2 ||
@@ -453,9 +453,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
               @Override
               public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                  CameraProperties properties = mCameraOps.getCameraProperties();
+                  CameraCharacteristics properties = mCameraOps.getCameraCharacteristics();
                   Long frameDurationMax = properties.get(
-                          CameraProperties.SENSOR_INFO_MAX_FRAME_DURATION);
+                          CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION);
                   if (frameDurationMax == null || frameDurationMax <= 0) {
                       frameDurationMax = MAX_FRAME_DURATION;
                       Log.e(TAG, "max frame duration is invalid, set to " + frameDurationMax);

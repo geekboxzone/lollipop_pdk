@@ -21,9 +21,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CameraProperties;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
@@ -82,7 +82,7 @@ public class ItsService extends Service {
     private BlockingCameraManager mBlockingCameraManager = null;
     private CameraDevice mCamera = null;
     private ImageReader mCaptureReader = null;
-    private CameraProperties mCameraProperties = null;
+    private CameraCharacteristics mCameraCharacteristics = null;
 
     private HandlerThread mCommandThread;
     private Handler mCommandHandler;
@@ -140,7 +140,7 @@ public class ItsService extends Service {
                 // TODO: Add support for specifying which device to open.
                 mCamera = mBlockingCameraManager.openCamera(devices[0], /*listener*/null,
                         openHandler);
-                mCameraProperties = mCamera.getProperties();
+                mCameraCharacteristics = mCamera.getProperties();
             } catch (CameraAccessException e) {
                 throw new ItsException("Failed to open camera", e);
             } catch (BlockingOpenException e) {
@@ -291,7 +291,7 @@ public class ItsService extends Service {
     private void doGetProps() throws ItsException {
         String fileName = ItsUtils.getMetadataFileName(0);
         File mdFile = ItsUtils.getOutputFile(ItsService.this, fileName);
-        ItsUtils.storeCameraProperties(mCameraProperties, mdFile);
+        ItsUtils.storeCameraCharacteristics(mCameraCharacteristics, mdFile);
         Log.i(PYTAG,
               String.format("### FILE %s",
                             ItsUtils.getExternallyVisiblePath(ItsService.this, mdFile.toString())));
@@ -322,8 +322,8 @@ public class ItsService extends Service {
             // Get the converged values for each "A", and package into JSON result for caller.
 
             // 3A happens on full-res frames.
-            android.hardware.camera2.Size sizes[] = mCameraProperties.get(
-                    CameraProperties.SCALER_AVAILABLE_JPEG_SIZES);
+            android.hardware.camera2.Size sizes[] = mCameraCharacteristics.get(
+                    CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
             int width = sizes[0].getWidth();
             int height = sizes[0].getHeight();
             int format = ImageFormat.YUV_420_888;
@@ -474,8 +474,8 @@ public class ItsService extends Service {
                 // Capture full-frame images. Use the reported JPEG size rather than the sensor
                 // size since this is more likely to be the unscaled size; the crop from sensor
                 // size is probably for the ISP (e.g. demosaicking) rather than the encoder.
-                android.hardware.camera2.Size sizes[] = mCameraProperties.get(
-                        CameraProperties.SCALER_AVAILABLE_JPEG_SIZES);
+                android.hardware.camera2.Size sizes[] = mCameraCharacteristics.get(
+                        CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
                 int width = sizes[0].getWidth();
                 int height = sizes[0].getHeight();
                 int format = ImageFormat.YUV_420_888;
@@ -680,7 +680,7 @@ public class ItsService extends Service {
                     String fileName = ItsUtils.getMetadataFileName(
                             result.get(CaptureResult.SENSOR_TIMESTAMP));
                     File mdFile = ItsUtils.getOutputFile(ItsService.this, fileName);
-                    ItsUtils.storeResults(mCameraProperties, request, result, mdFile);
+                    ItsUtils.storeResults(mCameraCharacteristics, request, result, mdFile);
                     mCaptureCallbackLatch.countDown();
                 }
             } catch (ItsException e) {
