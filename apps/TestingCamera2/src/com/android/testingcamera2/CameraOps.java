@@ -46,10 +46,10 @@ public class CameraOps {
 
     private static final String TAG = "CameraOps";
 
-    private final Thread mOpsThread;
+    private Thread mOpsThread;
     private Handler mOpsHandler;
 
-    private final CameraManager mCameraManager;
+    private CameraManager mCameraManager;
     private CameraDevice mCamera;
 
     private ImageReader mCaptureReader;
@@ -238,7 +238,7 @@ public class CameraOps {
             mCamera.stopRepeating();
             mCamera.waitUntilIdle();
 
-            List<Surface> outputSurfaces = new ArrayList<Surface>(/*capacity*/1);
+            List<Surface> outputSurfaces = new ArrayList(1);
             outputSurfaces.add(mPreviewSurface);
 
             mCamera.configureOutputs(outputSurfaces);
@@ -281,11 +281,11 @@ public class CameraOps {
                 if (mCaptureReader != null) {
                     mCaptureReader.close();
                 }
-                mCaptureReader = ImageReader.newInstance(width, height,
+                mCaptureReader = new ImageReader(width, height,
                         ImageFormat.JPEG, MAX_CONCURRENT_JPEGS);
             }
 
-            List<Surface> outputSurfaces = new ArrayList<Surface>(/*capacity*/1);
+            List<Surface> outputSurfaces = new ArrayList(1);
             outputSurfaces.add(mCaptureReader.getSurface());
 
             mCamera.configureOutputs(outputSurfaces);
@@ -301,20 +301,12 @@ public class CameraOps {
                     new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
-                    Image i = null;
-                    try {
-                        i = reader.acquireNextImage();
-                        listener.onCaptureAvailable(i);
-                    } catch (ImageReader.MaxImagesAcquiredException e) {
-                        throw new IllegalStateException("Too many JPEGs in flight", e);
-                    } finally {
-                        if (i != null) {
-                            i.close();
-                        }
-                    }
+                    Image i = reader.getNextImage();
+                    listener.onCaptureAvailable(i);
+                    i.close();
                 }
             };
-            mCaptureReader.setOnImageAvailableListener(readerListener, h);
+            mCaptureReader.setImageAvailableListener(readerListener, h);
 
             mCamera.capture(captureBuilder.build(), l, mOpsHandler);
 
@@ -326,6 +318,7 @@ public class CameraOps {
     public void startRecording(boolean useMediaCodec) throws ApiFailureException {
         minimalOpenCamera();
         Size recordingSize = getRecordingSize();
+        CaptureRequest request;
         try {
             if (mRecordingRequestBuilder == null) {
                 mRecordingRequestBuilder =

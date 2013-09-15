@@ -236,17 +236,9 @@ public class ItsService extends Service {
         return new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
-                Image i = null;
-                try {
-                    i = reader.acquireNextImage();
-                    listener.onCaptureAvailable(i);
-                } catch(ImageReader.MaxImagesAcquiredException e) {
-                    throw new IllegalStateException(e);
-                } finally {
-                    if (i != null) {
-                        i.close();
-                    }
-                }
+                Image i = reader.getNextImage();
+                listener.onCaptureAvailable(i);
+                i.close();
             }
         };
     }
@@ -256,12 +248,8 @@ public class ItsService extends Service {
         return new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
-                try {
-                    Image i = reader.acquireNextImage();
-                    i.close();
-                } catch (ImageReader.MaxImagesAcquiredException e) {
-                    // OK: don't need to drop it if we couldn't acquire it.
-                }
+                Image i = reader.getNextImage();
+                i.close();
             }
         };
     }
@@ -283,7 +271,7 @@ public class ItsService extends Service {
             if (mCaptureReader != null) {
                 mCaptureReader.close();
             }
-            mCaptureReader = ImageReader.newInstance(width, height, format,
+            mCaptureReader = new ImageReader(width, height, format,
                     MAX_CONCURRENT_READER_BUFFERS);
         }
     }
@@ -314,7 +302,7 @@ public class ItsService extends Service {
             // Add a listener that just recycles buffers; they aren't saved anywhere.
             ImageReader.OnImageAvailableListener readerListener =
                     createAvailableListenerDropper(mCaptureListener);
-            mCaptureReader.setOnImageAvailableListener(readerListener, mSaveHandler);
+            mCaptureReader.setImageAvailableListener(readerListener, mSaveHandler);
 
             // Get the user-specified regions for AE, AWB, AF.
             // Note that the user specifies normalized [x,y,w,h], which is converted below
@@ -477,7 +465,7 @@ public class ItsService extends Service {
 
                 ImageReader.OnImageAvailableListener readerListener =
                         createAvailableListener(mCaptureListener);
-                mCaptureReader.setOnImageAvailableListener(readerListener, mSaveHandler);
+                mCaptureReader.setImageAvailableListener(readerListener, mSaveHandler);
 
                 // Plan for how many callbacks need to be received throughout the duration of this
                 // sequence of capture requests.
