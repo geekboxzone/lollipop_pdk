@@ -41,6 +41,10 @@ def main():
         "android.control.effectMode": 0,
         })
 
+    r_means = []
+    g_means = []
+    b_means = []
+
     with its.device.ItsSession() as cam:
         # Take a shot with very low ISO and exposure time. Expect it to
         # be black.
@@ -49,6 +53,9 @@ def main():
         its.image.write_image(img, "%s_black.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         black_means = its.image.compute_image_means(tile)
+        r_means.append(black_means[0])
+        g_means.append(black_means[1])
+        b_means.append(black_means[2])
         print "Dark pixel means:", black_means
 
         # Take a shot with very high ISO and exposure time. Expect it to
@@ -60,7 +67,17 @@ def main():
         its.image.write_image(img, "%s_white.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         white_means = its.image.compute_image_means(tile)
+        r_means.append(white_means[0])
+        g_means.append(white_means[1])
+        b_means.append(white_means[2])
         print "Bright pixel means:", white_means
+
+        # Draw a plot.
+        pylab.plot([0,1], r_means, 'r')
+        pylab.plot([0,1], g_means, 'g')
+        pylab.plot([0,1], b_means, 'b')
+        pylab.ylim([0,1])
+        matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
 
         for val in black_means:
             assert(val < 0.025)

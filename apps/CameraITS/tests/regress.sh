@@ -33,6 +33,7 @@ for T in \
          test_exposure.py \
          test_formats.py \
          test_jpeg.py \
+         test_param_color_correction.py \
          test_param_exposure_time.py \
          test_param_noise_reduction.py \
          test_param_sensitivity.py \
@@ -40,7 +41,6 @@ for T in \
          \
          test_latching.py \
          test_linearity.py \
-         test_param_color_correction.py \
          test_param_edge_mode.py \
 
 do

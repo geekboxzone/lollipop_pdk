@@ -177,6 +177,11 @@ public class ItsSerializer {
                     } catch (org.json.JSONException e) {
                         throw new ItsException(
                                 "JSON error for field: " + field + ": ", e);
+                    } catch (IllegalArgumentException e) {
+                        // TODO: Remove this HACK once all keys are implemented (especially
+                        // android.statistics.faces).
+                        // If the key isn't plumbed all the way down, can get an exception by
+                        // trying to get it. Swallow the exception.
                     }
                 }
             }
@@ -200,101 +205,108 @@ public class ItsSerializer {
                         field.getGenericType() instanceof ParameterizedType) {
                     ParameterizedType paramType = (ParameterizedType)field.getGenericType();
                     Type[] argTypes = paramType.getActualTypeArguments();
-                    if (argTypes.length > 0) {
-                        CameraMetadata.Key key = (CameraMetadata.Key)field.get(md);
-                        String keyName = key.getName();
-                        Type keyType = argTypes[0];
+                    try {
+                        if (argTypes.length > 0) {
+                            CameraMetadata.Key key = (CameraMetadata.Key)field.get(md);
+                            String keyName = key.getName();
+                            Type keyType = argTypes[0];
 
-                        // For each reflected CameraMetadata entry, look inside the JSON object
-                        // to see if it is being set. If it is found, remove the key from the
-                        // JSON object. After this process, there should be no keys left in the
-                        // JSON (otherwise an invalid key was specified).
+                            // For each reflected CameraMetadata entry, look inside the JSON object
+                            // to see if it is being set. If it is found, remove the key from the
+                            // JSON object. After this process, there should be no keys left in the
+                            // JSON (otherwise an invalid key was specified).
 
-                        if (jsonReq.has(keyName) && !jsonReq.isNull(keyName)) {
-                            if (keyType instanceof GenericArrayType) {
-                                Type elmtType =
-                                        ((GenericArrayType)keyType).getGenericComponentType();
-                                JSONArray ja = jsonReq.getJSONArray(keyName);
-                                Object val[] = new Object[ja.length()];
-                                for (int i = 0; i < ja.length(); i++) {
-                                    if (elmtType == int.class) {
-                                        Array.set(val, i, ja.getInt(i));
-                                    } else if (elmtType == byte.class) {
-                                        Array.set(val, i, (byte)ja.getInt(i));
-                                    } else if (elmtType == float.class) {
-                                        Array.set(val, i, (float)ja.getDouble(i));
-                                    } else if (elmtType == long.class) {
-                                        Array.set(val, i, ja.getLong(i));
-                                    } else if (elmtType == double.class) {
-                                        Array.set(val, i, ja.getDouble(i));
-                                    } else if (elmtType == boolean.class) {
-                                        Array.set(val, i, ja.getBoolean(i));
-                                    } else if (elmtType == String.class) {
-                                        Array.set(val, i, ja.getString(i));
-                                    } else if (elmtType == android.hardware.camera2.Size.class) {
-                                        JSONObject obj = ja.getJSONObject(i);
-                                        Array.set(val, i, new android.hardware.camera2.Size(
-                                                obj.getInt("width"), obj.getInt("height")));
-                                    } else if (elmtType == android.graphics.Rect.class) {
-                                        JSONObject obj = ja.getJSONObject(i);
-                                        Array.set(val, i, new android.graphics.Rect(
+                            if (jsonReq.has(keyName) && !jsonReq.isNull(keyName)) {
+                                if (keyType instanceof GenericArrayType) {
+                                    Type elmtType =
+                                            ((GenericArrayType)keyType).getGenericComponentType();
+                                    JSONArray ja = jsonReq.getJSONArray(keyName);
+                                    Object val[] = new Object[ja.length()];
+                                    for (int i = 0; i < ja.length(); i++) {
+                                        if (elmtType == int.class) {
+                                            Array.set(val, i, ja.getInt(i));
+                                        } else if (elmtType == byte.class) {
+                                            Array.set(val, i, (byte)ja.getInt(i));
+                                        } else if (elmtType == float.class) {
+                                            Array.set(val, i, (float)ja.getDouble(i));
+                                        } else if (elmtType == long.class) {
+                                            Array.set(val, i, ja.getLong(i));
+                                        } else if (elmtType == double.class) {
+                                            Array.set(val, i, ja.getDouble(i));
+                                        } else if (elmtType == boolean.class) {
+                                            Array.set(val, i, ja.getBoolean(i));
+                                        } else if (elmtType == String.class) {
+                                            Array.set(val, i, ja.getString(i));
+                                        } else if (elmtType == android.hardware.camera2.Size.class){
+                                            JSONObject obj = ja.getJSONObject(i);
+                                            Array.set(val, i, new android.hardware.camera2.Size(
+                                                    obj.getInt("width"), obj.getInt("height")));
+                                        } else if (elmtType == android.graphics.Rect.class) {
+                                            JSONObject obj = ja.getJSONObject(i);
+                                            Array.set(val, i, new android.graphics.Rect(
+                                                    obj.getInt("left"), obj.getInt("top"),
+                                                    obj.getInt("bottom"), obj.getInt("right")));
+                                        } else if (elmtType == Rational.class) {
+                                            JSONObject obj = ja.getJSONObject(i);
+                                            Array.set(val, i, new Rational(
+                                                    obj.getInt("numerator"),
+                                                    obj.getInt("denominator")));
+                                        } else {
+                                            throw new ItsException(
+                                                    "Failed to parse key from JSON: " + keyName);
+                                        }
+                                    }
+                                    if (val != null) {
+                                        Log.i(TAG, "Set: "+keyName+" -> "+Arrays.toString(val));
+                                        md.set(key, val);
+                                        jsonReq.remove(keyName);
+                                    }
+                                } else {
+                                    Object val = null;
+                                    if (keyType == Integer.class) {
+                                        val = jsonReq.getInt(keyName);
+                                    } else if (keyType == Byte.class) {
+                                        val = (byte)jsonReq.getInt(keyName);
+                                    } else if (keyType == Double.class) {
+                                        val = jsonReq.getDouble(keyName);
+                                    } else if (keyType == Long.class) {
+                                        val = jsonReq.getLong(keyName);
+                                    } else if (keyType == Float.class) {
+                                        val = (float)jsonReq.getDouble(keyName);
+                                    } else if (keyType == Boolean.class) {
+                                        val = jsonReq.getBoolean(keyName);
+                                    } else if (keyType == String.class) {
+                                        val = jsonReq.getString(keyName);
+                                    } else if (keyType == android.hardware.camera2.Size.class) {
+                                        JSONObject obj = jsonReq.getJSONObject(keyName);
+                                        val = new android.hardware.camera2.Size(
+                                                obj.getInt("width"), obj.getInt("height"));
+                                    } else if (keyType == android.graphics.Rect.class) {
+                                        JSONObject obj = jsonReq.getJSONObject(keyName);
+                                        val = new android.graphics.Rect(
                                                 obj.getInt("left"), obj.getInt("top"),
-                                                obj.getInt("bottom"), obj.getInt("right")));
-                                    } else if (elmtType == Rational.class) {
-                                        JSONObject obj = ja.getJSONObject(i);
-                                        Array.set(val, i, new Rational(
-                                                obj.getInt("numerator"),
-                                                obj.getInt("denominator")));
+                                                obj.getInt("right"), obj.getInt("bottom"));
+                                    } else if (keyType == Rational.class) {
+                                        JSONObject obj = jsonReq.getJSONObject(keyName);
+                                        val = new Rational(obj.getInt("numerator"),
+                                                           obj.getInt("denominator"));
                                     } else {
                                         throw new ItsException(
                                                 "Failed to parse key from JSON: " + keyName);
                                     }
-                                }
-                                if (val != null) {
-                                    Log.i(TAG, "Set: " + keyName + " -> " + Arrays.toString(val));
-                                    md.set(key, val);
-                                    jsonReq.remove(keyName);
-                                }
-                            } else {
-                                Object val = null;
-                                if (keyType == Integer.class) {
-                                    val = jsonReq.getInt(keyName);
-                                } else if (keyType == Byte.class) {
-                                    val = (byte)jsonReq.getInt(keyName);
-                                } else if (keyType == Double.class) {
-                                    val = jsonReq.getDouble(keyName);
-                                } else if (keyType == Long.class) {
-                                    val = jsonReq.getLong(keyName);
-                                } else if (keyType == Float.class) {
-                                    val = (float)jsonReq.getDouble(keyName);
-                                } else if (keyType == Boolean.class) {
-                                    val = jsonReq.getBoolean(keyName);
-                                } else if (keyType == String.class) {
-                                    val = jsonReq.getString(keyName);
-                                } else if (keyType == android.hardware.camera2.Size.class) {
-                                    JSONObject obj = jsonReq.getJSONObject(keyName);
-                                    val = new android.hardware.camera2.Size(
-                                            obj.getInt("width"), obj.getInt("height"));
-                                } else if (keyType == android.graphics.Rect.class) {
-                                    JSONObject obj = jsonReq.getJSONObject(keyName);
-                                    val = new android.graphics.Rect(
-                                            obj.getInt("left"), obj.getInt("top"),
-                                            obj.getInt("right"), obj.getInt("bottom"));
-                                } else if (keyType == Rational.class) {
-                                    JSONObject obj = jsonReq.getJSONObject(keyName);
-                                    val = new Rational(obj.getInt("numerator"),
-                                                       obj.getInt("denominator"));
-                                } else {
-                                    throw new ItsException(
-                                            "Failed to parse key from JSON: " + keyName);
-                                }
-                                if (val != null) {
-                                    Log.i(TAG, "Set: " + keyName + " -> " + val);
-                                    md.set(key ,val);
-                                    jsonReq.remove(keyName);
+                                    if (val != null) {
+                                        Log.i(TAG, "Set: " + keyName + " -> " + val);
+                                        md.set(key ,val);
+                                        jsonReq.remove(keyName);
+                                    }
                                 }
                             }
                         }
+                    } catch (IllegalArgumentException e) {
+                        // TODO: Remove this HACK once all keys are implemented (especially
+                        // android.statistics.faces).
+                        // If the key isn't plumbed all the way down, can get an exception by
+                        // trying to get it. Swallow the exception.
                     }
                 }
             }

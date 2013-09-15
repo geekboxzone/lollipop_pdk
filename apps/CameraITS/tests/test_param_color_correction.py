@@ -31,6 +31,8 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    THRESHOLD_MAX_DIFF = 0.1
+
     # Capture requests:
     # 1. With unit gains, and identity transform.
     # 2. With a higher red gain, and identity transform.
@@ -95,6 +97,16 @@ def main():
     pylab.plot(domain, b_means, 'b')
     pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+
+    # Expect G0 == G1 == G2, R0 == 0.5*R1 == R2, B0 == B1 == 0.5*B2
+    # Also need to ensure that the imasge is not clamped to white/black.
+    assert(all(g_means[i] > 0.2 and g_means[i] < 0.8 for i in xrange(3)))
+    assert(abs(g_means[1] - g_means[0]) < THRESHOLD_MAX_DIFF)
+    assert(abs(g_means[2] - g_means[1]) < THRESHOLD_MAX_DIFF)
+    assert(abs(r_means[2] - r_means[0]) < THRESHOLD_MAX_DIFF)
+    assert(abs(r_means[1] - 2.0 * r_means[0]) < THRESHOLD_MAX_DIFF)
+    assert(abs(b_means[1] - b_means[0]) < THRESHOLD_MAX_DIFF)
+    assert(abs(b_means[2] - 2.0 * b_means[0]) < THRESHOLD_MAX_DIFF)
 
 if __name__ == '__main__':
     main()
