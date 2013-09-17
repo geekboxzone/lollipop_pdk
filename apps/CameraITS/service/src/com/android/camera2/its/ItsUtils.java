@@ -293,8 +293,14 @@ public class ItsUtils {
                     } else {
                         // Generic case: should work for any pixelStride but slower.
                         // Use use intermediate buffer to avoid read byte-by-byte from
-                        // DirectByteBuffer, which is very bad for performance
-                        buffer.get(rowData, 0, rowStride);
+                        // DirectByteBuffer, which is very bad for performance.
+                        // Also need avoid access out of bound by only reading the available
+                        // bytes in the bytebuffer.
+                        int readSize = rowStride;
+                        if (buffer.remaining() < readSize) {
+                            readSize = buffer.remaining();
+                        }
+                        buffer.get(rowData, 0, readSize);
                         for (int col = 0; col < w; col++) {
                             data[offset++] = rowData[col * pixelStride];
                         }
