@@ -17,6 +17,7 @@
 package com.android.testingcamera2;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -32,6 +33,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -58,7 +60,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     // Min and max sensitivity ISO values
     private static final int MIN_SENSITIVITY = 100;
     private static final int MAX_SENSITIVITY = 1600;
+    private static final int ORIENTATION_UNINITIALIZED = -1;
 
+    private int mLastOrientation = ORIENTATION_UNINITIALIZED;
     private SurfaceView mPreviewView;
     private ImageView mStillView;
 
@@ -78,7 +82,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     private ToggleButton mManualCtrlToggle;
 
     private CameraControls mCameraControl = null;
-    private Set<View> mManualControls = new HashSet<View>();
+    private final Set<View> mManualControls = new HashSet<View>();
 
     Handler mMainHandler;
 
@@ -135,12 +139,18 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         } catch(ApiFailureException e) {
             logException("Cannot create camera ops!",e);
         }
+
+        // Process the initial configuration (for i.e. initial orientation)
+        // We need this because #onConfigurationChanged doesn't get called when the app launches
+        maybeUpdateConfiguration(getResources().getConfiguration());
     }
 
     @Override
     public void onResume() {
         super.onResume();
         try {
+            if (VERBOSE) Log.v(TAG, String.format("onResume"));
+
             mCameraOps.minimalPreviewConfig(mPreviewView.getHolder());
             mCurrentPreviewHolder = mPreviewView.getHolder();
         } catch (ApiFailureException e) {
@@ -152,11 +162,78 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     public void onPause() {
         super.onPause();
         try {
+            if (VERBOSE) Log.v(TAG, String.format("onPause"));
+
             mCameraOps.closeDevice();
         } catch (ApiFailureException e) {
             logException("Can't close device: ",e);
         }
         mCurrentPreviewHolder = null;
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        if (VERBOSE) {
+            Log.v(TAG, String.format("onConfiguredChanged: orientation %x",
+                    newConfig.orientation));
+        }
+
+        maybeUpdateConfiguration(newConfig);
+    }
+
+    private void maybeUpdateConfiguration(Configuration newConfig) {
+        if (VERBOSE) {
+            Log.v(TAG, String.format("handleConfiguration: orientation %x",
+                    newConfig.orientation));
+        }
+
+        if (mLastOrientation != newConfig.orientation) {
+            mLastOrientation = newConfig.orientation;
+            updatePreviewOrientation();
+        }
+    }
+
+    private void updatePreviewOrientation() {
+        LayoutParams params = mPreviewView.getLayoutParams();
+        int width = params.width;
+        int height = params.height;
+
+        if (VERBOSE) {
+            Log.v(TAG, String.format(
+                    "onConfiguredChanged: current layout is %dx%d", width,
+                    height));
+        }
+        /**
+         * Force wide aspect ratios for landscape
+         * Force narrow aspect ratios for portrait
+         */
+        if (mLastOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (height > width) {
+                int tmp = width;
+                width = height;
+                height = tmp;
+            }
+        } else if (mLastOrientation == Configuration.ORIENTATION_PORTRAIT) {
+            if (width > height) {
+                int tmp = width;
+                width = height;
+                height = tmp;
+            }
+        }
+
+        if (width != params.width && height != params.height) {
+            if (VERBOSE) {
+                Log.v(TAG, String.format(
+                        "onConfiguredChanged: updating preview size to %dx%d", width,
+                        height));
+            }
+            params.width = width;
+            params.height = height;
+
+            mPreviewView.setLayoutParams(params);
+        }
     }
 
     /** SurfaceHolder.Callback methods */
@@ -165,6 +242,10 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             int format,
             int width,
             int height) {
+        if (VERBOSE) {
+            Log.v(TAG, String.format("surfaceChanged: format %x, width %d, height %d", format,
+                    width, height));
+        }
         if (mCurrentPreviewHolder != null && holder == mCurrentPreviewHolder) {
             try {
                 mCameraOps.minimalPreview(holder);
@@ -183,7 +264,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     public void surfaceDestroyed(SurfaceHolder holder) {
     }
 
-    private Button.OnClickListener mInfoButtonListener = new Button.OnClickListener() {
+    private final Button.OnClickListener mInfoButtonListener = new Button.OnClickListener() {
         @Override
         public void onClick(View v) {
             final Handler uiHandler = new Handler();
@@ -213,7 +294,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         }
     }
 
-    private CameraOps.CaptureListener mCaptureListener = new CameraOps.CaptureListener() {
+    private final CameraOps.CaptureListener mCaptureListener = new CameraOps.CaptureListener() {
         @Override
         public void onCaptureAvailable(Image capture) {
             if (capture.getFormat() != ImageFormat.JPEG) {
@@ -230,7 +311,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     };
 
     // TODO: this callback is not called for each capture, need figure out why.
-    private CameraOps.CaptureResultListener mCaptureResultListener =
+    private final CameraOps.CaptureResultListener mCaptureResultListener =
             new CameraOps.CaptureResultListener() {
 
                 @Override
@@ -292,7 +373,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         Log.e(TAG, msg + Log.getStackTraceString(e));
     }
 
-    private OnSeekBarChangeListener mSensitivitySeekBarListener =
+    private final OnSeekBarChangeListener mSensitivitySeekBarListener =
             new OnSeekBarChangeListener() {
 
               @Override
@@ -328,7 +409,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
               }
     };
 
-    private OnSeekBarChangeListener mExposureSeekBarListener =
+    private final OnSeekBarChangeListener mExposureSeekBarListener =
             new OnSeekBarChangeListener() {
 
               @Override
@@ -365,7 +446,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
               }
     };
 
-    private OnSeekBarChangeListener mFrameDurationSeekBarListener =
+    private final OnSeekBarChangeListener mFrameDurationSeekBarListener =
             new OnSeekBarChangeListener() {
 
               @Override
@@ -399,7 +480,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
               }
     };
 
-    private View.OnClickListener mControlToggleListener =
+    private final View.OnClickListener mControlToggleListener =
             new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -415,7 +496,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         }
     };
 
-    private View.OnClickListener mRecordingToggleListener =
+    private final View.OnClickListener mRecordingToggleListener =
             new View.OnClickListener() {
         @Override
         public void onClick(View v) {
