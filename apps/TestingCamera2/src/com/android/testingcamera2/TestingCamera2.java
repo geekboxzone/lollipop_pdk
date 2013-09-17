@@ -242,31 +242,32 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                 public void onCaptureCompleted(
                         CameraDevice camera, CaptureRequest request, CaptureResult result) {
                     Log.i(TAG, "Capture result is available");
-                    int reqCtrlMode;
-                    int resCtrlMode;
+                    Integer reqCtrlMode;
+                    Integer resCtrlMode;
                     if (request == null || result ==null) {
                         Log.e(TAG, "request/result is invalid");
                         return;
                     }
                     Log.i(TAG, "Capture complete");
                     final StringBuffer info = new StringBuffer("Capture Result:\n");
+
                     reqCtrlMode = request.get(CaptureRequest.CONTROL_MODE);
                     resCtrlMode = result.get(CaptureResult.CONTROL_MODE);
                     info.append("Control mode: request " + reqCtrlMode + ". result " + resCtrlMode);
                     info.append("\n");
 
-                    int reqSen = request.get(CaptureRequest.SENSOR_SENSITIVITY);
-                    int resSen = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                    Integer reqSen = request.get(CaptureRequest.SENSOR_SENSITIVITY);
+                    Integer resSen = result.get(CaptureResult.SENSOR_SENSITIVITY);
                     info.append("Sensitivity: request " + reqSen + ". result " + resSen);
                     info.append("\n");
 
-                    long reqExp = request.get(CaptureRequest.SENSOR_EXPOSURE_TIME);
-                    long resExp = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                    Long reqExp = request.get(CaptureRequest.SENSOR_EXPOSURE_TIME);
+                    Long resExp = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
                     info.append("Exposure: request " + reqExp + ". result " + resExp);
                     info.append("\n");
 
-                    long reqFD = request.get(CaptureRequest.SENSOR_FRAME_DURATION);
-                    long resFD = result.get(CaptureResult.SENSOR_FRAME_DURATION);
+                    Long reqFD = request.get(CaptureRequest.SENSOR_FRAME_DURATION);
+                    Long resFD = result.get(CaptureResult.SENSOR_FRAME_DURATION);
                     info.append("Frame duration: request " + reqFD + ". result " + resFD);
                     info.append("\n");
 
