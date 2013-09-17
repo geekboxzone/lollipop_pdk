@@ -28,20 +28,11 @@ def main():
 
     THRESHOLD_MAX_RMS_DIFF = 0.1
 
-    req = its.objects.capture_request( {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0,
-        "android.sensor.sensitivity": 100,
-        "android.sensor.exposureTime": 10*1000*1000
-        })
-
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
 
         # YUV
+        req = its.objects.manual_capture_request(100,100)
         size = props['android.scaler.availableProcessedSizes'][0]
         req["outputSurface"] = size
         req["outputSurface"]["format"] = "yuv"
@@ -52,6 +43,7 @@ def main():
         rgb0 = its.image.compute_image_means(tile)
 
         # JPEG
+        req = its.objects.manual_capture_request(100,100)
         size = props['android.scaler.availableJpegSizes'][0]
         req["outputSurface"] = size
         req["outputSurface"]["format"] = "jpg"

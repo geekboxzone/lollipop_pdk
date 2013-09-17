@@ -27,28 +27,15 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # TODO: Query the allowable tonemap curve sizes; here, it's hardcoded to
-    # a length=64 list of tuples. The max allowed length should be inside the
-    # camera properties object.
-    L = 32
-    LM1 = float(L-1)
-
-    manual_tonemap = sum([[i/LM1, i/LM1] for i in range(L)], [])
+    manual_tonemap = [0,0, 1,1] # Linear
     manual_transform = its.objects.int_to_rational([1,2,3, 4,5,6, 7,8,9])
     manual_gains = [1,2,3,4]
     manual_region = [8,8,128,128]
     manual_exp_time = 100*1000*1000
     manual_sensitivity = 100
 
-    auto_req = its.objects.capture_request( {
-        "android.control.mode": 1,
-        "android.control.aeMode": 1,
-        "android.control.awbMode": 1,
-        "android.control.afMode": 1,
-        "android.colorCorrection.mode": 1,
-        "android.tonemap.mode": 1,
-        "android.statistics.lensShadingMapMode":1
-        })
+    auto_req = its.objects.auto_capture_request()
+    auto_req["captureRequest"]["android.statistics.lensShadingMapMode"] = 1
 
     manual_req = its.objects.capture_request( {
         "android.control.mode": 0,
@@ -149,9 +136,13 @@ def main():
                   cap_res["android.tonemap.curveBlue"]]
         exp_time = cap_res['android.sensor.exposureTime']
         lsc_map = cap_res["android.statistics.lensShadingMap"]
+        pred_gains = cap_res["android.statistics.predictedColorGains"]
+        pred_transform = cap_res["android.statistics.predictedColorTransform"]
 
         print "Gains:", gains
         print "Transform:", [r2f(t) for t in transform]
+        print "Predicted gains:", pred_gains
+        print "Predicted transform:", [r2f(t) for t in pred_transform]
         print "Tonemap:", curves[0][1::16]
         print "AE region:", cap_res['android.control.aeRegions']
         print "AF region:", cap_res['android.control.afRegions']
@@ -168,23 +159,25 @@ def main():
         assert(all([is_close_rational(transform[i], manual_transform[i])
                     for i in xrange(9)]))
 
+        # The predicted gains and transform must also be valid.
+        assert(len(pred_gains) == 4)
+        assert(len(pred_transform) == 9)
+
         # Tonemap must be valid.
-        # The returned tonemap can be interpolated from the provided values.
+        # The returned tonemap must be linear.
         for c in curves:
             assert(len(c) > 0)
-            for i, val in enumerate(c):
-                ii = int(math.floor(
-                        ((i+0.5) / float(len(c))*float(len(manual_tonemap)))))
-                assert(is_close_float(c[i], manual_tonemap[ii]))
+            assert(all([is_close_float(c[i], c[i+1])
+                        for i in xrange(0,len(c),2)]))
 
         # Exposure time must be close to the requested exposure time.
         assert(is_close_float(exp_time/1000000.0, manual_exp_time/1000000.0))
 
-        # 3A regions must be valid, and must match the manual regions.
-        # TODO: Uncomment these assertions once the bug is fixed.
-        #assert(cap_res['android.control.aeRegions'][:4] == manual_region)
-        #assert(cap_res['android.control.afRegions'][:4] == manual_region)
-        #assert(cap_res['android.control.awbRegions'][:4] == manual_region)
+        # 3A regions must be valid. They don't need to actually match what was
+        # requesed, since the SOC may not support those regions exactly.
+        assert(len(cap_res['android.control.aeRegions']) == 5)
+        assert(len(cap_res['android.control.afRegions']) == 5)
+        assert(len(cap_res['android.control.awbRegions']) == 5)
 
         # Lens shading map must be valid.
         assert(w_map > 0 and h_map > 0 and w_map * h_map * 4 == len(lsc_map))
@@ -193,8 +186,7 @@ def main():
         # Lens shading map must take into account the manual color correction
         # settings. Test this by ensuring that the map is different between
         # the auto and manual test cases.
-        # TODO: Uncomment these assertions once the bug is fixed.
-        #assert(lsc_map != lsc_map_auto)
+        assert(lsc_map != lsc_map_auto)
 
         draw_lsc_plot(w_map, h_map, lsc_map, "manual")
 

@@ -27,16 +27,6 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    auto_req = its.objects.capture_request( {
-        "android.control.mode": 1,
-        "android.control.aeMode": 1,
-        "android.control.awbMode": 1,
-        "android.control.afMode": 1,
-        "android.colorCorrection.mode": 1,
-        "android.tonemap.mode": 1,
-        "android.statistics.lensShadingMapMode":1
-        })
-
     def r2f(r):
         return float(r["numerator"]) / float(r["denominator"])
 
@@ -47,8 +37,17 @@ def main():
 
         # TODO: Test for 3A convergence, and exit this test once converged.
 
+        triggered = False
         while True:
-            fname, w, h, md_obj = cam.do_capture(auto_req)
+            req = its.objects.auto_capture_request()
+            req["captureRequest"]["android.statistics.lensShadingMapMode"] = 1
+            req['captureRequest']['android.control.aePrecaptureTrigger'] = (
+                    0 if triggered else 1)
+            req['captureRequest']['android.control.afTrigger'] = (
+                    0 if triggered else 1)
+            triggered = True
+
+            fname, w, h, md_obj = cam.do_capture(req)
             cap_res = md_obj["captureResult"]
 
             ae_state = cap_res["android.control.aeState"]
@@ -58,6 +57,8 @@ def main():
             transform = cap_res["android.colorCorrection.transform"]
             exp_time = cap_res['android.sensor.exposureTime']
             lsc_map = cap_res["android.statistics.lensShadingMap"]
+            foc_dist = cap_res['android.lens.focusDistance']
+            foc_range = cap_res['android.lens.focusRange']
 
             print "States (AE,AWB,AF):", ae_state, awb_state, af_state
             print "Gains:", gains
@@ -66,6 +67,7 @@ def main():
             print "AF region:", cap_res['android.control.afRegions']
             print "AWB region:", cap_res['android.control.awbRegions']
             print "LSC map:", w_map, h_map, lsc_map[:8]
+            print "Focus (dist,range):", foc_dist, foc_range
             print ""
 
 if __name__ == '__main__':

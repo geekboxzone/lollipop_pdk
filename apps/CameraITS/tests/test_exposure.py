@@ -35,14 +35,6 @@ def main():
     THRESHOLD_MAX_LEVEL = 0.9
     THRESHOLD_MAX_ABS_GRAD = 0.001
 
-    req = its.objects.capture_request( {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0
-        })
-
     mults = range(1, 100, 9)
     r_means = []
     g_means = []
@@ -50,8 +42,7 @@ def main():
 
     with its.device.ItsSession() as cam:
         for m in mults:
-            req["captureRequest"]["android.sensor.sensitivity"] = 100*m
-            req["captureRequest"]["android.sensor.exposureTime"] = 40*1000*1000/m
+            req = its.objects.manual_capture_request(100*m, 40.0/m)
             fname, w, h, md_obj = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(img, "%s_mult=%02d.jpg" % (NAME, m))

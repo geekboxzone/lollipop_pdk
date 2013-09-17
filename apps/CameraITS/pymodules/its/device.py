@@ -48,6 +48,10 @@ class ItsSession(object):
     # to adb, which causes it to fail if there is more than one device.
     ADB = "adb -d"
 
+    # Set to True to take a pre-shot before capture and throw it away (for
+    # debug purposes).
+    CAPTURE_THROWAWAY_SHOTS = False
+
     DEVICE_FOLDER_ROOT = '/sdcard/its'
     DEVICE_FOLDER_CAPTURE = 'captures'
     INTENT_CAPTURE = 'com.android.camera2.its.CAPTURE'
@@ -456,14 +460,11 @@ class ItsSession(object):
               burst capture) containing the metadata of the captured image(s).
         """
         if request.has_key("captureRequest"):
-
-            print "Capturing image (including a pre-shot for settings synch)"
-
-            # HACK: Take a pre-shot, to make sure the settings stick.
-            # TODO: Remove this code once it is no longer needed.
-            self.__start_capture(request)
-            self.__wait_for_capture_done_single()
-
+            if self.CAPTURE_THROWAWAY_SHOTS:
+                print "Capturing throw-away image"
+                self.__start_capture(request)
+                self.__wait_for_capture_done_single()
+            print "Capturing image"
             self.__start_capture(request)
             remote_fname, w, h = self.__wait_for_capture_done_single()
             local_fname = self.__copy_captured_files([remote_fname])[0]

@@ -59,6 +59,48 @@ def capture_request_list(obj_list):
     """
     return {"captureRequestList": obj_list}
 
+def manual_capture_request(sensitivity, exp_time_ms):
+    """Return a capture request with everything set to manual.
+
+    Uses identity/unit color correction, and the default tonemap curve.
+
+    Args:
+        sensitivity: The sensitivity value to populate the request with.
+        exp_time_ms: The exposure time, in milliseconds, to populate the
+            request with.
+
+    Returns:
+        The default manual capture request, ready to be passed to the
+        its.device.do_capture function.
+    """
+    return capture_request( {
+        "android.control.mode": 0,
+        "android.control.aeMode": 0,
+        "android.control.awbMode": 0,
+        "android.control.afMode": 0,
+        "android.control.effectMode": 0,
+        "android.sensor.frameDuration": 0,
+        "android.sensor.sensitivity": sensitivity,
+        "android.sensor.exposureTime": exp_time_ms*1000*1000,
+        "android.colorCorrection.mode": 0,
+        "android.colorCorrection.transform":
+                int_to_rational([1,0,0, 0,1,0, 0,0,1]),
+        "android.colorCorrection.gains": [1,1,1,1],
+        "android.tonemap.mode": 1,
+        })
+
+def auto_capture_request():
+    """Return a capture request with everything set to auto.
+    """
+    return capture_request( {
+        "android.control.mode": 1,
+        "android.control.aeMode": 1,
+        "android.control.awbMode": 1,
+        "android.control.afMode": 1,
+        "android.colorCorrection.mode": 1,
+        "android.tonemap.mode": 1,
+        })
+
 class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
     """

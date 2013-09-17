@@ -40,17 +40,6 @@ def main():
     L = 32
     LM1 = float(L-1)
 
-    req = its.objects.capture_request( {
-        "android.tonemap.mode": 0,
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.sensitivity": 100,
-        "android.sensor.exposureTime": 50*1000*1000,
-        "android.sensor.frameDuration": 0
-        })
-
     with its.device.ItsSession() as cam:
 
         # Test 1: that the tonemap curves have the expected effect. Take two
@@ -61,6 +50,8 @@ def main():
         rgb_means = []
 
         for n in [0,1]:
+            req = its.objects.manual_capture_request(100,50)
+            req["captureRequest"]["android.tonemap.mode"] = 0
             req["captureRequest"]["android.tonemap.curveRed"] = (
                     sum([[i/LM1, (1+0.5*n)*i/LM1] for i in range(L)], []))
             req["captureRequest"]["android.tonemap.curveGreen"] = (
@@ -87,6 +78,8 @@ def main():
         for size in [32,64]:
             m = float(size-1)
             curve = sum([[i/m, i/m] for i in range(size)], [])
+            req = its.objects.manual_capture_request(100,50)
+            req["captureRequest"]["android.tonemap.mode"] = 0
             req["captureRequest"]["android.tonemap.curveRed"] = curve
             req["captureRequest"]["android.tonemap.curveGreen"] = curve
             req["captureRequest"]["android.tonemap.curveBlue"] = curve

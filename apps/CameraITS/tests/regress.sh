@@ -16,14 +16,14 @@
 
 # The tests exercised in this file all assert/exit on failure, and terminate
 # cleanly on success. The device is rebooted for each test, to ensure that
-# a problem in one test doesn't propagate into subsequent tests. If any tests
-# assert/exit (i.e. fail), this script will exit.
-
-set -e
+# a problem in one test doesn't propagate into subsequent tests.
 
 rm -rf out
 mkdir -p out
 cd out
+
+testcount=0
+failcount=0
 
 for T in \
          test_3a.py \
@@ -44,19 +44,26 @@ for T in \
          test_param_edge_mode.py \
 
 do
+    let testcount=testcount+1
     echo ""
     echo "--------------------------------------------------------------------"
     echo "Running test: $T"
     echo "--------------------------------------------------------------------"
     python ../"$T" reboot
+    code=$?
+    if [ $code -ne 0 ]; then
+        let failcount=failcount+1
+        echo ""
+        echo "###############"
+        echo "# Test failed #"
+        echo "###############"
+    fi
     echo ""
 done
 
-cd ..
+echo ""
+echo "$failcount out of $testcount tests failed"
+echo ""
 
-echo ""
-echo "####################"
-echo "# All tests passed #"
-echo "####################"
-echo ""
+cd ..
 

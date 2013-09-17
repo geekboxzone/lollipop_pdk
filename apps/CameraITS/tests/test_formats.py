@@ -26,7 +26,7 @@ def main():
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
         for size in props['android.scaler.availableProcessedSizes']:
-            req = its.objects.capture_request({"android.control.aeMode": 0})
+            req = its.objects.manual_capture_request(100,10)
             req["outputSurface"] = size
             req["outputSurface"]["format"] = "yuv"
             fname, w, h, cap_md = cam.do_capture(req)
@@ -35,7 +35,7 @@ def main():
             assert(os.path.getsize(fname) == w*h*3/2)
             print "Successfully captured YUV %dx%d" % (w, h)
         for size in props['android.scaler.availableJpegSizes']:
-            req = its.objects.capture_request({"android.control.aeMode": 0})
+            req = its.objects.manual_capture_request(100,10)
             req["outputSurface"] = size
             req["outputSurface"]["format"] = "jpg"
             fname, w, h, cap_md = cam.do_capture(req)

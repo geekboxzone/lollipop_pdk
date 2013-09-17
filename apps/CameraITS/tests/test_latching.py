@@ -30,41 +30,23 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    req = {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0,
-        "android.sensor.sensitivity": 150,
-        "android.sensor.exposureTime": 10*1000*1000
-        }
+    S = 150 # Sensitivity
+    E = 10 # Exposure time, ms
 
-    reqs = its.objects.capture_request_list([copy.deepcopy(req)]*2)
-
-    req["android.sensor.sensitivity"] *= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.exposureTime"] /= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.exposureTime"] *= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.sensitivity"] /= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.sensitivity"] *= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.exposureTime"] /= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.exposureTime"] *= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
-
-    req["android.sensor.sensitivity"] /= 10
-    reqs["captureRequestList"] += [copy.deepcopy(req)]*2
+    reqs = its.objects.capture_request_list([
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        its.objects.manual_capture_request(S*8,E  )["captureRequest"],
+        its.objects.manual_capture_request(S*8,E  )["captureRequest"],
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        its.objects.manual_capture_request(S,  E*8)["captureRequest"],
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        its.objects.manual_capture_request(S*8,E  )["captureRequest"],
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        its.objects.manual_capture_request(S,  E*8)["captureRequest"],
+        its.objects.manual_capture_request(S,  E  )["captureRequest"],
+        ])
 
     r_means = []
     g_means = []

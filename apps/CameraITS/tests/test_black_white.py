@@ -30,17 +30,6 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    req = its.objects.capture_request( {
-        "android.sensor.exposureTime": 10*1000, # 0.01ms
-        "android.sensor.sensitivity": 100,
-        "android.sensor.frameDuration": 0,
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.control.effectMode": 0,
-        })
-
     r_means = []
     g_means = []
     b_means = []
@@ -48,6 +37,7 @@ def main():
     with its.device.ItsSession() as cam:
         # Take a shot with very low ISO and exposure time. Expect it to
         # be black.
+        req = its.objects.manual_capture_request(100, 0.1)
         fname, w, h, cap_md = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_black.jpg" % (NAME))
@@ -60,8 +50,7 @@ def main():
 
         # Take a shot with very high ISO and exposure time. Expect it to
         # be black.
-        req["captureRequest"]["android.sensor.sensitivity"] = 10000
-        req["captureRequest"]["android.sensor.exposureTime"] = 1000*1000*1000
+        req = its.objects.manual_capture_request(10000, 1000)
         fname, w, h, cap_md = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_white.jpg" % (NAME))

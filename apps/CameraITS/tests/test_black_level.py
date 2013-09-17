@@ -40,16 +40,6 @@ def main():
     # Only check the center part where LSC has little effects.
     R = 200
 
-    req = its.objects.capture_request( {
-        "android.blackLevel.lock": True,
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0,
-        "android.sensor.exposureTime": 1*1000*1000
-        })
-
     # The most frequent pixel value in each image; assume this is the black
     # level, since the images are all dark (shot with the lens covered).
     ymodes = []
@@ -66,9 +56,17 @@ def main():
         print "Sensitivities:", sensitivities
         for si, s in enumerate(sensitivities):
             for rep in xrange(NUM_REPEAT):
+                req = its.objects.manual_capture_request(100, 1)
+                req["captureRequest"]["android.blackLevel.lock"] = True
                 req["captureRequest"]["android.sensor.sensitivity"] = s
                 fname, w, h, cap_md = cam.do_capture(req)
                 yimg,uimg,vimg = its.image.load_yuv420_to_yuv_planes(fname,w,h)
+
+                # Magnify the noise in saved images to help visualize.
+                its.image.write_image(yimg * 2,
+                                      "%s_s=%05d_y.jpg" % (NAME, s), True)
+                its.image.write_image(numpy.absolute(uimg - 0.5) * 2,
+                                      "%s_s=%05d_u.jpg" % (NAME, s), True)
 
                 yimg = yimg[w/2-R:w/2+R, h/2-R:h/2+R]
                 uimg = uimg[w/4-R/2:w/4+R/2, w/4-R/2:w/4+R/2]
@@ -94,8 +92,6 @@ def main():
     print "Y black levels:", ymodes
     print "U black levels:", umodes
     print "V black levels:", vmodes
-
-    assert(all([ymodes[i] == ymodes[0] for i in range(len(ymodes))]))
 
 if __name__ == '__main__':
     main()

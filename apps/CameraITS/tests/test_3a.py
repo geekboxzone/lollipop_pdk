@@ -17,12 +17,8 @@ import its.device
 def main():
     """Basic test for bring-up of 3A.
 
-    Will be updated or removed once 3A is working. Simply calls the function to
-    initiate the 3A intent, and exits. Watch logcat (once the script exits) to
-    see how the 3A operation fared.
+    To pass, 3A must converge. Check that the returned 3A values are legal.
     """
-
-    # TODO: Finish this test
 
     with its.device.ItsSession() as cam:
         rect = [0,0,1,1]
@@ -34,9 +30,7 @@ def main():
         assert(exp > 0)
         assert(len(gains) == 4)
         assert(len(xform) == 9)
-
-        # TODO: Uncomment assertion once AF returns the focus distance.
-        #assert(focus > 0)
+        assert(focus > 0)
 
 if __name__ == '__main__':
     main()
