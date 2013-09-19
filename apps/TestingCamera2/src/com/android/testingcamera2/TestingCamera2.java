@@ -70,6 +70,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     private SurfaceHolder mCurrentPreviewHolder = null;
 
     private Button mInfoButton;
+    private Button mFlushButton;
 
     private SeekBar mSensitivityBar;
     private SeekBar mExposureBar;
@@ -103,6 +104,8 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
         mInfoButton  = (Button) findViewById(R.id.info_button);
         mInfoButton.setOnClickListener(mInfoButtonListener);
+        mFlushButton  = (Button) findViewById(R.id.flush_button);
+        mFlushButton.setOnClickListener(mFlushButtonListener);
         mRecordingToggle = (ToggleButton) findViewById(R.id.start_recording);
         mRecordingToggle.setOnClickListener(mRecordingToggleListener);
 
@@ -280,6 +283,23 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                         }
                     } catch (ApiFailureException e) {
                         logException("Can't take a JPEG! ", e);
+                    }
+                }
+            });
+        }
+    };
+
+    private Button.OnClickListener mFlushButtonListener = new Button.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            final Handler uiHandler = new Handler();
+            AsyncTask.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        mCameraOps.flush();
+                    } catch (ApiFailureException e) {
+                        logException("Can't flush!", e);
                     }
                 }
             });

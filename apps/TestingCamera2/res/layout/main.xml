@@ -71,6 +71,13 @@
             android:textOff="@string/recording_off_label"
             android:textOn="@string/recording_on_label" />
 
+        <Button
+            android:id="@+id/flush_button"
+            android:text="@string/flush_button_label"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            />
+
         <View
             android:id="@+id/horizontal_rule_1"
             android:layout_width="fill_parent"

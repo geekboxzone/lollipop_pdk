@@ -373,6 +373,18 @@ public class CameraOps {
         }
     }
 
+    /**
+     * Flush all current requests and in-progress work
+     */
+    public void flush() throws ApiFailureException {
+        minimalOpenCamera();
+        try {
+            mCamera.flush();
+        } catch (CameraAccessException e) {
+            throw new ApiFailureException("Error flushing", e);
+        }
+    }
+
     private Size getRecordingSize() throws ApiFailureException {
         try {
             CameraCharacteristics properties =

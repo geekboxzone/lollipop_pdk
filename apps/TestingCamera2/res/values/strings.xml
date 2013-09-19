@@ -18,6 +18,7 @@
 <resources>
     <string name="app_name">TestingCam2</string>
     <string name="info_button_label">JPEG!</string>
+    <string name="flush_button_label">Flush device</string>
     <string name="recording_on_label">Recording On</string>
     <string name="recording_off_label">Recording Off</string>
     <string name="auto_control_label">Auto</string>
