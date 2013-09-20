@@ -38,6 +38,9 @@ import android.os.Message;
 import android.util.Log;
 import android.view.Surface;
 
+import com.android.ex.camera2.blocking.BlockingCameraManager;
+import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
+
 import org.json.JSONObject;
 
 import java.io.File;
@@ -75,6 +78,7 @@ public class ItsService extends Service {
     public static final String TRIGGER_AF_KEY = "af";
 
     private CameraManager mCameraManager = null;
+    private BlockingCameraManager mBlockingCameraManager = null;
     private CameraDevice mCamera = null;
     private ImageReader mCaptureReader = null;
     private CameraProperties mCameraProperties = null;
@@ -114,6 +118,7 @@ public class ItsService extends Service {
             if (mCameraManager == null) {
                 throw new ItsException("Failed to connect to camera manager");
             }
+            mBlockingCameraManager = new BlockingCameraManager(mCameraManager);
 
             // Open the camera device, and get its properties.
             String[] devices;
@@ -122,12 +127,30 @@ public class ItsService extends Service {
                 if (devices == null || devices.length == 0) {
                     throw new ItsException("No camera devices");
                 }
+            } catch (CameraAccessException e) {
+                throw new ItsException("Failed to get device ID list", e);
+            }
+
+            HandlerThread openThread = new HandlerThread("OpenThread");
+            try {
+                openThread.start();
+                Handler openHandler = new Handler(openThread.getLooper());
 
                 // TODO: Add support for specifying which device to open.
-                mCamera = mCameraManager.openCamera(devices[0]);
+                mCamera = mBlockingCameraManager.openCamera(devices[0], /*listener*/null,
+                        openHandler);
                 mCameraProperties = mCamera.getProperties();
             } catch (CameraAccessException e) {
-                throw new ItsException("Failed to get device ID list");
+                throw new ItsException("Failed to open camera", e);
+            } catch (BlockingOpenException e) {
+                throw new ItsException("Failed to open camera (after blocking)", e);
+            } finally {
+                /**
+                 * OK to shut down thread immediately after #openCamera since there is no listener.
+                 * If listener ever becomes non-null then handler's thread must be valid for
+                 * the full lifetime of the listener.
+                 */
+                openThread.quitSafely();
             }
 
             // Create a thread to receive images and save them.

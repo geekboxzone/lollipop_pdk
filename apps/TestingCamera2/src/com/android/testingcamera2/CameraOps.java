@@ -34,6 +34,9 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
+import com.android.ex.camera2.blocking.BlockingCameraManager;
+import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +53,7 @@ public class CameraOps {
     private Handler mOpsHandler;
 
     private final CameraManager mCameraManager;
+    private final BlockingCameraManager mBlockingCameraManager;
     private CameraDevice mCamera;
 
     private ImageReader mCaptureReader;
@@ -96,6 +100,7 @@ public class CameraOps {
         if (mCameraManager == null) {
             throw new ApiFailureException("Can't connect to camera manager!");
         }
+        mBlockingCameraManager = new BlockingCameraManager(mCameraManager);
 
         mOpsThread = new Thread(new Runnable() {
             @Override
@@ -138,17 +143,6 @@ public class CameraOps {
         return mCameraProperties;
     }
 
-    public void openDevice(String cameraId)
-            throws CameraAccessException, ApiFailureException {
-        checkOk();
-
-        if (mCamera != null) {
-            throw new IllegalStateException("Already have open camera device");
-        }
-
-        mCamera = mCameraManager.openCamera(cameraId);
-    }
-
     public void closeDevice()
             throws ApiFailureException {
         checkOk();
@@ -172,10 +166,13 @@ public class CameraOps {
                 if (devices == null || devices.length == 0) {
                     throw new ApiFailureException("no devices");
                 }
-                mCamera = mCameraManager.openCamera(devices[0]);
+                mCamera = mBlockingCameraManager.openCamera(devices[0],
+                        /*listener*/null, mOpsHandler);
                 mCameraProperties = mCamera.getProperties();
             } catch (CameraAccessException e) {
                 throw new ApiFailureException("open failure", e);
+            } catch (BlockingOpenException e) {
+                throw new ApiFailureException("open async failure", e);
             }
         }
 
