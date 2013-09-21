@@ -22,6 +22,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraProperties;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.media.Image;
@@ -283,7 +284,8 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                 }
 
                 @Override
-                public void onCaptureFailed(CameraDevice camera, CaptureRequest request) {
+                public void onCaptureFailed(CameraDevice camera, CaptureRequest request,
+                        CaptureFailure failure) {
                     Log.e(TAG, "Capture failed");
                 }
     };

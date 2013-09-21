@@ -24,6 +24,7 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraProperties;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.Rational;
@@ -692,7 +693,8 @@ public class ItsService extends Service {
         }
 
         @Override
-        public void onCaptureFailed(CameraDevice camera, CaptureRequest request) {
+        public void onCaptureFailed(CameraDevice camera, CaptureRequest request,
+                CaptureFailure failure) {
             mCaptureCallbackLatch.countDown();
             Log.e(TAG, "Script error: capture failed");
             Log.e(PYTAG, "### FAIL");
