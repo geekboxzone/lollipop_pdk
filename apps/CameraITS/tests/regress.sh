@@ -42,6 +42,7 @@ for T in \
          test_latching.py \
          test_linearity.py \
          test_param_edge_mode.py \
+         test_param_flash_mode.py \
 
 do
     let testcount=testcount+1

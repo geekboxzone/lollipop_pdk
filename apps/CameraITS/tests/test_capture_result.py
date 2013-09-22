@@ -84,19 +84,28 @@ def main():
         matplotlib.pyplot.savefig("%s_plot_lsc_%s.png" % (NAME, name))
 
     def test_auto(cam, w_map, h_map):
+        # Get 3A lock first, so the auto values in the capture result are
+        # populated properly.
+        rect = [0,0,1,1]
+        cam.do_3a(rect, rect, rect, True, True, False)
+
         fname, w, h, md_obj = cam.do_capture(auto_req)
         cap_res = md_obj["captureResult"]
         gains = cap_res["android.colorCorrection.gains"]
         transform = cap_res["android.colorCorrection.transform"]
         exp_time = cap_res['android.sensor.exposureTime']
         lsc_map = cap_res["android.statistics.lensShadingMap"]
+        ctrl_mode = cap_res["android.control.mode"]
 
+        print "Control mode:", ctrl_mode
         print "Gains:", gains
         print "Transform:", [r2f(t) for t in transform]
         print "AE region:", cap_res['android.control.aeRegions']
         print "AF region:", cap_res['android.control.afRegions']
         print "AWB region:", cap_res['android.control.awbRegions']
         print "LSC map:", w_map, h_map, lsc_map[:8]
+
+        assert(ctrl_mode == 1)
 
         # Color correction gain and transform must be valid.
         assert(len(gains) == 4)
@@ -138,7 +147,9 @@ def main():
         lsc_map = cap_res["android.statistics.lensShadingMap"]
         pred_gains = cap_res["android.statistics.predictedColorGains"]
         pred_transform = cap_res["android.statistics.predictedColorTransform"]
+        ctrl_mode = cap_res["android.control.mode"]
 
+        print "Control mode:", ctrl_mode
         print "Gains:", gains
         print "Transform:", [r2f(t) for t in transform]
         print "Predicted gains:", pred_gains
@@ -148,6 +159,8 @@ def main():
         print "AF region:", cap_res['android.control.afRegions']
         print "AWB region:", cap_res['android.control.awbRegions']
         print "LSC map:", w_map, h_map, lsc_map[:8]
+
+        assert(ctrl_mode == 0)
 
         # Color correction gain and transform must be valid.
         # Color correction gains and transform should be the same size and

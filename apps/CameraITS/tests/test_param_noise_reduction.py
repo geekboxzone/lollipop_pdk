@@ -32,7 +32,7 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    THRESHOLD_MIN_VARIANCE_RATIO = 0.5
+    THRESHOLD_MIN_VARIANCE_RATIO = 0.7
 
     req = its.objects.capture_request( {
         "android.control.mode": 0,
@@ -47,6 +47,8 @@ def main():
 
     # Reference (baseline) variance for each of Y,U,V.
     ref_variance = []
+
+    nr_modes_reported = []
 
     with its.device.ItsSession() as cam:
         # NR mode 0 with low gain
@@ -66,10 +68,12 @@ def main():
         for i in range(3):
             # NR modes 0, 1, 2 with high gain
             req["captureRequest"]["android.noiseReduction.mode"] = i
-            req["captureRequest"]["android.sensor.sensitivity"] = 1600
+            req["captureRequest"]["android.sensor.sensitivity"] = 100*16
             req["captureRequest"]["android.sensor.exposureTime"] = (
                     20*1000*1000/16)
             fname, w, h, md_obj = cam.do_capture(req)
+            nr_modes_reported.append(
+                    md_obj["captureResult"]["android.noiseReduction.mode"])
             its.image.write_image(
                     its.image.load_yuv420_to_rgb_image(fname, w, h),
                     "%s_high_gain_nr=%d.jpg" % (NAME, i))
@@ -84,6 +88,8 @@ def main():
     for j in range(3):
         pylab.plot(range(3), variances[j], "rgb"[j])
     matplotlib.pyplot.savefig("%s_plot_variances.png" % (NAME))
+
+    assert(nr_modes_reported == [0,1,2])
 
     # Check that the variance of the NR=0 image is much higher than for the
     # NR=1 and NR=2 images.

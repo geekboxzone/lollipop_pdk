@@ -348,7 +348,7 @@ class ItsSession(object):
         local_fname = os.path.basename(remote_fname)
         return self.__parse_captured_json([local_fname])[0]['cameraProperties']
 
-    def do_3a(self, region_ae, region_af, region_awb,
+    def do_3a(self, region_ae, region_awb, region_af,
               do_ae=True, do_awb=True, do_af=True):
         """Perform a 3A operation on the device.
 
@@ -359,8 +359,8 @@ class ItsSession(object):
 
         Args:
             region_ae: Normalized rect. (x,y,w,h) specifying the AE region.
-            region_af: Normalized rect. (x,y,w,h) specifying the AF region.
             region_awb: Normalized rect. (x,y,w,h) specifying the AWB region.
+            region_af: Normalized rect. (x,y,w,h) specifying the AF region.
 
         Returns:
             Five values:
