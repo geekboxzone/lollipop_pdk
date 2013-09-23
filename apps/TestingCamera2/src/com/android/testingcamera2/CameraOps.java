@@ -28,6 +28,7 @@ import android.hardware.camera2.Size;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
@@ -49,8 +50,8 @@ public class CameraOps {
 
     private static final String TAG = "CameraOps";
 
-    private final Thread mOpsThread;
-    private Handler mOpsHandler;
+    private final HandlerThread mOpsThread;
+    private final Handler mOpsHandler;
 
     private final CameraManager mCameraManager;
     private final BlockingCameraManager mBlockingCameraManager;
@@ -88,13 +89,6 @@ public class CameraOps {
         }
     }
 
-    private class OpsHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-
-        }
-    }
-
     private CameraOps(Context ctx) throws ApiFailureException {
         mCameraManager = (CameraManager) ctx.getSystemService(Context.CAMERA_SERVICE);
         if (mCameraManager == null) {
@@ -102,15 +96,9 @@ public class CameraOps {
         }
         mBlockingCameraManager = new BlockingCameraManager(mCameraManager);
 
-        mOpsThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Looper.prepare();
-                mOpsHandler = new OpsHandler();
-                Looper.loop();
-            }
-        }, "CameraOpsThread");
+        mOpsThread = new HandlerThread("CameraOpsThread");
         mOpsThread.start();
+        mOpsHandler = new Handler(mOpsThread.getLooper());
 
         mRecordingStream = new CameraRecordingStream();
         mStatus = STATUS_OK;
