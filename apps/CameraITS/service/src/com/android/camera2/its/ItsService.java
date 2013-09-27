@@ -140,7 +140,7 @@ public class ItsService extends Service {
                 // TODO: Add support for specifying which device to open.
                 mCamera = mBlockingCameraManager.openCamera(devices[0], /*listener*/null,
                         openHandler);
-                mCameraCharacteristics = mCamera.getProperties();
+                mCameraCharacteristics = mCameraManager.getCameraCharacteristics(devices[0]);
             } catch (CameraAccessException e) {
                 throw new ItsException("Failed to open camera", e);
             } catch (BlockingOpenException e) {
