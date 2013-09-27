@@ -156,7 +156,7 @@ public class CameraOps {
                 }
                 mCamera = mBlockingCameraManager.openCamera(devices[0],
                         /*listener*/null, mOpsHandler);
-                mCameraCharacteristics = mCamera.getProperties();
+                mCameraCharacteristics = mCameraManager.getCameraCharacteristics(mCamera.getId());
             } catch (CameraAccessException e) {
                 throw new ApiFailureException("open failure", e);
             } catch (BlockingOpenException e) {
@@ -174,7 +174,8 @@ public class CameraOps {
 
         minimalOpenCamera();
         try {
-            CameraCharacteristics properties = mCamera.getProperties();
+            CameraCharacteristics properties =
+                    mCameraManager.getCameraCharacteristics(mCamera.getId());
 
             Size[] previewSizes = null;
             Size sz = DEFAULT_SIZE;
@@ -247,7 +248,8 @@ public class CameraOps {
             mCamera.stopRepeating();
             mCamera.waitUntilIdle();
 
-            CameraCharacteristics properties = mCamera.getProperties();
+            CameraCharacteristics properties =
+                    mCameraManager.getCameraCharacteristics(mCamera.getId());
             Size[] jpegSizes = null;
             if (properties != null) {
                 jpegSizes = properties.get(
@@ -360,7 +362,8 @@ public class CameraOps {
 
     private Size getRecordingSize() throws ApiFailureException {
         try {
-            CameraCharacteristics properties = mCamera.getProperties();
+            CameraCharacteristics properties =
+                    mCameraManager.getCameraCharacteristics(mCamera.getId());
 
             Size[] recordingSizes = null;
             if (properties != null) {
