@@ -37,7 +37,7 @@ def main():
         "android.control.awbMode": 0,
         "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
-        "android.sensor.exposureTime": 1*1000*1000
+        "android.sensor.exposureTime": 2*1000*1000
         })
 
     sensitivities = None

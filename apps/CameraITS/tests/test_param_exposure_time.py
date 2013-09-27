@@ -35,7 +35,7 @@ def main():
         "android.control.awbMode": 0,
         "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
-        "android.sensor.sensitivity": 100
+        "android.sensor.sensitivity": 200
         })
 
     exposures = range(1,101,20) # ms
