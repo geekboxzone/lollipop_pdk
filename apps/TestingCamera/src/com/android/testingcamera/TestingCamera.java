@@ -1458,7 +1458,13 @@ public class TestingCamera extends Activity
         mRecordHandoffCheckBox.setEnabled(true);
         mRecordToggle.setChecked(false);
         if (mRecorder != null) {
-            mRecorder.stop();
+            try {
+                mRecorder.stop();
+            } catch (RuntimeException e) {
+                // this can happen if there were no frames received by recorder
+                logE("Could not create output file");
+                error = true;
+            }
 
             if (mRecordHandoffCheckBox.isChecked()) {
                 mState = CAMERA_UNINITIALIZED;
