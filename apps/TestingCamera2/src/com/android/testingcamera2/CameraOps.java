@@ -37,6 +37,7 @@ import android.view.SurfaceHolder;
 
 import com.android.ex.camera2.blocking.BlockingCameraManager;
 import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
+import com.android.ex.camera2.blocking.BlockingStateListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,6 +56,9 @@ public class CameraOps {
 
     private final CameraManager mCameraManager;
     private final BlockingCameraManager mBlockingCameraManager;
+    private final BlockingStateListener mDeviceListener =
+            new BlockingStateListener();
+
     private CameraDevice mCamera;
 
     private ImageReader mCaptureReader;
@@ -78,6 +82,10 @@ public class CameraOps {
     private static final int ENC_BIT_RATE_HIGH = 10000000;
     private static final Size DEFAULT_SIZE = new Size(640, 480);
     private static final Size HIGH_RESOLUTION_SIZE = new Size(1920, 1080);
+
+    private static final long IDLE_WAIT_MS = 2000;
+    // General short wait timeout for most state transitions
+    private static final long STATE_WAIT_MS = 500;
 
     private int mStatus = STATUS_UNINITIALIZED;
 
@@ -155,7 +163,7 @@ public class CameraOps {
                     throw new ApiFailureException("no devices");
                 }
                 mCamera = mBlockingCameraManager.openCamera(devices[0],
-                        /*listener*/null, mOpsHandler);
+                        mDeviceListener, mOpsHandler);
                 mCameraCharacteristics = mCameraManager.getCameraCharacteristics(mCamera.getId());
             } catch (CameraAccessException e) {
                 throw new ApiFailureException("open failure", e);
@@ -165,6 +173,14 @@ public class CameraOps {
         }
 
         mStatus = STATUS_OK;
+    }
+
+    private void configureOutputs(List<Surface> outputs) throws CameraAccessException {
+        mCamera.configureOutputs(outputs);
+        mDeviceListener.waitForState(BlockingStateListener.STATE_BUSY,
+                STATE_WAIT_MS);
+        mDeviceListener.waitForState(BlockingStateListener.STATE_IDLE,
+                IDLE_WAIT_MS);
     }
 
     /**
@@ -217,17 +233,15 @@ public class CameraOps {
     public void minimalPreview(SurfaceHolder previewHolder) throws ApiFailureException {
 
         minimalOpenCamera();
+
         if (mPreviewSurface == null) {
             throw new ApiFailureException("Preview surface is not created");
         }
         try {
-            mCamera.stopRepeating();
-            mCamera.waitUntilIdle();
-
             List<Surface> outputSurfaces = new ArrayList<Surface>(/*capacity*/1);
             outputSurfaces.add(mPreviewSurface);
 
-            mCamera.configureOutputs(outputSurfaces);
+            configureOutputs(outputSurfaces);
 
             CaptureRequest.Builder previewBuilder;
             mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -245,9 +259,6 @@ public class CameraOps {
         minimalOpenCamera();
 
         try {
-            mCamera.stopRepeating();
-            mCamera.waitUntilIdle();
-
             CameraCharacteristics properties =
                     mCameraManager.getCameraCharacteristics(mCamera.getId());
             Size[] jpegSizes = null;
@@ -275,7 +286,7 @@ public class CameraOps {
             List<Surface> outputSurfaces = new ArrayList<Surface>(/*capacity*/1);
             outputSurfaces.add(mCaptureReader.getSurface());
 
-            mCamera.configureOutputs(outputSurfaces);
+            configureOutputs(outputSurfaces);
 
             CaptureRequest.Builder captureBuilder =
                     mCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -302,7 +313,6 @@ public class CameraOps {
             mCaptureReader.setOnImageAvailableListener(readerListener, h);
 
             mCamera.capture(captureBuilder.build(), l, mOpsHandler);
-
         } catch (CameraAccessException e) {
             throw new ApiFailureException("Error in minimal JPEG capture", e);
         }
@@ -326,7 +336,7 @@ public class CameraOps {
             mRecordingRequestBuilder.addTarget(mPreviewSurface);
 
             // Start camera streaming and recording.
-            mCamera.configureOutputs(mOutputSurfaces);
+            configureOutputs(mOutputSurfaces);
             mCamera.setRepeatingRequest(mRecordingRequestBuilder.build(), null, null);
             mRecordingStream.start();
         } catch (CameraAccessException e) {
@@ -349,11 +359,13 @@ public class CameraOps {
              */
             mRecordingStream.onConfiguringRequest(mRecordingRequestBuilder, /* detach */true);
             mRecordingStream.onConfiguringOutputs(mOutputSurfaces, /* detach */true);
-            mCamera.stopRepeating();
-            mCamera.waitUntilIdle();
+
+            // Remove recording surface before calling RecordingStream.stop,
+            // since that invalidates the surface.
+            configureOutputs(mOutputSurfaces);
+
             mRecordingStream.stop();
 
-            mCamera.configureOutputs(mOutputSurfaces);
             mCamera.setRepeatingRequest(mRecordingRequestBuilder.build(), null, null);
         } catch (CameraAccessException e) {
             throw new ApiFailureException("Error stop recording", e);
