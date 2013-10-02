@@ -43,6 +43,7 @@ for T in \
          test_linearity.py \
          test_param_edge_mode.py \
          test_param_flash_mode.py \
+         test_predicted_wb.py \
 
 do
     let testcount=testcount+1
