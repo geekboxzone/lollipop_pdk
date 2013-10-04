@@ -41,6 +41,7 @@ import android.view.Surface;
 
 import com.android.ex.camera2.blocking.BlockingCameraManager;
 import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
+import com.android.ex.camera2.blocking.BlockingStateListener;
 
 import org.json.JSONObject;
 
@@ -68,6 +69,10 @@ public class ItsService extends Service {
     public static final int TIMEOUT_CAPTURE = 10;
     public static final int TIMEOUT_3A = 10;
 
+    // State transition timeouts, in ms.
+    private static final long TIMEOUT_IDLE_MS = 2000;
+    private static final long TIMEOUT_STATE_MS = 500;
+
     private static final int MAX_CONCURRENT_READER_BUFFERS = 8;
 
     public static final String REGION_KEY = "regions";
@@ -79,7 +84,9 @@ public class ItsService extends Service {
     public static final String TRIGGER_AF_KEY = "af";
 
     private CameraManager mCameraManager = null;
+    private HandlerThread mCameraThread = null;
     private BlockingCameraManager mBlockingCameraManager = null;
+    private BlockingStateListener mCameraListener = null;
     private CameraDevice mCamera = null;
     private ImageReader mCaptureReader = null;
     private CameraCharacteristics mCameraCharacteristics = null;
@@ -120,6 +127,7 @@ public class ItsService extends Service {
                 throw new ItsException("Failed to connect to camera manager");
             }
             mBlockingCameraManager = new BlockingCameraManager(mCameraManager);
+            mCameraListener = new BlockingStateListener();
 
             // Open the camera device, and get its properties.
             String[] devices;
@@ -132,26 +140,19 @@ public class ItsService extends Service {
                 throw new ItsException("Failed to get device ID list", e);
             }
 
-            HandlerThread openThread = new HandlerThread("OpenThread");
+            mCameraThread = new HandlerThread("ItsCameraThread");
             try {
-                openThread.start();
-                Handler openHandler = new Handler(openThread.getLooper());
+                mCameraThread.start();
+                Handler cameraHandler = new Handler(mCameraThread.getLooper());
 
                 // TODO: Add support for specifying which device to open.
-                mCamera = mBlockingCameraManager.openCamera(devices[0], /*listener*/null,
-                        openHandler);
+                mCamera = mBlockingCameraManager.openCamera(devices[0], mCameraListener,
+                        cameraHandler);
                 mCameraCharacteristics = mCameraManager.getCameraCharacteristics(devices[0]);
             } catch (CameraAccessException e) {
                 throw new ItsException("Failed to open camera", e);
             } catch (BlockingOpenException e) {
                 throw new ItsException("Failed to open camera (after blocking)", e);
-            } finally {
-                /**
-                 * OK to shut down thread immediately after #openCamera since there is no listener.
-                 * If listener ever becomes non-null then handler's thread must be valid for
-                 * the full lifetime of the listener.
-                 */
-                openThread.quitSafely();
             }
 
             // Create a thread to receive images and save them.
@@ -211,7 +212,10 @@ public class ItsService extends Service {
                 mSaveThread.quit();
                 mSaveThread = null;
             }
-
+            if (mCameraThread != null) {
+                mCameraThread.quitSafely();
+                mCameraThread = null;
+            }
             try {
                 mCamera.close();
             } catch (Exception e) {
@@ -248,15 +252,6 @@ public class ItsService extends Service {
             Log.e(PYTAG, "### FAIL");
         }
         return START_STICKY;
-    }
-
-    public void idleCamera() throws ItsException {
-        try {
-            mCamera.stopRepeating();
-            mCamera.waitUntilIdle();
-        } catch (CameraAccessException e) {
-            throw new ItsException("Error waiting for camera idle", e);
-        }
     }
 
     private ImageReader.OnImageAvailableListener
@@ -316,8 +311,6 @@ public class ItsService extends Service {
                 throw new ItsException("Invalid URI: " + uri);
             }
 
-            idleCamera();
-
             // Start a 3A action, and wait for it to converge.
             // Get the converged values for each "A", and package into JSON result for caller.
 
@@ -332,6 +325,10 @@ public class ItsService extends Service {
             List<Surface> outputSurfaces = new ArrayList<Surface>(1);
             outputSurfaces.add(mCaptureReader.getSurface());
             mCamera.configureOutputs(outputSurfaces);
+            mCameraListener.waitForState(BlockingStateListener.STATE_BUSY,
+                    TIMEOUT_STATE_MS);
+            mCameraListener.waitForState(BlockingStateListener.STATE_IDLE,
+                    TIMEOUT_IDLE_MS);
 
             // Add a listener that just recycles buffers; they aren't saved anywhere.
             ImageReader.OnImageAvailableListener readerListener =
@@ -463,8 +460,6 @@ public class ItsService extends Service {
                 throw new ItsException("Invalid URI: " + uri);
             }
 
-            idleCamera();
-
             // Parse the JSON to get the list of capture requests.
             List<CaptureRequest.Builder> requests = ItsUtils.loadRequestList(mCamera, uri);
 
@@ -509,6 +504,10 @@ public class ItsService extends Service {
                 List<Surface> outputSurfaces = new ArrayList<Surface>(1);
                 outputSurfaces.add(mCaptureReader.getSurface());
                 mCamera.configureOutputs(outputSurfaces);
+                mCameraListener.waitForState(BlockingStateListener.STATE_BUSY,
+                        TIMEOUT_STATE_MS);
+                mCameraListener.waitForState(BlockingStateListener.STATE_IDLE,
+                        TIMEOUT_IDLE_MS);
 
                 ImageReader.OnImageAvailableListener readerListener =
                         createAvailableListener(mCaptureListener);
