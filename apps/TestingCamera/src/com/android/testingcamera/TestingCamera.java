@@ -101,6 +101,7 @@ public class TestingCamera extends Activity
     private ToggleButton mRecordToggle;
     private CheckBox mRecordHandoffCheckBox;
     private ToggleButton mRecordStabilizationToggle;
+    private ToggleButton mRecordHintToggle;
     private Spinner mCallbackFormatSpinner;
     private ToggleButton mCallbackToggle;
 
@@ -250,6 +251,10 @@ public class TestingCamera extends Activity
         mRecordStabilizationToggle = (ToggleButton) findViewById(R.id.record_stabilization);
         mRecordStabilizationToggle.setOnClickListener(mRecordStabilizationToggleListener);
         mOpenOnlyControls.add(mRecordStabilizationToggle);
+
+        mRecordHintToggle = (ToggleButton) findViewById(R.id.record_hint);
+        mRecordHintToggle.setOnClickListener(mRecordHintToggleListener);
+        mOpenOnlyControls.add(mRecordHintToggle);
 
         mCallbackFormatSpinner = (Spinner) findViewById(R.id.callback_format_spinner);
         mCallbackFormatSpinner.setOnItemSelectedListener(mCallbackFormatListener);
@@ -709,6 +714,17 @@ public class TestingCamera extends Activity
         public void onClick(View v) {
             boolean on = ((ToggleButton) v).isChecked();
             mParams.setVideoStabilization(on);
+
+            mCamera.setParameters(mParams);
+        }
+    };
+
+    private View.OnClickListener mRecordHintToggleListener =
+            new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            boolean on = ((ToggleButton) v).isChecked();
+            mParams.setRecordingHint(on);
 
             mCamera.setParameters(mParams);
         }
