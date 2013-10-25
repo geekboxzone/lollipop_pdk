@@ -249,7 +249,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         }
         if (mCurrentPreviewHolder != null && holder == mCurrentPreviewHolder) {
             try {
-                mCameraOps.minimalPreview(holder);
+                mCameraOps.minimalPreview(holder, mCameraControl);
             } catch (ApiFailureException e) {
                 logException("Can't start minimal preview: ", e);
             }
@@ -276,7 +276,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                         mCameraOps.minimalJpegCapture(mCaptureListener, mCaptureResultListener,
                                 uiHandler, mCameraControl);
                         if (mCurrentPreviewHolder != null) {
-                            mCameraOps.minimalPreview(mCurrentPreviewHolder);
+                            mCameraOps.minimalPreview(mCurrentPreviewHolder, mCameraControl);
                         }
                     } catch (ApiFailureException e) {
                         logException("Can't take a JPEG! ", e);

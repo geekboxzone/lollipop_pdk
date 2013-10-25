@@ -230,7 +230,8 @@ public class CameraOps {
     /**
      * Configure streams and run minimal preview
      */
-    public void minimalPreview(SurfaceHolder previewHolder) throws ApiFailureException {
+    public void minimalPreview(SurfaceHolder previewHolder, CameraControls camCtl)
+            throws ApiFailureException {
 
         minimalOpenCamera();
 
@@ -243,8 +244,8 @@ public class CameraOps {
 
             configureOutputs(outputSurfaces);
 
-            CaptureRequest.Builder previewBuilder;
             mPreviewRequestBuilder = mCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            updateCaptureRequest(mPreviewRequestBuilder, camCtl);
 
             mPreviewRequestBuilder.addTarget(mPreviewSurface);
 
