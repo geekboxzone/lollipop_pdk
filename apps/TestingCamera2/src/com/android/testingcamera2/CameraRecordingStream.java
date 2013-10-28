@@ -16,6 +16,7 @@
 
 package com.android.testingcamera2;
 
+import android.content.Context;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.Size;
 import android.media.MediaCodec;
@@ -23,6 +24,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.media.MediaRecorder;
+import android.media.MediaScannerConnection;
 import android.os.Environment;
 import android.util.Log;
 import android.view.Surface;
@@ -45,7 +47,6 @@ public class CameraRecordingStream {
     private static final int STREAM_STATE_IDLE = 0;
     private static final int STREAM_STATE_CONFIGURED = 1;
     private static final int STREAM_STATE_RECORDING = 2;
-    private static final String MIME_TYPE = "video/avc"; // H.264 AVC encoding
     private static final int FRAME_RATE = 30; // 30fps
     private static final int IFRAME_INTERVAL = 1; // 1 seconds between I-frames
     private static final int TIMEOUT_USEC = 10000; // Timeout value 10ms.
@@ -63,8 +64,10 @@ public class CameraRecordingStream {
     private boolean mMuxerStarted;
     private boolean mUseMediaCodec = false;
     private Size mStreamSize = new Size(-1, -1);
+    private int mOutputFormat = MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4;
     private Thread mRecordingThread;
     private MediaRecorder mMediaRecorder;
+    private String mOutputFile;
 
     public CameraRecordingStream() {
     }
@@ -72,14 +75,17 @@ public class CameraRecordingStream {
     /**
      * Configure stream with a size and encoder mode.
      *
+     * @param ctx Application context.
      * @param size Size of recording stream.
      * @param useMediaCodec The encoder for this stream to use, either MediaCodec
      * or MediaRecorder.
      * @param bitRate Bit rate the encoder takes.
      * @param orientation Recording orientation in degree (0,90,180,270)
+     * @param outputFormat Output file format as listed in {@link MediaMuxer.OutputFormat}
      */
     public synchronized void configure(
-            Size size, boolean useMediaCodec, int bitRate, int orientation) {
+            Context ctx, Size size, boolean useMediaCodec, int bitRate, int orientation,
+            int outputFormat) {
         if (getStreamState() == STREAM_STATE_RECORDING) {
             throw new IllegalStateException(
                     "Stream can only be configured when stream is in IDLE state");
@@ -95,6 +101,7 @@ public class CameraRecordingStream {
         mUseMediaCodec = useMediaCodec;
         mEncBitRate = bitRate;
         mOrientation = orientation;
+        mOutputFormat = outputFormat;
 
         if (mUseMediaCodec) {
             if (getStreamState() == STREAM_STATE_CONFIGURED) {
@@ -113,7 +120,7 @@ public class CameraRecordingStream {
                      */
                 }
                 releaseEncoder();
-                releaseMuxer();
+                releaseMuxer(ctx);
                 configureMediaCodecEncoder();
             } else {
                 configureMediaCodecEncoder();
@@ -212,8 +219,9 @@ public class CameraRecordingStream {
      * it). To save the subsequent start recording time, we need avoid releasing
      * encoder for future.
      * </p>
+     * @param ctx Application context.
      */
-    public synchronized void stop() {
+    public synchronized void stop(Context ctx) {
         if (getStreamState() != STREAM_STATE_RECORDING) {
             Log.w(TAG, "Recording stream is not started yet");
             return;
@@ -231,7 +239,7 @@ public class CameraRecordingStream {
             // Drain encoder
             doMediaCodecEncoding(/* notifyEndOfStream */true);
             releaseEncoder();
-            releaseMuxer();
+            releaseMuxer(ctx);
         } else {
             try {
                 mMediaRecorder.stop();
@@ -303,7 +311,7 @@ public class CameraRecordingStream {
         }
     }
 
-    private void releaseMuxer() {
+    private void releaseMuxer(Context ctx) {
         if (VERBOSE) {
             Log.v(TAG, "releasing muxer");
         }
@@ -312,6 +320,7 @@ public class CameraRecordingStream {
             mMuxer.stop();
             mMuxer.release();
             mMuxer = null;
+            MediaScannerConnection.scanFile(ctx, new String [] { mOutputFile }, null, null);
         }
     }
 
@@ -328,6 +337,32 @@ public class CameraRecordingStream {
         if (mRecordingSurface != null) {
             mRecordingSurface.release();
             mRecordingSurface = null;
+        }
+    }
+
+    private String getOutputMime() {
+        switch (mOutputFormat) {
+            case MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4:
+                return "video/avc";
+
+            case MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM:
+                return "video/x-vnd.on2.vp8";
+
+            default:
+                throw new IllegalStateException("Configure with unrecognized format.");
+        }
+    }
+
+    private String getOutputExtension() {
+        switch (mOutputFormat) {
+            case MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4:
+                return ".mp4";
+
+            case MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM:
+                return ".webm";
+
+            default:
+                throw new IllegalStateException("Configure with unrecognized format.");
         }
     }
 
@@ -353,7 +388,7 @@ public class CameraRecordingStream {
         // Create a media file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String mediaFileName = mediaStorageDir.getPath() + File.separator +
-                "VID_" + timeStamp + ".mp4";
+                "VID_" + timeStamp + getOutputExtension();
 
         Log.v(TAG, "Recording file name: " + mediaFileName);
         return mediaFileName;
@@ -367,7 +402,7 @@ public class CameraRecordingStream {
     private void configureMediaCodecEncoder() {
         mBufferInfo = new MediaCodec.BufferInfo();
         MediaFormat format =
-                MediaFormat.createVideoFormat(MIME_TYPE,
+                MediaFormat.createVideoFormat(getOutputMime(),
                         mStreamSize.getWidth(), mStreamSize.getHeight());
         /**
          * Set encoding properties. Failing to specify some of these can cause
@@ -382,10 +417,10 @@ public class CameraRecordingStream {
 
         // Create/configure a MediaCodec encoder.
         try {
-            mEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
+            mEncoder = MediaCodec.createEncoderByType(getOutputMime());
         } catch (IOException ioe) {
             throw new IllegalStateException(
-                    "failed to create " + MIME_TYPE + " encoder", ioe);
+                    "failed to create " + getOutputMime() + " encoder", ioe);
         }
         mEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         mRecordingSurface = mEncoder.createInputSurface();
@@ -401,8 +436,8 @@ public class CameraRecordingStream {
          * muxer until the encoder starts and notifies the new media format.
          */
         try {
-            mMuxer = new MediaMuxer(
-                    outputFileName, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mOutputFile = outputFileName;
+            mMuxer = new MediaMuxer(mOutputFile, mOutputFormat);
             mMuxer.setOrientationHint(mOrientation);
         } catch (IOException ioe) {
             throw new IllegalStateException("MediaMuxer creation failed", ioe);

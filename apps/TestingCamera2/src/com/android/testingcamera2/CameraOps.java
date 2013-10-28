@@ -325,7 +325,8 @@ public class CameraOps {
         }
     }
 
-    public void startRecording(boolean useMediaCodec) throws ApiFailureException {
+    public void startRecording(Context applicationContext, boolean useMediaCodec, int outputFormat)
+            throws ApiFailureException {
         minimalOpenCamera();
         Size recordingSize = getRecordingSize();
         int orientationHint = getOrientationHint();
@@ -336,7 +337,8 @@ public class CameraOps {
             }
             // Setup output stream first
             mRecordingStream.configure(
-                    recordingSize, useMediaCodec, mEncodingBitRate, orientationHint);
+                    applicationContext, recordingSize, useMediaCodec, mEncodingBitRate,
+                    orientationHint, outputFormat);
             mRecordingStream.onConfiguringOutputs(mOutputSurfaces, /* detach */false);
             mRecordingStream.onConfiguringRequest(mRecordingRequestBuilder, /* detach */false);
 
@@ -353,7 +355,7 @@ public class CameraOps {
         }
     }
 
-    public void stopRecording() throws ApiFailureException {
+    public void stopRecording(Context ctx) throws ApiFailureException {
         try {
             /**
              * <p>
@@ -373,7 +375,7 @@ public class CameraOps {
             // since that invalidates the surface.
             configureOutputs(mOutputSurfaces);
 
-            mRecordingStream.stop();
+            mRecordingStream.stop(ctx);
 
             mCamera.setRepeatingRequest(mRecordingRequestBuilder.build(), null, null);
         } catch (CameraAccessException e) {

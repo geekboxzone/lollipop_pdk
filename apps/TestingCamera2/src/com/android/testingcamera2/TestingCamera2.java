@@ -27,6 +27,7 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.media.Image;
+import android.media.MediaMuxer;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -41,6 +42,7 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CheckBox;
 import android.widget.ImageView;
+import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
@@ -421,6 +423,24 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         Log.e(TAG, msg + Log.getStackTraceString(e));
     }
 
+    private RadioGroup RadioFmt() {
+      return (RadioGroup)findViewById(R.id.radio_fmt);
+    }
+
+    private int getOutputFormat() {
+        RadioGroup fmt = RadioFmt();
+        switch (fmt.getCheckedRadioButtonId()) {
+            case R.id.radio_mp4:
+                return MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4;
+
+            case R.id.radio_webm:
+                return MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM;
+
+            default:
+                throw new IllegalStateException("Checked button unrecognized.");
+        }
+    }
+
     private final OnSeekBarChangeListener mSensitivitySeekBarListener =
             new OnSeekBarChangeListener() {
 
@@ -549,15 +569,26 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         @Override
         public void onClick(View v) {
             if (mRecordingToggle.isChecked()) {
+                if (getOutputFormat() == MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM
+                        && !mUseMediaCodec) {
+                    Log.e(TAG, "webm format currently unsupported on MediaRecorder path");
+                    return;
+                }
                 try {
                     Log.i(TAG, "start recording, useMediaCodec = " + mUseMediaCodec);
-                    mCameraOps.startRecording(mUseMediaCodec);
+                    RadioGroup fmt = RadioFmt();
+                    fmt.setActivated(false);
+                    mCameraOps.startRecording(
+                            /* applicationContext */ TestingCamera2.this,
+                            /* useMediaCodec */ mUseMediaCodec,
+                            /* outputFormat */ getOutputFormat());
                 } catch (ApiFailureException e) {
                     logException("Failed to start recording", e);
                 }
             } else {
                 try {
-                    mCameraOps.stopRecording();
+                    mCameraOps.stopRecording(TestingCamera2.this);
+                    RadioFmt().setActivated(true);
                 } catch (ApiFailureException e) {
                     logException("Failed to stop recording", e);
                 }

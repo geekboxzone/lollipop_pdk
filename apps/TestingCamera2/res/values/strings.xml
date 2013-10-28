@@ -29,4 +29,6 @@
     <string name="frame_duration_value_prompt">Frame Duration: </string>
     <string name="capture_result_prompt">Capture Result: </string>
     <string name="manual_ctrl_prompt">Manual Control</string>
+    <string name="radio_mp4">mp4</string>
+    <string name="radio_webm">webm</string>
 </resources>
