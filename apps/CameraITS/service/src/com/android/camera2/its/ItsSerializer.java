@@ -138,6 +138,17 @@ public class ItsSerializer {
                     jsonArray.put(rectObj);
                 }
                 return new MetadataEntry(key.getName(), jsonArray);
+            } else if (elmtType == android.hardware.camera2.Face.class) {
+                CameraMetadata.Key<android.hardware.camera2.Face[]> key2 =
+                        (CameraMetadata.Key<android.hardware.camera2.Face[]>)keyObj;
+
+                // TODO: Serialize an array of faces to JSON.
+                // Will also need to deserialize JSON faces in the appropriate method.
+                if (Array.getLength(md.get(key)) != 0) {
+                    throw new ItsException("Serialization of faces not implemented yet");
+                }
+                return new MetadataEntry(key.getName(), new JSONArray());
+
             } else {
                 throw new ItsException("Unsupported array type: " + elmtType);
             }
