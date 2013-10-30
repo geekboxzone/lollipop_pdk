@@ -104,6 +104,8 @@ public class TestingCamera extends Activity
     private ToggleButton mRecordHintToggle;
     private Spinner mCallbackFormatSpinner;
     private ToggleButton mCallbackToggle;
+    private TextView mColorEffectSpinnerLabel;
+    private Spinner mColorEffectSpinner;
 
     private TextView mLogView;
 
@@ -134,6 +136,8 @@ public class TestingCamera extends Activity
     private int mVideoRecordSize = 0;
     private List<Integer> mVideoFrameRates;
     private int mVideoFrameRate = 0;
+    private List<String> mColorEffects;
+    private int mColorEffect = 0;
 
     private MediaRecorder mRecorder;
     private File mRecordingFile;
@@ -263,6 +267,12 @@ public class TestingCamera extends Activity
         mCallbackToggle = (ToggleButton) findViewById(R.id.enable_callbacks);
         mCallbackToggle.setOnClickListener(mCallbackToggleListener);
         mOpenOnlyControls.add(mCallbackToggle);
+
+        mColorEffectSpinnerLabel = (TextView) findViewById(R.id.color_effect_spinner_label);
+
+        mColorEffectSpinner = (Spinner) findViewById(R.id.color_effect_spinner);
+        mColorEffectSpinner.setOnItemSelectedListener(mColorEffectListener);
+        mOpenOnlyControls.add(mColorEffectSpinner);
 
         mLogView = (TextView) findViewById(R.id.log);
         mLogView.setMovementMethod(new ScrollingMovementMethod());
@@ -870,6 +880,7 @@ public class TestingCamera extends Activity
         updateCamcorderProfile(mCameraId);
         updateVideoRecordSize(mCameraId);
         updateVideoFrameRate(mCameraId);
+        updateColorEffects(mParams);
 
         // Trigger updating video record size to match camcorder profile
         mCamcorderProfileSpinner.setSelection(mCamcorderProfile);
@@ -1529,6 +1540,42 @@ public class TestingCamera extends Activity
             break;
         }
         return size;
+    }
+
+    private OnItemSelectedListener mColorEffectListener =
+                new OnItemSelectedListener() {
+        @Override
+        public void onItemSelected(AdapterView<?> parent,
+                        View view, int pos, long id) {
+            if (pos == mColorEffect) return;
+
+            mColorEffect = pos;
+            String colorEffect = mColorEffects.get(mColorEffect);
+            log("Setting color effect to " + colorEffect);
+            mParams.setColorEffect(colorEffect);
+            mCamera.setParameters(mParams);
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> arg0) {
+        }
+    };
+
+    private void updateColorEffects(Parameters params) {
+        mColorEffects = params.getSupportedColorEffects();
+        if (mColorEffects != null) {
+            mColorEffectSpinnerLabel.setVisibility(View.VISIBLE);
+            mColorEffectSpinner.setVisibility(View.VISIBLE);
+            mColorEffectSpinner.setAdapter(
+                    new ArrayAdapter<String>(this, R.layout.spinner_item,
+                            mColorEffects.toArray(new String[0])));
+            mColorEffect = 0;
+            params.setColorEffect(mColorEffects.get(mColorEffect));
+            log("Setting Color Effect to " + mColorEffects.get(mColorEffect));
+        } else {
+            mColorEffectSpinnerLabel.setVisibility(View.GONE);
+            mColorEffectSpinner.setVisibility(View.GONE);
+        }
     }
 
     private int mLogIndentLevel = 0;

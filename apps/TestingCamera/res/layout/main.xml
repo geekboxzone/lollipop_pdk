@@ -368,6 +368,30 @@
                 android:textOff="@string/callbacks_off_label"
                 android:textOn="@string/callbacks_on_label" />
 
+            <View
+                android:id="@+id/horizontal_rule_6"
+                android:layout_width="fill_parent"
+                android:layout_height="1dip"
+                android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
+                android:layout_marginTop="@dimen/horiz_rule_top_margin"
+                android:layout_weight="1"
+                android:background="@color/horiz_rule_color" />
+
+            <TextView
+                android:id="@+id/color_effect_spinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/color_effect_prompt"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <Spinner
+                android:id="@+id/color_effect_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+
         </LinearLayout>
     </ScrollView>
 
