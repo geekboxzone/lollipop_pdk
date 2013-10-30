@@ -40,15 +40,12 @@ def main():
         triggered = False
         while True:
             req = its.objects.auto_capture_request()
-            req["captureRequest"]["android.statistics.lensShadingMapMode"] = 1
-            req['captureRequest']['android.control.aePrecaptureTrigger'] = (
-                    0 if triggered else 1)
-            req['captureRequest']['android.control.afTrigger'] = (
-                    0 if triggered else 1)
+            req["android.statistics.lensShadingMapMode"] = 1
+            req['android.control.aePrecaptureTrigger'] = (0 if triggered else 1)
+            req['android.control.afTrigger'] = (0 if triggered else 1)
             triggered = True
 
-            fname, w, h, md_obj = cam.do_capture(req)
-            cap_res = md_obj["captureResult"]
+            fname, w, h, cap_res = cam.do_capture(req)
 
             ae_state = cap_res["android.control.aeState"]
             awb_state = cap_res["android.control.awbState"]

@@ -129,26 +129,12 @@ captures. Once the captures are complete, the resultant images are copied back
 to the host machine (using adb pull), along with JSON representations of the
 CaptureResult and other objects that describe the shot that was actually taken.
 
-The Python dictionary object that is used to specify what shots to capture and
-that is passed as an argument to the do_capture() function can have the
-following top-level keys:
+The Python capture request object(s) can contain key/value entries corresponding
+to any of the Java CaptureRequest object fields.
 
-    captureRequest
-    captureRequestList
-    outputSurface
-
-Exactly one of captureRequest and captureRequestList must be present, and
-outputSurface is optional. Look at the tests directory for examples of
-specifying these objects.
-
-The captureRequest object can contain key/value entries corresponding to any
-of the Java CaptureRequest object fields. The captureRequestList object is
-a list of such objecs, corresponding to a burst capture specification.
-
-The outputSurface object is used to specify the width, height, and format of
-the output images that are captured. Currently supported formats are "jpg" and
-"yuv", where "yuv" is YUV420 fully planar. The default output surface is a
-full sensor YUV420 frame.
+The output surface's width, height, and format can also be specified. Currently
+supported formats are "jpg" and "yuv", where "yuv" is YUV420 fully planar. The
+default output surface is a full sensor YUV420 frame.
 
 The metadata that is returned along with the captured images is also in JSON
 format, serialized from the CaptureRequest and CaptureResult objects that were

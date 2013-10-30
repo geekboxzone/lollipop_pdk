@@ -45,7 +45,7 @@ def main():
     inv_gamma_lut = numpy.array(
             sum([[i/LM1, math.pow(i/LM1, 2.2)] for i in xrange(L)], []))
 
-    req = its.objects.capture_request( {
+    req = {
         "android.sensor.exposureTime": 10*1000*1000,
         "android.sensor.frameDuration": 0,
         "android.control.mode": 0,
@@ -59,7 +59,7 @@ def main():
         "android.tonemap.curveRed": gamma_lut.tolist(),
         "android.tonemap.curveGreen": gamma_lut.tolist(),
         "android.tonemap.curveBlue": gamma_lut.tolist(),
-        })
+        }
 
     sensitivities = range(100,500,50)+range(500,1000,100)+range(1000,3000,300)
 
@@ -78,14 +78,13 @@ def main():
             b_means = []
 
             if i == 1:
-                req["captureRequest"]["android.colorCorrection.mode"] = 0
-                req["captureRequest"]["android.colorCorrection.transform"] = (
+                req["android.colorCorrection.mode"] = 0
+                req["android.colorCorrection.transform"] = (
                         its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,1]))
-                req["captureRequest"]["android.colorCorrection.gains"] = (
-                        [1,1,1,1])
+                req["android.colorCorrection.gains"] = [1,1,1,1]
 
             for sens in sensitivities:
-                req["captureRequest"]["android.sensor.sensitivity"] = sens
+                req["android.sensor.sensitivity"] = sens
                 fname, w, h, cap_md = cam.do_capture(req)
                 img = its.image.load_yuv420_to_rgb_image(fname, w, h)
                 its.image.write_image(

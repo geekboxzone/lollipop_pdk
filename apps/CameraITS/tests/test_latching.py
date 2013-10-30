@@ -33,20 +33,20 @@ def main():
     S = 150 # Sensitivity
     E = 10 # Exposure time, ms
 
-    reqs = its.objects.capture_request_list([
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        its.objects.manual_capture_request(S*8,E  )["captureRequest"],
-        its.objects.manual_capture_request(S*8,E  )["captureRequest"],
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        its.objects.manual_capture_request(S,  E*8)["captureRequest"],
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        its.objects.manual_capture_request(S*8,E  )["captureRequest"],
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        its.objects.manual_capture_request(S,  E*8)["captureRequest"],
-        its.objects.manual_capture_request(S,  E  )["captureRequest"],
-        ])
+    reqs = [
+        its.objects.manual_capture_request(S,  E  ),
+        its.objects.manual_capture_request(S,  E  ),
+        its.objects.manual_capture_request(S*8,E  ),
+        its.objects.manual_capture_request(S*8,E  ),
+        its.objects.manual_capture_request(S,  E  ),
+        its.objects.manual_capture_request(S,  E  ),
+        its.objects.manual_capture_request(S,  E*8),
+        its.objects.manual_capture_request(S,  E  ),
+        its.objects.manual_capture_request(S*8,E  ),
+        its.objects.manual_capture_request(S,  E  ),
+        its.objects.manual_capture_request(S,  E*8),
+        its.objects.manual_capture_request(S,  E  ),
+        ]
 
     r_means = []
     g_means = []

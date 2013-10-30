@@ -41,7 +41,7 @@ def main():
     linear_tonemap = sum([[i/31.0,i/31.0] for i in range(32)], [])
 
     # Baseline request
-    req = its.objects.capture_request( {
+    req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
@@ -54,7 +54,7 @@ def main():
         "android.tonemap.curveRed": linear_tonemap,
         "android.tonemap.curveGreen": linear_tonemap,
         "android.tonemap.curveBlue": linear_tonemap
-        })
+        }
 
     # Transforms:
     # 1. Identity
@@ -76,9 +76,8 @@ def main():
 
     with its.device.ItsSession() as cam:
         for i in range(len(transforms)):
-            req['captureRequest']["android.colorCorrection.transform"] = (
-                    transforms[i])
-            req['captureRequest']["android.colorCorrection.gains"] = gains[i]
+            req["android.colorCorrection.transform"] = transforms[i]
+            req["android.colorCorrection.gains"] = gains[i]
             fname, w, h, md_obj = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(img, "%s_req=%d.jpg" % (NAME, i))

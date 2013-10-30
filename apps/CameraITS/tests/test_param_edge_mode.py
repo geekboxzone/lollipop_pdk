@@ -25,7 +25,7 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    req = its.objects.capture_request( {
+    req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
@@ -33,13 +33,13 @@ def main():
         "android.sensor.frameDuration": 0,
         "android.sensor.exposureTime": 30*1000*1000,
         "android.sensor.sensitivity": 100
-        })
+        }
 
     with its.device.ItsSession() as cam:
         rect = [0,0,1,1]
         sens, exp, gains, xform, focus = cam.do_3a(rect, rect, rect)
         for e in [0,1,2]:
-            req["captureRequest"]["android.edge.mode"] = e
+            req["android.edge.mode"] = e
             fname, w, h, cap_md = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(img, "%s_mode=%d.jpg" % (NAME, e))

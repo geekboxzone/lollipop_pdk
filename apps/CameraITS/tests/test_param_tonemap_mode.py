@@ -51,12 +51,12 @@ def main():
 
         for n in [0,1]:
             req = its.objects.manual_capture_request(100,50)
-            req["captureRequest"]["android.tonemap.mode"] = 0
-            req["captureRequest"]["android.tonemap.curveRed"] = (
+            req["android.tonemap.mode"] = 0
+            req["android.tonemap.curveRed"] = (
                     sum([[i/LM1, (1+0.5*n)*i/LM1] for i in range(L)], []))
-            req["captureRequest"]["android.tonemap.curveGreen"] = (
+            req["android.tonemap.curveGreen"] = (
                     sum([[i/LM1, (1+1.0*n)*i/LM1] for i in range(L)], []))
-            req["captureRequest"]["android.tonemap.curveBlue"] = (
+            req["android.tonemap.curveBlue"] = (
                     sum([[i/LM1, (1+1.5*n)*i/LM1] for i in range(L)], []))
             fname, w, h, md = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
@@ -79,10 +79,10 @@ def main():
             m = float(size-1)
             curve = sum([[i/m, i/m] for i in range(size)], [])
             req = its.objects.manual_capture_request(100,50)
-            req["captureRequest"]["android.tonemap.mode"] = 0
-            req["captureRequest"]["android.tonemap.curveRed"] = curve
-            req["captureRequest"]["android.tonemap.curveGreen"] = curve
-            req["captureRequest"]["android.tonemap.curveBlue"] = curve
+            req["android.tonemap.mode"] = 0
+            req["android.tonemap.curveRed"] = curve
+            req["android.tonemap.curveGreen"] = curve
+            req["android.tonemap.curveBlue"] = curve
             fname, w, h, md = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(

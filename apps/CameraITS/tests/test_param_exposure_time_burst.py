@@ -27,15 +27,13 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     exp_times = range(1, 100, 9)
-    reqs = its.objects.capture_request_list([
-            its.objects.manual_capture_request(100,e)["captureRequest"]
-            for e in exp_times])
+    reqs = [its.objects.manual_capture_request(100,e) for e in exp_times]
 
     with its.device.ItsSession() as cam:
         fnames, w, h, cap_mds = cam.do_capture(reqs)
         for i,md in enumerate(cap_mds):
             e_req = exp_times[i]*1000*1000
-            e_res = md["captureResult"]["android.sensor.exposureTime"]
+            e_res = md["android.sensor.exposureTime"]
             print e_req, e_res
 
 if __name__ == '__main__':

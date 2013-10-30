@@ -399,49 +399,47 @@ class ItsSession(object):
                     raise its.error.Error('3A failed to converge')
                 return ae_sens, ae_exp, awb_gains, awb_transform, af_dist
 
-    def do_capture(self, request, out_fname_prefix=None):
+    def do_capture(self, cap_request, out_surface=None, out_fname_prefix=None):
         """Issue capture request(s), and read back the image(s) and metadata.
 
         The main top-level function for capturing one or more images using the
-        device. Captures a single image if the request has the "captureRequest"
-        key, and captures a burst if it has "captureRequestList".
+        device. Captures a single image if cap_request is a single object, and
+        captures a burst if it is a list of objects.
 
-        The request object may also contain an "outputSurface" field to specify
-        the width, height, and format of the captured image. Supported formats
-        are "yuv" and "jpeg". If no outputSurface field was passed inside the
-        request object, then the default is used, which is "yuv" (a YUV420
-        fully planar image) corresponding to a full sensor frame.
+        The out_surface field can specify the width, height, and format of
+        the captured image. The format may be "yuv" or "jpeg". The default is
+        a YUV420 frame ("yuv") corresponding to a full sensor frame.
 
-        Example request 1:
+        Example of a single capture request:
 
             {
-                "captureRequest": {
-                    "android.sensor.exposureTime": 100*1000*1000,
-                    "android.sensor.sensitivity": 100
-                }
+                "android.sensor.exposureTime": 100*1000*1000,
+                "android.sensor.sensitivity": 100
             }
 
-        Example request 2:
+        Example of a list of capture requests:
+
+            [
+                {
+                    "android.sensor.exposureTime": 100*1000*1000,
+                    "android.sensor.sensitivity": 100
+                },
+                {
+                    "android.sensor.exposureTime": 100*1000*1000,
+                    "android.sensor.sensitivity": 200
+                }
+            ]
+
+        Example of an output surface specification:
 
             {
-                "captureRequestList": [
-                    {
-                        "android.sensor.exposureTime": 100*1000*1000,
-                        "android.sensor.sensitivity": 100
-                    },
-                    {
-                        "android.sensor.exposureTime": 100*1000*1000,
-                        "android.sensor.sensitivity": 200
-                    }],
-                "outputSurface": {
-                    "width": 640,
-                    "height": 480,
-                    "format": "yuv"
-                }
+                "width": 640,
+                "height": 480,
+                "format": "yuv"
             }
 
         Args:
-            request: The Python dictionary specifying the capture(s), which
+            cap_request: The Python dict/list specifying the capture(s), which
                 will be converted to JSON and sent to the device.
             out_fname_prefix: (Optionally) the file name prefix to use for the
                 captured files. If this arg is present, then the captured files
@@ -457,9 +455,12 @@ class ItsSession(object):
             * The width and height of the captured image(s). For a burst, all
               are the same size.
             * The Python dictionary or list of dictionaries (in the case of a
-              burst capture) containing the metadata of the captured image(s).
+              burst capture) containing the returned capture result objects.
         """
-        if request.has_key("captureRequest"):
+        if not isinstance(cap_request, list):
+            request = {"captureRequest" : cap_request}
+            if out_surface is not None:
+                request["outputSurface"] = out_surface
             if self.CAPTURE_THROWAWAY_SHOTS:
                 print "Capturing throw-away image"
                 self.__start_capture(request)
@@ -475,17 +476,19 @@ class ItsSession(object):
                 os.rename(self.__get_json_path(local_fname),
                           out_fname_prefix + ".json")
                 local_fname = out_fname_prefix + image_ext
-            return local_fname, w, h, out_metadata_obj
+            return local_fname, w, h, out_metadata_obj["captureResult"]
         else:
-            if not request.has_key("captureRequestList"):
-                raise its.error.Error(
-                        'Missing captureRequest or captureRequestList arg key')
+            request = {"captureRequestList" : cap_request}
+            if out_surface is not None:
+                request["outputSurface"] = out_surface
             n = len(request['captureRequestList'])
             print "Capture burst of %d images" % (n)
             self.__start_capture(request)
             remote_fnames, w, h = self.__wait_for_capture_done_burst(n)
             local_fnames = self.__copy_captured_files(remote_fnames)
             out_metadata_objs = self.__parse_captured_json(local_fnames)
+            for i in range(len(out_metadata_objs)):
+                out_metadata_objs[i] = out_metadata_objs[i]["captureResult"]
             if out_fname_prefix is not None:
                 for i in range(len(local_fnames)):
                     _, image_ext = os.path.splitext(local_fnames[i])

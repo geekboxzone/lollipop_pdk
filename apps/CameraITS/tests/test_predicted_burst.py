@@ -29,28 +29,28 @@ def main():
     def r2f(r):
         return float(r["numerator"]) / float(r["denominator"])
 
-    reqs = its.objects.capture_request_list(
-        [its.objects.manual_capture_request(100,0.1)["captureRequest"]]*7 + \
-        [its.objects.manual_capture_request(300,33)["captureRequest"]]*7 + \
-        [its.objects.manual_capture_request(100,0.1)["captureRequest"]]*7
-        )
+    reqs = \
+        [its.objects.manual_capture_request(100,0.1)]*7 + \
+        [its.objects.manual_capture_request(300,33)]*7 + \
+        [its.objects.manual_capture_request(100,0.1)]*7
 
     curve = sum([[i/63.0, pow(i/63.0, 1/2.2)] for i in range(64)], [])
-    for r in reqs["captureRequestList"]:
+    for r in reqs:
         r["android.tonemap.mode"] = 0
         r["android.tonemap.curveRed"] = curve
         r["android.tonemap.curveGreen"] = curve
         r["android.tonemap.curveBlue"] = curve
 
     with its.device.ItsSession() as cam:
-        fnames, w, h, cap_mds = cam.do_capture(reqs)
+        fnames, w, h, mds = cam.do_capture(reqs)
         for i, fname in enumerate(fnames):
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(img, "%s_i=%02d.jpg" % (NAME, i))
-            cap_res = cap_mds[i]["captureResult"]
+            md = mds[i]
             print "Predicted:", \
-                  cap_res["android.statistics.predictedColorGains"], \
-                  [r2f(t) for t in cap_res["android.statistics.predictedColorTransform"]]
+                  md["android.statistics.predictedColorGains"], \
+                  [r2f(t)
+                   for t in md["android.statistics.predictedColorTransform"]]
 
 if __name__ == '__main__':
     main()

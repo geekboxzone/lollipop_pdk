@@ -35,9 +35,9 @@ def main():
     manual_sensitivity = 100
 
     auto_req = its.objects.auto_capture_request()
-    auto_req["captureRequest"]["android.statistics.lensShadingMapMode"] = 1
+    auto_req["android.statistics.lensShadingMapMode"] = 1
 
-    manual_req = its.objects.capture_request( {
+    manual_req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
@@ -56,7 +56,7 @@ def main():
         "android.control.afRegions": manual_region,
         "android.control.awbRegions": manual_region,
         "android.statistics.lensShadingMapMode":1
-        })
+        }
 
     def r2f(r):
         return float(r["numerator"]) / float(r["denominator"])
@@ -89,8 +89,7 @@ def main():
         rect = [0,0,1,1]
         cam.do_3a(rect, rect, rect, True, True, False)
 
-        fname, w, h, md_obj = cam.do_capture(auto_req)
-        cap_res = md_obj["captureResult"]
+        fname, w, h, cap_res = cam.do_capture(auto_req)
         gains = cap_res["android.colorCorrection.gains"]
         transform = cap_res["android.colorCorrection.transform"]
         exp_time = cap_res['android.sensor.exposureTime']
@@ -136,8 +135,7 @@ def main():
         return lsc_map
 
     def test_manual(cam, w_map, h_map, lsc_map_auto):
-        fname, w, h, md_obj = cam.do_capture(manual_req)
-        cap_res = md_obj["captureResult"]
+        fname, w, h, cap_res = cam.do_capture(manual_req)
         gains = cap_res["android.colorCorrection.gains"]
         transform = cap_res["android.colorCorrection.transform"]
         curves = [cap_res["android.tonemap.curveRed"],
