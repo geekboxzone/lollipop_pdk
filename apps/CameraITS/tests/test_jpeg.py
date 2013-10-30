@@ -20,6 +20,7 @@ import Image
 import shutil
 import numpy
 import math
+import copy
 
 def main():
     """Test that converted YUV images and device JPEG images look the same.
@@ -34,9 +35,9 @@ def main():
         # YUV
         req = its.objects.manual_capture_request(100,100)
         size = props['android.scaler.availableProcessedSizes'][0]
-        req["outputSurface"] = size
-        req["outputSurface"]["format"] = "yuv"
-        fname, w, h, cap_md = cam.do_capture(req)
+        out_surface = copy.deepcopy(size)
+        out_surface["format"] = "yuv"
+        fname, w, h, cap_md = cam.do_capture(req, out_surface)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_fmt=yuv.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
@@ -45,9 +46,9 @@ def main():
         # JPEG
         req = its.objects.manual_capture_request(100,100)
         size = props['android.scaler.availableJpegSizes'][0]
-        req["outputSurface"] = size
-        req["outputSurface"]["format"] = "jpg"
-        fname, w, h, cap_md = cam.do_capture(req)
+        out_surface = copy.deepcopy(size)
+        out_surface["format"] = "jpg"
+        fname, w, h, cap_md = cam.do_capture(req, out_surface)
         img = numpy.array(Image.open(fname)).reshape(w,h,3) / 255.0
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         rgb1 = its.image.compute_image_means(tile)

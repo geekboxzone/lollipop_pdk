@@ -31,7 +31,7 @@ def main():
 
     NUM_STEPS = 5
 
-    req = its.objects.capture_request( {
+    req = {
         "android.blackLevel.lock": True,
         "android.control.mode": 0,
         "android.control.aeMode": 0,
@@ -39,7 +39,7 @@ def main():
         "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.exposureTime": 10*1000*1000
-        })
+        }
 
     # The most frequent pixel value in each image; assume this is the black
     # level, since the images are all dark (shot with the lens covered).
@@ -52,7 +52,7 @@ def main():
                               sens_range[1]+1,
                               int((sens_range[1] - sens_range[0]) / NUM_STEPS))
         for si, s in enumerate(sensitivities):
-            req["captureRequest"]["android.sensor.sensitivity"] = s
+            req["android.sensor.sensitivity"] = s
             fname, w, h, cap_md = cam.do_capture(req)
             yimg,_,_ = its.image.load_yuv420_to_yuv_planes(fname, w, h)
             hist,_ = numpy.histogram(yimg*255, 256, (0,256))

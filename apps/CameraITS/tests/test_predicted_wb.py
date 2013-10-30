@@ -42,28 +42,25 @@ def main():
 
         # Capture an auto shot using the converged 3A.
         req = its.objects.auto_capture_request()
-        fname, w, h, md_obj = cam.do_capture(req)
+        fname, w, h, cap_res = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_n=1_pass=1_auto.jpg" % (NAME))
-        cap_res = md_obj["captureResult"]
         auto_gains = cap_res["android.colorCorrection.gains"]
         auto_transform = cap_res["android.colorCorrection.transform"]
 
         # Capture a request using default (unit/identify) gains, and get the
         # predicted gains and transform.
         req = its.objects.manual_capture_request(sens, exp/(1000.0*1000.0))
-        fname, w, h, md_obj = cam.do_capture(req)
+        fname, w, h, cap_res = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_n=2_pass=1_identity.jpg" % (NAME))
-        cap_res = md_obj["captureResult"]
         pred_gains_1 = cap_res["android.statistics.predictedColorGains"]
         pred_transform_1 = cap_res["android.statistics.predictedColorTransform"]
 
         # Capture a request using the predicted gains/transform.
         req = its.objects.manual_capture_request(sens, exp/(1000.0*1000.0))
-        req["captureRequest"]["android.colorCorrection.transform"] = \
-                pred_transform_1
-        req["captureRequest"]["android.colorCorrection.gains"] = pred_gains_1
+        req["android.colorCorrection.transform"] = pred_transform_1
+        req["android.colorCorrection.gains"] = pred_gains_1
         fname, w, h, md_obj = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_n=3_pass=1_predicted.jpg" % (NAME))
@@ -83,18 +80,16 @@ def main():
         # Capture a request using default (unit/identify) gains, and get the
         # predicted gains and transform.
         req = its.objects.manual_capture_request(sens, exp/(1000.0*1000.0))
-        fname, w, h, md_obj = cam.do_capture(req)
+        fname, w, h, cap_res = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_n=4_pass=2_identity.jpg" % (NAME))
-        cap_res = md_obj["captureResult"]
         pred_gains_2 = cap_res["android.statistics.predictedColorGains"]
         pred_transform_2 = cap_res["android.statistics.predictedColorTransform"]
 
         # Capture a request using the predicted gains/transform.
         req = its.objects.manual_capture_request(sens, exp/(1000.0*1000.0))
-        req["captureRequest"]["android.colorCorrection.transform"] = \
-                pred_transform_2
-        req["captureRequest"]["android.colorCorrection.gains"] = pred_gains_2
+        req["android.colorCorrection.transform"] = pred_transform_2
+        req["android.colorCorrection.gains"] = pred_gains_2
         fname, w, h, md_obj = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_n=5_pass=2_predicted.jpg" % (NAME))

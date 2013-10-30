@@ -17,6 +17,7 @@ import its.device
 import its.objects
 import os.path
 import Image
+import copy
 
 def main():
     """Test that the reported sizes and formats for image capture work.
@@ -27,18 +28,18 @@ def main():
         props = cam.get_camera_properties()
         for size in props['android.scaler.availableProcessedSizes']:
             req = its.objects.manual_capture_request(100,10)
-            req["outputSurface"] = size
-            req["outputSurface"]["format"] = "yuv"
-            fname, w, h, cap_md = cam.do_capture(req)
+            out_surface = copy.deepcopy(size)
+            out_surface["format"] = "yuv"
+            fname, w, h, cap_md = cam.do_capture(req, out_surface)
             assert(os.path.splitext(fname)[1] == ".yuv")
             assert(w == size["width"] and h == size["height"])
             assert(os.path.getsize(fname) == w*h*3/2)
             print "Successfully captured YUV %dx%d" % (w, h)
         for size in props['android.scaler.availableJpegSizes']:
             req = its.objects.manual_capture_request(100,10)
-            req["outputSurface"] = size
-            req["outputSurface"]["format"] = "jpg"
-            fname, w, h, cap_md = cam.do_capture(req)
+            out_surface = copy.deepcopy(size)
+            out_surface["format"] = "jpg"
+            fname, w, h, cap_md = cam.do_capture(req, out_surface)
             assert(os.path.splitext(fname)[1] == ".jpg")
             assert(w == size["width"] and h == size["height"])
             img = Image.open(fname)

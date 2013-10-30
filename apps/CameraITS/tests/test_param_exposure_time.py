@@ -29,14 +29,14 @@ def main():
     THRESHOLD_MAX_MIN_DIFF = 0.3
     THRESHOLD_MAX_MIN_RATIO = 2.0
 
-    req = its.objects.capture_request( {
+    req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
         "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.sensitivity": 200
-        })
+        }
 
     exposures = range(1,101,20) # ms
     r_means = []
@@ -45,7 +45,7 @@ def main():
 
     with its.device.ItsSession() as cam:
         for e in exposures:
-            req["captureRequest"]["android.sensor.exposureTime"] = e*1000*1000
+            req["android.sensor.exposureTime"] = e*1000*1000
             fname, w, h, cap_md = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(

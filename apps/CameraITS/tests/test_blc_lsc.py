@@ -57,16 +57,16 @@ def main():
         # Linear tonemap
         tmap = sum([[i/63.0,i/63.0] for i in range(64)], [])
 
-        reqs = its.objects.capture_request_list([])
+        reqs = []
         for e in exposures:
-            req = its.objects.manual_capture_request(ae_sen,e)["captureRequest"]
+            req = its.objects.manual_capture_request(ae_sen,e)
             req["android.tonemap.mode"] = 0
             req["android.tonemap.curveRed"] = tmap
             req["android.tonemap.curveGreen"] = tmap
             req["android.tonemap.curveBlue"] = tmap
             req["android.colorCorrection.transform"] = awb_transform_rat
             req["android.colorCorrection.gains"] = awb_gains
-            reqs["captureRequestList"].append(req)
+            reqs.append(req)
 
         fnames, w, h, cap_mds = cam.do_capture(reqs)
         for i,fname in enumerate(fnames):

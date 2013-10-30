@@ -37,28 +37,6 @@ def int_to_rational(i):
     else:
         return {"numerator":i, "denominator":1}
 
-def capture_request(obj):
-    """Function to wrap an object inside a captureRequest object.
-
-    Args:
-        obj: The Python dictionary object to wrap.
-
-    Returns:
-        The dictionary: {"captureRequest": obj}
-    """
-    return {"captureRequest": obj}
-
-def capture_request_list(obj_list):
-    """Function to wrap an object list inside a captureRequestList object.
-
-    Args:
-        obj_list: The list of Python dictionary objects to wrap.
-
-    Returns:
-        The dictionary: {"captureRequestList": obj_list}
-    """
-    return {"captureRequestList": obj_list}
-
 def manual_capture_request(sensitivity, exp_time_ms):
     """Return a capture request with everything set to manual.
 
@@ -73,7 +51,7 @@ def manual_capture_request(sensitivity, exp_time_ms):
         The default manual capture request, ready to be passed to the
         its.device.do_capture function.
     """
-    return capture_request( {
+    return {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
@@ -87,19 +65,19 @@ def manual_capture_request(sensitivity, exp_time_ms):
                 int_to_rational([1,0,0, 0,1,0, 0,0,1]),
         "android.colorCorrection.gains": [1,1,1,1],
         "android.tonemap.mode": 1,
-        })
+        }
 
 def auto_capture_request():
     """Return a capture request with everything set to auto.
     """
-    return capture_request( {
+    return {
         "android.control.mode": 1,
         "android.control.aeMode": 1,
         "android.control.awbMode": 1,
         "android.control.afMode": 1,
         "android.colorCorrection.mode": 1,
         "android.tonemap.mode": 1,
-        })
+        }
 
 class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.

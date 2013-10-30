@@ -57,8 +57,8 @@ def main():
         for si, s in enumerate(sensitivities):
             for rep in xrange(NUM_REPEAT):
                 req = its.objects.manual_capture_request(100, 1)
-                req["captureRequest"]["android.blackLevel.lock"] = True
-                req["captureRequest"]["android.sensor.sensitivity"] = s
+                req["android.blackLevel.lock"] = True
+                req["android.sensor.sensitivity"] = s
                 fname, w, h, cap_md = cam.do_capture(req)
                 yimg,uimg,vimg = its.image.load_yuv420_to_yuv_planes(fname,w,h)
 

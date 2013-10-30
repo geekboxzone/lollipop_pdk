@@ -31,14 +31,14 @@ def main():
 
     NUM_STEPS = 5
 
-    req = its.objects.capture_request( {
+    req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
         "android.control.afMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.exposureTime": 2*1000*1000
-        })
+        }
 
     sensitivities = None
     r_means = []
@@ -52,7 +52,7 @@ def main():
                               sens_range[1]+1,
                               int((sens_range[1] - sens_range[0]) / NUM_STEPS))
         for s in sensitivities:
-            req["captureRequest"]["android.sensor.sensitivity"] = s
+            req["android.sensor.sensitivity"] = s
             fname, w, h, cap_md = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(

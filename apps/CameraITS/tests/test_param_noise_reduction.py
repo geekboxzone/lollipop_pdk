@@ -34,13 +34,13 @@ def main():
 
     THRESHOLD_MIN_VARIANCE_RATIO = 0.7
 
-    req = its.objects.capture_request( {
+    req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
         "android.control.afMode": 0,
         "android.sensor.frameDuration": 0
-        })
+        }
 
     # List of variances for Y,U,V.
     variances = [[],[],[]]
@@ -52,9 +52,9 @@ def main():
 
     with its.device.ItsSession() as cam:
         # NR mode 0 with low gain
-        req["captureRequest"]["android.noiseReduction.mode"] = 0
-        req["captureRequest"]["android.sensor.sensitivity"] = 100
-        req["captureRequest"]["android.sensor.exposureTime"] = 20*1000*1000
+        req["android.noiseReduction.mode"] = 0
+        req["android.sensor.sensitivity"] = 100
+        req["android.sensor.exposureTime"] = 20*1000*1000
         fname, w, h, md_obj = cam.do_capture(req)
         its.image.write_image(
                 its.image.load_yuv420_to_rgb_image(fname, w, h),
@@ -67,13 +67,11 @@ def main():
 
         for i in range(3):
             # NR modes 0, 1, 2 with high gain
-            req["captureRequest"]["android.noiseReduction.mode"] = i
-            req["captureRequest"]["android.sensor.sensitivity"] = 100*16
-            req["captureRequest"]["android.sensor.exposureTime"] = (
-                    20*1000*1000/16)
+            req["android.noiseReduction.mode"] = i
+            req["android.sensor.sensitivity"] = 100*16
+            req["android.sensor.exposureTime"] = (20*1000*1000/16)
             fname, w, h, md_obj = cam.do_capture(req)
-            nr_modes_reported.append(
-                    md_obj["captureResult"]["android.noiseReduction.mode"])
+            nr_modes_reported.append(md_obj["android.noiseReduction.mode"])
             its.image.write_image(
                     its.image.load_yuv420_to_rgb_image(fname, w, h),
                     "%s_high_gain_nr=%d.jpg" % (NAME, i))
