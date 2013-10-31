@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import numpy
 import os.path
@@ -35,14 +36,21 @@ def main():
     THRESHOLD_MAX_LEVEL = 0.9
     THRESHOLD_MAX_ABS_GRAD = 0.001
 
-    mults = range(1, 100, 9)
+    mults = []
     r_means = []
     g_means = []
     b_means = []
 
     with its.device.ItsSession() as cam:
-        for m in mults:
-            req = its.objects.manual_capture_request(100*m, 40.0/m)
+        e,s = its.target.get_target_exposure_combos(cam)["minSensitivity"]
+        props = cam.get_camera_properties()
+        expt_range = props['android.sensor.info.exposureTimeRange']
+        sens_range = props['android.sensor.info.sensitivityRange']
+
+        m = 1
+        while s*m < sens_range[1] and e/m > expt_range[0]:
+            mults.append(m)
+            req = its.objects.manual_capture_request(s*m, e/1000000.0/m)
             fname, w, h, md_obj = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(img, "%s_mult=%02d.jpg" % (NAME, m))
@@ -51,6 +59,7 @@ def main():
             r_means.append(rgb_means[0])
             g_means.append(rgb_means[1])
             b_means.append(rgb_means[2])
+            m = m + 9
 
     # Draw a plot.
     pylab.plot(mults, r_means, 'r')
@@ -59,7 +68,6 @@ def main():
     pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
 
-    
     # Check for linearity. For each R,G,B channel, fit a line y=mx+b, and
     # assert that the gradient is close to 0 (flat) and that there are no
     # crazy outliers. Also ensure that the images aren't clamped to 0 or 1

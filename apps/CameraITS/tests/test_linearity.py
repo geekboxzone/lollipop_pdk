@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import sys
 import numpy
 import Image
@@ -34,6 +35,8 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    NUM_STEPS = 5
+
     # TODO: Query the allowable tonemap curve sizes; here, it's hardcoded to
     # a length=64 list of tuples. The max allowed length should be inside the
     # camera properties object.
@@ -45,60 +48,40 @@ def main():
     inv_gamma_lut = numpy.array(
             sum([[i/LM1, math.pow(i/LM1, 2.2)] for i in xrange(L)], []))
 
-    req = {
-        "android.sensor.exposureTime": 10*1000*1000,
-        "android.sensor.frameDuration": 0,
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.blackLevel.lock": True,
-
-        # Each channel is a simple gamma curve.
-        "android.tonemap.mode": 0,
-        "android.tonemap.curveRed": gamma_lut.tolist(),
-        "android.tonemap.curveGreen": gamma_lut.tolist(),
-        "android.tonemap.curveBlue": gamma_lut.tolist(),
-        }
-
-    sensitivities = range(100,500,50)+range(500,1000,100)+range(1000,3000,300)
-
     with its.device.ItsSession() as cam:
+        expt,_ = its.target.get_target_exposure_combos(cam)["midSensitivity"]
+        props = cam.get_camera_properties()
+        sens_range = props['android.sensor.info.sensitivityRange']
+        sens_step = (sens_range[1] - sens_range[0]) / float(NUM_STEPS-1)
+        sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]
 
-        # For i=0, don't set manual color correction gains and transform. Graph
-        # with solid R,G,B curves.
-        #
-        # For i=1, set identity transform and unit gains. Graph with dashed
-        # curves.
+        req = its.objects.manual_capture_request(0, expt/1000000.0)
+        req["android.blackLevel.lock"] = True
+        req["android.tonemap.mode"] = 0
+        req["android.tonemap.curveRed"] = gamma_lut.tolist()
+        req["android.tonemap.curveGreen"] = gamma_lut.tolist()
+        req["android.tonemap.curveBlue"] = gamma_lut.tolist()
 
-        for i in xrange(2):
+        r_means = []
+        g_means = []
+        b_means = []
 
-            r_means = []
-            g_means = []
-            b_means = []
+        for sens in sensitivities:
+            req["android.sensor.sensitivity"] = sens
+            fname, w, h, cap_md = cam.do_capture(req)
+            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            its.image.write_image(
+                    img, "%s_sens=%04d.jpg" % (NAME, sens))
+            img = its.image.apply_lut_to_image(img, inv_gamma_lut[1::2] * LM1)
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            rgb_means = its.image.compute_image_means(tile)
+            r_means.append(rgb_means[0])
+            g_means.append(rgb_means[1])
+            b_means.append(rgb_means[2])
 
-            if i == 1:
-                req["android.colorCorrection.mode"] = 0
-                req["android.colorCorrection.transform"] = (
-                        its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,1]))
-                req["android.colorCorrection.gains"] = [1,1,1,1]
-
-            for sens in sensitivities:
-                req["android.sensor.sensitivity"] = sens
-                fname, w, h, cap_md = cam.do_capture(req)
-                img = its.image.load_yuv420_to_rgb_image(fname, w, h)
-                its.image.write_image(
-                        img, "%s_sens=%04d.jpg" % (NAME, sens))
-                img = its.image.apply_lut_to_image(img, inv_gamma_lut[1::2] * LM1)
-                tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
-                rgb_means = its.image.compute_image_means(tile)
-                r_means.append(rgb_means[0])
-                g_means.append(rgb_means[1])
-                b_means.append(rgb_means[2])
-
-            pylab.plot(sensitivities, r_means, ['r','r--'][i])
-            pylab.plot(sensitivities, g_means, ['g','g--'][i])
-            pylab.plot(sensitivities, b_means, ['b','b--'][i])
+        pylab.plot(sensitivities, r_means, 'r')
+        pylab.plot(sensitivities, g_means, 'g')
+        pylab.plot(sensitivities, b_means, 'b')
 
     pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
