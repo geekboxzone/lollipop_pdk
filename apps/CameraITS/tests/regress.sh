@@ -22,6 +22,12 @@ rm -rf out
 mkdir -p out
 cd out
 
+echo ""
+echo "--------------------------------------------------------------------"
+echo "Getting target exposure value of scene"
+echo "--------------------------------------------------------------------"
+python ../config.py reboot
+
 testcount=0
 failcount=0
 

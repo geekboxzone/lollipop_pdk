@@ -111,6 +111,9 @@ The Python modules are under the pymodules directory, in the "its" package.
 * its.image: contains a collection of functions (built on numpy arrays) for
   processing captured images
 * its.error: the exception/error class used in this framework
+* its.target: functions to set and measure the exposure level to use for
+  manual shots in tests, to ensure that the images are exposed well for the
+  target scene
 
 All of these module have associated unit tests; to run the unit tests, execute
 the modules (rather than importing them).
@@ -180,7 +183,27 @@ default is 30 seconds.
     python tests/test_linearity.py reboot
     python tests/test_linearity.py reboot=20
 
-3.4. Docs
+3.4. Target exposure
+--------------------
+
+The tests/config.py script is a wrapper for the its.target module, which is
+used to set an exposure level based on the scene that the camera is imaging.
+The purpose of this is to be able to have tests which use hard-coded manual
+exposure controls, while at the same time ensuring that the captured images
+are properly exposed for the test (and aren't clamped to white or black).
+
+If no argument is provided, the script will use the camera to measure the
+scene to determine the exposure level. An argument can be provided to hard-
+code the exposure level.
+
+    python tests/config.py
+    python tests/config.py 16531519962
+
+This creates a file named its.target.cfg in the current directory, storing the
+target exposure level. Tests that use the its.target module will be reusing
+this value, if they are run from the same directory.
+
+3.5. Docs
 ---------
 
 The pydoc tool can generate HTML docs for the ITS Python modules, using the

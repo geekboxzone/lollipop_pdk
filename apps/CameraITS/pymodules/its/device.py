@@ -334,7 +334,11 @@ class ItsSession(object):
             List of Python objects obtained from loading the argument files
             and converting from the JSON object form to native Python.
         """
-        return [json.load(open(self.__get_json_path(f))) for f in local_fnames]
+        a = []
+        for fname in local_fnames:
+            with open(self.__get_json_path(fname), "r") as f:
+                a.append(json.load(f))
+        return a
 
     def get_camera_properties(self):
         """Get the camera properties object for the device.
