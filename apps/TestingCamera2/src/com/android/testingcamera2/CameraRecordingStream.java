@@ -354,12 +354,7 @@ public class CameraRecordingStream {
         Log.i(TAG, "configure video encoding format: " + format);
 
         // Create/configure a MediaCodec encoder.
-        try {
-            mEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
-        } catch (IOException ioe) {
-            throw new IllegalStateException(
-                    "failed to create " + MIME_TYPE + " encoder", ioe);
-        }
+        mEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
         mEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         mRecordingSurface = mEncoder.createInputSurface();
         mEncoder.start();
