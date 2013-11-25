@@ -56,4 +56,5 @@
     <string name="keep_open_prompt">Keep open on exit</string>
     <string name="record_handoff_prompt">No camera recording handoff</string>
     <string name="color_effect_prompt">Color Effect</string>
+    <string name="zoom_label">Zoom</string>
 </resources>

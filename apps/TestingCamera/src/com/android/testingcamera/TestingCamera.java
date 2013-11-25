@@ -43,6 +43,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -106,6 +107,7 @@ public class TestingCamera extends Activity
     private ToggleButton mCallbackToggle;
     private TextView mColorEffectSpinnerLabel;
     private Spinner mColorEffectSpinner;
+    private SeekBar mZoomSeekBar;
 
     private TextView mLogView;
 
@@ -138,6 +140,7 @@ public class TestingCamera extends Activity
     private int mVideoFrameRate = 0;
     private List<String> mColorEffects;
     private int mColorEffect = 0;
+    private int mZoom = 0;
 
     private MediaRecorder mRecorder;
     private File mRecordingFile;
@@ -225,6 +228,9 @@ public class TestingCamera extends Activity
         mExposureLockToggle = (ToggleButton) findViewById(R.id.exposure_lock);
         mExposureLockToggle.setOnClickListener(mExposureLockToggleListener);
         mOpenOnlyControls.add(mExposureLockToggle);
+
+        mZoomSeekBar = (SeekBar) findViewById(R.id.zoom_seekbar);
+        mZoomSeekBar.setOnSeekBarChangeListener(mZoomSeekBarListener);
 
         mSnapshotSizeSpinner = (Spinner) findViewById(R.id.snapshot_size_spinner);
         mSnapshotSizeSpinner.setOnItemSelectedListener(mSnapshotSizeListener);
@@ -901,6 +907,16 @@ public class TestingCamera extends Activity
             mExposureLockToggle.setEnabled(false);
         }
 
+        if (mParams.isZoomSupported()) {
+            int maxZoom = mParams.getMaxZoom();
+            mZoomSeekBar.setMax(maxZoom);
+            log("Zoom is supported, set max to " + maxZoom);
+            mZoomSeekBar.setEnabled(true);
+        } else {
+            log("Zoom is not supported");
+            mZoomSeekBar.setEnabled(false);
+        }
+
         // Update parameters based on above updates
         mCamera.setParameters(mParams);
 
@@ -984,6 +1000,24 @@ public class TestingCamera extends Activity
             log("Auto-Exposure was " + mParams.getAutoExposureLock());
             mParams.setAutoExposureLock(on);
             log("Auto-Exposure is now " + mParams.getAutoExposureLock());
+        }
+    };
+
+    private final SeekBar.OnSeekBarChangeListener mZoomSeekBarListener =
+            new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress,
+                boolean fromUser) {
+            mZoom = progress;
+            mParams.setZoom(mZoom);
+            mCamera.setParameters(mParams);
+        }
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) { }
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            log("Zoom set to " + mZoom + " / " + mParams.getMaxZoom() + " (" +
+                    ((float)(mParams.getZoomRatios().get(mZoom))/100) + "x)");
         }
     };
 

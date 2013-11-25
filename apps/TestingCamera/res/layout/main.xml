@@ -221,6 +221,22 @@
                 android:textOff="@string/exposure_lock_off_label"
                 android:textOn="@string/exposure_lock_on_label" />
 
+            <TextView
+                android:id="@+id/zoom_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/zoom_label"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <SeekBar
+                android:id="@+id/zoom_seekbar"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:progress="0"
+                style="?android:attr/progressBarStyleHorizontal" />
+
             <View
                 android:id="@+id/horizontal_rule_3"
                 android:layout_width="fill_parent"
