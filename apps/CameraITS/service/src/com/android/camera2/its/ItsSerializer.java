@@ -342,21 +342,13 @@ public class ItsSerializer {
             throws ItsException {
         try {
             List<CaptureRequest.Builder> requests = null;
-            if (jsonObjTop.has("captureRequest")) {
-                JSONObject jsonReq = jsonObjTop.getJSONObject("captureRequest");
+            JSONArray jsonReqs = jsonObjTop.getJSONArray("captureRequests");
+            requests = new LinkedList<CaptureRequest.Builder>();
+            for (int i = 0; i < jsonReqs.length(); i++) {
                 CaptureRequest.Builder templateReq = device.createCaptureRequest(
                         CameraDevice.TEMPLATE_STILL_CAPTURE);
-                requests = new LinkedList<CaptureRequest.Builder>();
-                requests.add(deserialize(templateReq, jsonReq));
-            } else if (jsonObjTop.has("captureRequestList")) {
-                JSONArray jsonReqs = jsonObjTop.getJSONArray("captureRequestList");
-                requests = new LinkedList<CaptureRequest.Builder>();
-                for (int i = 0; i < jsonReqs.length(); i++) {
-                    CaptureRequest.Builder templateReq = device.createCaptureRequest(
-                            CameraDevice.TEMPLATE_STILL_CAPTURE);
-                    requests.add(
-                        deserialize(templateReq, jsonReqs.getJSONObject(i)));
-                }
+                requests.add(
+                    deserialize(templateReq, jsonReqs.getJSONObject(i)));
             }
             return requests;
         } catch (org.json.JSONException e) {

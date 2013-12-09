@@ -89,7 +89,9 @@ def main():
         rect = [0,0,1,1]
         cam.do_3a(rect, rect, rect, True, True, False)
 
-        fname, w, h, cap_res = cam.do_capture(auto_req)
+        cap = cam.do_capture(auto_req)
+        cap_res = cap["metadata"]
+
         gains = cap_res["android.colorCorrection.gains"]
         transform = cap_res["android.colorCorrection.transform"]
         exp_time = cap_res['android.sensor.exposureTime']
@@ -135,7 +137,9 @@ def main():
         return lsc_map
 
     def test_manual(cam, w_map, h_map, lsc_map_auto):
-        fname, w, h, cap_res = cam.do_capture(manual_req)
+        cap = cam.do_capture(auto_req)
+        cap_res = cap["metadata"]
+
         gains = cap_res["android.colorCorrection.gains"]
         transform = cap_res["android.colorCorrection.transform"]
         curves = [cap_res["android.tonemap.curveRed"],
@@ -143,15 +147,11 @@ def main():
                   cap_res["android.tonemap.curveBlue"]]
         exp_time = cap_res['android.sensor.exposureTime']
         lsc_map = cap_res["android.statistics.lensShadingMap"]
-        pred_gains = cap_res["android.statistics.predictedColorGains"]
-        pred_transform = cap_res["android.statistics.predictedColorTransform"]
         ctrl_mode = cap_res["android.control.mode"]
 
         print "Control mode:", ctrl_mode
         print "Gains:", gains
         print "Transform:", [r2f(t) for t in transform]
-        print "Predicted gains:", pred_gains
-        print "Predicted transform:", [r2f(t) for t in pred_transform]
         print "Tonemap:", curves[0][1::16]
         print "AE region:", cap_res['android.control.aeRegions']
         print "AF region:", cap_res['android.control.afRegions']
@@ -169,10 +169,6 @@ def main():
                     for i in xrange(4)]))
         assert(all([is_close_rational(transform[i], manual_transform[i])
                     for i in xrange(9)]))
-
-        # The predicted gains and transform must also be valid.
-        assert(len(pred_gains) == 4)
-        assert(len(pred_transform) == 9)
 
         # Tonemap must be valid.
         # The returned tonemap must be linear.

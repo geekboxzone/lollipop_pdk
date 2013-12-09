@@ -22,6 +22,7 @@ import Image
 import numpy
 import math
 import unittest
+import cStringIO
 
 DEFAULT_YUV_TO_RGB_CCM = numpy.matrix([
                                 [1.000,  1.402,  0.000],
@@ -37,6 +38,88 @@ DEFAULT_INVGAMMA_LUT = numpy.array(
         [math.floor(65535 * math.pow(i/65535.0, 2.2) + 0.5) for i in xrange(65536)])
 
 MAX_LUT_SIZE = 65536
+
+def convert_capture_to_rgb_image(cap,
+                                 ccm_yuv_to_rgb=DEFAULT_YUV_TO_RGB_CCM,
+                                 yuv_off=DEFAULT_YUV_OFFSETS):
+    """Convert a captured image object to a RGB image.
+
+    Args:
+        cap: A capture object as returned by its.device.do_capture.
+        ccm_yuv_to_rgb: (Optional) the 3x3 CCM to convert from YUV to RGB.
+        yuv_off: (Optional) offsets to subtract from each of Y,U,V values.
+
+    Returns:
+        RGB float-3 image array, with pixel values in [0.0, 1.0].
+    """
+    w = cap["width"]
+    h = cap["height"]
+    if cap["format"] == "yuv":
+        y = cap["data"][0:w*h]
+        u = cap["data"][w*h:w*h*5/4]
+        v = cap["data"][w*h*5/4:w*h*6/4]
+        return convert_yuv420_to_rgb_image(y, u, v, w, h)
+    elif cap["format"] == "jpeg":
+        # TODO: Convert JPEG to RGB.
+        raise its.error.Error('Invalid format %s' % (cap["format"]))
+    else:
+        raise its.error.Error('Invalid format %s' % (cap["format"]))
+
+def convert_capture_to_yuv_planes(cap):
+    """Convert a captured image object to separate Y,U,V image planes.
+
+    The only input format that is supported is planar YUV420, and the planes
+    that are returned are such that the U,V planes are 1/2 x 1/2 of the Y
+    plane size.
+
+    Args:
+        cap: A capture object as returned by its.device.do_capture.
+
+    Returns:
+        Three float arrays, for the Y,U,V planes, with pixel values in [0,1].
+    """
+    w = cap["width"]
+    h = cap["height"]
+    if cap["format"] == "yuv":
+        y = cap["data"][0:w*h]
+        u = cap["data"][w*h:w*h*5/4]
+        v = cap["data"][w*h*5/4:w*h*6/4]
+        return ((y.astype(numpy.float32) / 255.0).reshape(h, w, 1),
+                (u.astype(numpy.float32) / 255.0).reshape(h/2, w/2, 1),
+                (v.astype(numpy.float32) / 255.0).reshape(h/2, w/2, 1))
+    else:
+        raise its.error.Error('Invalid format %s' % (cap["format"]))
+
+def convert_yuv420_to_rgb_image(y_plane, u_plane, v_plane,
+                                w, h,
+                                ccm_yuv_to_rgb=DEFAULT_YUV_TO_RGB_CCM,
+                                yuv_off=DEFAULT_YUV_OFFSETS):
+    """Convert a YUV420 8-bit planar image to an RGB image.
+
+    Args:
+        y_plane: The packed 8-bit Y plane.
+        u_plane: The packed 8-bit U plane.
+        v_plane: The packed 8-bit V plane.
+        w: The width of the image.
+        h: The height of the image.
+        ccm_yuv_to_rgb: (Optional) the 3x3 CCM to convert from YUV to RGB.
+        yuv_off: (Optional) offsets to subtract from each of Y,U,V values.
+
+    Returns:
+        RGB float-3 image array, with pixel values in [0.0, 1.0].
+    """
+    y = numpy.subtract(y_plane, yuv_off[0])
+    u = numpy.subtract(u_plane, yuv_off[1]).view(numpy.int8)
+    v = numpy.subtract(v_plane, yuv_off[2]).view(numpy.int8)
+    u = u.reshape(h/2, w/2).repeat(2, axis=1).repeat(2, axis=0)
+    v = v.reshape(h/2, w/2).repeat(2, axis=1).repeat(2, axis=0)
+    yuv = numpy.dstack([y, u.reshape(w*h), v.reshape(w*h)])
+    flt = numpy.empty([h, w, 3], dtype=numpy.float32)
+    flt.reshape(w*h*3)[:] = yuv.reshape(h*w*3)[:]
+    flt = numpy.dot(flt.reshape(w*h,3), ccm_yuv_to_rgb.T).clip(0, 255)
+    rgb = numpy.empty([h, w, 3], dtype=numpy.uint8)
+    rgb.reshape(w*h*3)[:] = flt.reshape(w*h*3)[:]
+    return rgb.astype(numpy.float32) / 255.0
 
 def load_yuv420_to_rgb_image(yuv_fname,
                              w, h,
@@ -58,18 +141,7 @@ def load_yuv420_to_rgb_image(yuv_fname,
         y = numpy.fromfile(f, numpy.uint8, w*h, "")
         v = numpy.fromfile(f, numpy.uint8, w*h/4, "")
         u = numpy.fromfile(f, numpy.uint8, w*h/4, "")
-        y = numpy.subtract(y, yuv_off[0])
-        u = numpy.subtract(u, yuv_off[1]).view(numpy.int8)
-        v = numpy.subtract(v, yuv_off[2]).view(numpy.int8)
-        u = u.reshape(h/2, w/2).repeat(2, axis=1).repeat(2, axis=0)
-        v = v.reshape(h/2, w/2).repeat(2, axis=1).repeat(2, axis=0)
-        yuv = numpy.dstack([y, u.reshape(w*h), v.reshape(w*h)])
-        flt = numpy.empty([h, w, 3], dtype=numpy.float32)
-        flt.reshape(w*h*3)[:] = yuv.reshape(h*w*3)[:]
-        flt = numpy.dot(flt.reshape(w*h,3), ccm_yuv_to_rgb.T).clip(0, 255)
-        rgb = numpy.empty([h, w, 3], dtype=numpy.uint8)
-        rgb.reshape(w*h*3)[:] = flt.reshape(w*h*3)[:]
-        return rgb.astype(numpy.float32) / 255.0
+        return convert_yuv420_to_rgb_image(y,u,v,w,h,ccm_yuv_to_rgb,yuv_off)
 
 def load_yuv420_to_yuv_planes(yuv_fname, w, h):
     """Load a YUV420 image file, and return separate Y, U, and V plane images.
@@ -92,6 +164,20 @@ def load_yuv420_to_yuv_planes(yuv_fname, w, h):
         return ((y.astype(numpy.float32) / 255.0).reshape(h, w, 1),
                 (u.astype(numpy.float32) / 255.0).reshape(h/2, w/2, 1),
                 (v.astype(numpy.float32) / 255.0).reshape(h/2, w/2, 1))
+
+def decompress_jpeg_to_rgb_image(jpeg_buffer):
+    """Decompress a JPEG-compressed image, returning as an RGB image.
+
+    Args:
+        jpeg_buffer: The JPEG stream.
+
+    Returns:
+        A numpy array for the RGB image, with pixels in [0,1].
+    """
+    img = Image.open(cStringIO.StringIO(jpeg_buffer))
+    w = img.size[0]
+    h = img.size[1]
+    return numpy.array(img).reshape(h,w,3) / 255.0
 
 def apply_lut_to_image(img, lut):
     """Applies a LUT to every pixel in a float image array.

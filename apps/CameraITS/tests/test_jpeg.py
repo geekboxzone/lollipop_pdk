@@ -37,8 +37,8 @@ def main():
         size = props['android.scaler.availableProcessedSizes'][0]
         out_surface = copy.deepcopy(size)
         out_surface["format"] = "yuv"
-        fname, w, h, cap_md = cam.do_capture(req, out_surface)
-        img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+        cap = cam.do_capture(req, out_surface)
+        img = its.image.convert_capture_to_rgb_image(cap)
         its.image.write_image(img, "%s_fmt=yuv.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         rgb0 = its.image.compute_image_means(tile)
@@ -48,11 +48,11 @@ def main():
         size = props['android.scaler.availableJpegSizes'][0]
         out_surface = copy.deepcopy(size)
         out_surface["format"] = "jpg"
-        fname, w, h, cap_md = cam.do_capture(req, out_surface)
-        img = numpy.array(Image.open(fname)).reshape(w,h,3) / 255.0
+        cap = cam.do_capture(req, out_surface)
+        img = its.image.decompress_jpeg_to_rgb_image(cap["data"])
+        its.image.write_image(img, "%s_fmt=jpg.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         rgb1 = its.image.compute_image_means(tile)
-        shutil.copy2(fname, "%s_fmt=jpg.jpg" % (NAME))
 
         rms_diff = math.sqrt(
                 sum([pow(rgb0[i] - rgb1[i], 2.0) for i in range(3)]) / 3.0)

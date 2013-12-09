@@ -58,8 +58,8 @@ def main():
                     sum([[i/LM1, (1+1.0*n)*i/LM1] for i in range(L)], []))
             req["android.tonemap.curveBlue"] = (
                     sum([[i/LM1, (1+1.5*n)*i/LM1] for i in range(L)], []))
-            fname, w, h, md = cam.do_capture(req)
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(
                     img, "%s_n=%d.jpg" %(NAME, n))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
@@ -83,8 +83,8 @@ def main():
             req["android.tonemap.curveRed"] = curve
             req["android.tonemap.curveGreen"] = curve
             req["android.tonemap.curveBlue"] = curve
-            fname, w, h, md = cam.do_capture(req)
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            img = its.image.convert_capture_to_rgb_image(fname, w, h)
             its.image.write_image(
                     img, "%s_size=%02d.jpg" %(NAME, size))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)

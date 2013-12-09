@@ -72,9 +72,9 @@ def main():
             req["android.colorCorrection.gains"] = awb_gains
             reqs.append(req)
 
-        fnames, w, h, cap_mds = cam.do_capture(reqs)
-        for i,fname in enumerate(fnames):
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+        caps = cam.do_capture(reqs)
+        for i,cap in enumerate(caps):
+            img = its.image.convert_capture_to_rgb_image(cap)
 
             tile_center = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             rgb_means = its.image.compute_image_means(tile_center)

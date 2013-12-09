@@ -78,8 +78,8 @@ def main():
         for i in range(len(transforms)):
             req["android.colorCorrection.transform"] = transforms[i]
             req["android.colorCorrection.gains"] = gains[i]
-            fname, w, h, md_obj = cam.do_capture(req)
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_req=%d.jpg" % (NAME, i))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             rgb_means = its.image.compute_image_means(tile)

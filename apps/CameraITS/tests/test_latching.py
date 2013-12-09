@@ -54,9 +54,9 @@ def main():
             its.objects.manual_capture_request(s,  e/1000000.0  ),
             ]
 
-        fnames, w, h, cap_mds = cam.do_capture(reqs)
-        for i, fname in enumerate(fnames):
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+        caps = cam.do_capture(reqs)
+        for i,cap in enumerate(caps):
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_i=%02d.jpg" % (NAME, i))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             rgb_means = its.image.compute_image_means(tile)
