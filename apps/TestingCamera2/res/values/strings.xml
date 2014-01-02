@@ -21,6 +21,7 @@
     <string name="flush_button_label">Flush device</string>
     <string name="recording_on_label">Recording On</string>
     <string name="recording_off_label">Recording Off</string>
+    <string name="use_media_codec_label">Use MediaCodec</string>
     <string name="auto_control_label">Auto</string>
     <string name="manual_control_label">Manual Control</string>
     <string name="sensitivity_value_prompt">Sensitivity(ISO): </string>

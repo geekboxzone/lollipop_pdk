@@ -86,6 +86,12 @@
             android:layout_marginTop="@dimen/horiz_rule_top_margin"
             android:background="@color/horiz_rule_color" />
 
+        <CheckBox
+            android:id="@+id/use_media_codec"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_media_codec_label" />
+
         <ToggleButton
             android:id="@+id/manual_control"
             android:layout_width="fill_parent"

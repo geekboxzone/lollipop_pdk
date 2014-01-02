@@ -29,8 +29,6 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -65,6 +63,7 @@ public class CameraOps {
     private CameraCharacteristics mCameraCharacteristics;
 
     private int mEncodingBitRate;
+    private int mDeviceOrientation;
 
     private CaptureRequest.Builder mPreviewRequestBuilder;
     private CaptureRequest.Builder mRecordingRequestBuilder;
@@ -228,6 +227,13 @@ public class CameraOps {
     }
 
     /**
+     * Update current device orientation (0~360 degrees)
+     */
+    public void updateOrientation(int orientation) {
+        mDeviceOrientation = orientation;
+    }
+
+    /**
      * Configure streams and run minimal preview
      */
     public void minimalPreview(SurfaceHolder previewHolder, CameraControls camCtl)
@@ -322,13 +328,15 @@ public class CameraOps {
     public void startRecording(boolean useMediaCodec) throws ApiFailureException {
         minimalOpenCamera();
         Size recordingSize = getRecordingSize();
+        int orientationHint = getOrientationHint();
         try {
             if (mRecordingRequestBuilder == null) {
                 mRecordingRequestBuilder =
                         mCamera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
             }
             // Setup output stream first
-            mRecordingStream.configure(recordingSize, useMediaCodec, mEncodingBitRate);
+            mRecordingStream.configure(
+                    recordingSize, useMediaCodec, mEncodingBitRate, orientationHint);
             mRecordingStream.onConfiguringOutputs(mOutputSurfaces, /* detach */false);
             mRecordingStream.onConfiguringRequest(mRecordingRequestBuilder, /* detach */false);
 
@@ -383,6 +391,19 @@ public class CameraOps {
         } catch (CameraAccessException e) {
             throw new ApiFailureException("Error flushing", e);
         }
+    }
+
+    private int getOrientationHint() {
+        // snap to {0, 90, 180, 270}
+        int orientation = ((int)Math.round(mDeviceOrientation/90.0)*90) % 360;
+
+        CameraCharacteristics properties = getCameraCharacteristics();
+        int sensorOrientation = properties.get(CameraCharacteristics.SENSOR_ORIENTATION);
+
+        // TODO: below calculation is for back-facing camera only
+        // front-facing camera should use:
+        // return (sensorOrientation - orientation +360) % 360;
+        return (sensorOrientation + orientation) % 360;
     }
 
     private Size getRecordingSize() throws ApiFailureException {

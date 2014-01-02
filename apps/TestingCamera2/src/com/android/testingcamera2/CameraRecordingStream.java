@@ -22,6 +22,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
+import android.media.MediaRecorder;
 import android.os.Environment;
 import android.util.Log;
 import android.view.Surface;
@@ -55,6 +56,7 @@ public class CameraRecordingStream {
     private MediaCodec mEncoder;
     private Surface mRecordingSurface;
     private int mEncBitRate;
+    private int mOrientation;
     private MediaCodec.BufferInfo mBufferInfo;
     private MediaMuxer mMuxer;
     private int mTrackIndex = -1;
@@ -62,6 +64,7 @@ public class CameraRecordingStream {
     private boolean mUseMediaCodec = false;
     private Size mStreamSize = new Size(-1, -1);
     private Thread mRecordingThread;
+    private MediaRecorder mMediaRecorder;
 
     public CameraRecordingStream() {
     }
@@ -73,8 +76,10 @@ public class CameraRecordingStream {
      * @param useMediaCodec The encoder for this stream to use, either MediaCodec
      * or MediaRecorder.
      * @param bitRate Bit rate the encoder takes.
+     * @param orientation Recording orientation in degree (0,90,180,270)
      */
-    public synchronized void configure(Size size, boolean useMediaCodec, int bitRate) {
+    public synchronized void configure(
+            Size size, boolean useMediaCodec, int bitRate, int orientation) {
         if (getStreamState() == STREAM_STATE_RECORDING) {
             throw new IllegalStateException(
                     "Stream can only be configured when stream is in IDLE state");
@@ -83,11 +88,13 @@ public class CameraRecordingStream {
         boolean isConfigChanged =
                 (!mStreamSize.equals(size)) ||
                 (mUseMediaCodec != useMediaCodec) ||
-                (mEncBitRate != bitRate);
+                (mEncBitRate != bitRate) ||
+                (mOrientation != orientation);
 
         mStreamSize = size;
         mUseMediaCodec = useMediaCodec;
         mEncBitRate = bitRate;
+        mOrientation = orientation;
 
         if (mUseMediaCodec) {
             if (getStreamState() == STREAM_STATE_CONFIGURED) {
@@ -112,8 +119,7 @@ public class CameraRecordingStream {
                 configureMediaCodecEncoder();
             }
         } else {
-            // TODO: implement MediaRecoder mode.
-            Log.w(TAG, "MediaRecorder configure is not implemented yet");
+            configureMediaRecorder();
         }
 
         setStreamState(STREAM_STATE_CONFIGURED);
@@ -185,12 +191,11 @@ public class CameraRecordingStream {
             throw new IllegalStateException("Recording stream is not configured yet");
         }
 
+        setStreamState(STREAM_STATE_RECORDING);
         if (mUseMediaCodec) {
-            setStreamState(STREAM_STATE_RECORDING);
             startMediaCodecRecording();
         } else {
-            // TODO: Implement MediaRecorder mode recording
-            Log.w(TAG, "MediaRecorder mode recording is not implemented yet");
+            mMediaRecorder.start();
         }
     }
 
@@ -228,8 +233,13 @@ public class CameraRecordingStream {
             releaseEncoder();
             releaseMuxer();
         } else {
-            // TODO: implement MediaRecorder mode recording stop.
-            Log.w(TAG, "MediaRecorder mode recording stop is not implemented yet");
+            try {
+                mMediaRecorder.stop();
+            } catch (RuntimeException e) {
+                // this can happen if there were no frames received by recorder
+                Log.e(TAG, "Could not create output file");
+            }
+            releaseMediaRecorder();
         }
     }
 
@@ -305,6 +315,22 @@ public class CameraRecordingStream {
         }
     }
 
+    private void releaseMediaRecorder() {
+        if (VERBOSE) {
+            Log.v(TAG, "releasing media recorder");
+        }
+
+        if (mMediaRecorder != null) {
+            mMediaRecorder.release();
+            mMediaRecorder = null;
+        }
+
+        if (mRecordingSurface != null) {
+            mRecordingSurface.release();
+            mRecordingSurface = null;
+        }
+    }
+
     private String getOutputMediaFileName() {
         String state = Environment.getExternalStorageState();
         // Check if external storage is mounted
@@ -329,6 +355,7 @@ public class CameraRecordingStream {
         String mediaFileName = mediaStorageDir.getPath() + File.separator +
                 "VID_" + timeStamp + ".mp4";
 
+        Log.v(TAG, "Recording file name: " + mediaFileName);
         return mediaFileName;
     }
 
@@ -371,10 +398,38 @@ public class CameraRecordingStream {
         try {
             mMuxer = new MediaMuxer(
                     outputFileName, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mMuxer.setOrientationHint(mOrientation);
         } catch (IOException ioe) {
             throw new IllegalStateException("MediaMuxer creation failed", ioe);
         }
         mMuxerStarted = false;
+    }
+
+    private void configureMediaRecorder() {
+        String outputFileName = getOutputMediaFileName();
+        if (outputFileName == null) {
+            throw new IllegalStateException("Failed to get video output file");
+        }
+        releaseMediaRecorder();
+        mMediaRecorder = new MediaRecorder();
+        try {
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            mMediaRecorder.setOutputFile(outputFileName);
+            mMediaRecorder.setVideoEncodingBitRate(mEncBitRate);
+            mMediaRecorder.setVideoFrameRate(FRAME_RATE);
+            mMediaRecorder.setVideoSize(mStreamSize.getWidth(), mStreamSize.getHeight());
+            mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            mMediaRecorder.setOrientationHint(mOrientation);
+            mMediaRecorder.prepare();
+            mRecordingSurface = mMediaRecorder.getSurface();
+        } catch (IllegalStateException e) {
+            Log.v(TAG, "MediaRecorder throws IllegalStateException " + e.toString());
+        } catch (IOException e) {
+            Log.v(TAG, "MediaRecorder throws IOException " + e.toString());
+        }
     }
 
     /**

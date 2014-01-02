@@ -31,12 +31,15 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.OrientationEventListener;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
@@ -64,6 +67,8 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     private static final int ORIENTATION_UNINITIALIZED = -1;
 
     private int mLastOrientation = ORIENTATION_UNINITIALIZED;
+    private int mLastSensorOrientation;
+    private OrientationEventListener mOrientationEventListener;
     private SurfaceView mPreviewView;
     private ImageView mStillView;
 
@@ -71,6 +76,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
     private Button mInfoButton;
     private Button mFlushButton;
+    private CheckBox mUseMediaCodecCheckBox;
 
     private SeekBar mSensitivityBar;
     private SeekBar mExposureBar;
@@ -87,6 +93,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     private final Set<View> mManualControls = new HashSet<View>();
 
     Handler mMainHandler;
+    boolean mUseMediaCodec;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -108,6 +115,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         mFlushButton.setOnClickListener(mFlushButtonListener);
         mRecordingToggle = (ToggleButton) findViewById(R.id.start_recording);
         mRecordingToggle.setOnClickListener(mRecordingToggleListener);
+        mUseMediaCodecCheckBox = (CheckBox) findViewById(R.id.use_media_codec);
+        mUseMediaCodecCheckBox.setOnCheckedChangeListener(mUseMediaCodecListener);
+        mUseMediaCodecCheckBox.setChecked(mUseMediaCodec);
 
         mManualCtrlToggle = (ToggleButton) findViewById(R.id.manual_control);
         mManualCtrlToggle.setOnClickListener(mControlToggleListener);
@@ -144,6 +154,16 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             logException("Cannot create camera ops!",e);
         }
 
+        mOrientationEventListener = new OrientationEventListener(this) {
+            @Override
+            public void onOrientationChanged(int orientation) {
+                if (orientation == ORIENTATION_UNKNOWN) {
+                    orientation = 0;
+                }
+                mCameraOps.updateOrientation(orientation);
+            }
+        };
+        mOrientationEventListener.enable();
         // Process the initial configuration (for i.e. initial orientation)
         // We need this because #onConfigurationChanged doesn't get called when the app launches
         maybeUpdateConfiguration(getResources().getConfiguration());
@@ -173,6 +193,12 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             logException("Can't close device: ",e);
         }
         mCurrentPreviewHolder = null;
+    }
+
+    @Override
+    protected void onDestroy() {
+        mOrientationEventListener.disable();
+        super.onDestroy();
     }
 
     @Override
@@ -524,7 +550,8 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         public void onClick(View v) {
             if (mRecordingToggle.isChecked()) {
                 try {
-                    mCameraOps.startRecording(/*useMediaCodec*/true);
+                    Log.i(TAG, "start recording, useMediaCodec = " + mUseMediaCodec);
+                    mCameraOps.startRecording(mUseMediaCodec);
                 } catch (ApiFailureException e) {
                     logException("Failed to start recording", e);
                 }
@@ -535,6 +562,14 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                     logException("Failed to stop recording", e);
                 }
             }
+        }
+    };
+
+    private final CompoundButton.OnCheckedChangeListener mUseMediaCodecListener =
+            new CompoundButton.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            mUseMediaCodec = isChecked;
         }
     };
 }
