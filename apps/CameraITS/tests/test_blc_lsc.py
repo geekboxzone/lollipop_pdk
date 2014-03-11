@@ -41,8 +41,7 @@ def main():
         r = [0,0,1,1]
         ae_sen,ae_exp,awb_gains,awb_transform,_ = \
                 cam.do_3a(r,r,r,True,True,False)
-        ae_exp = ae_exp / 1000000.0
-        print "AE:", ae_sen, ae_exp
+        print "AE:", ae_sen, ae_exp / 1000000.0
         print "AWB:", awb_gains, awb_transform
 
         # Set analog gain (sensitivity) to 800
@@ -52,7 +51,7 @@ def main():
         # Capture range of exposures from 1/100x to 4x of AE estimate.
         exposures = [ae_exp*x/100.0 for x in [1]+range(10,401,20)]
         exposures = [e for e in exposures
-                     if e >= expt_range[0]/1000000 and e <= expt_range[1]/1000000]
+                     if e >= expt_range[0] and e <= expt_range[1]]
 
         # Convert the transform back to rational.
         awb_transform_rat = [{"numerator":int(100*x),"denominator":100}

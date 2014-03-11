@@ -30,6 +30,7 @@ import its.target
 # Standard Python modules.
 import os.path
 import pprint
+import math
 
 # Modules from the numpy, scipy, and matplotlib libraries. These are used for
 # the image processing code, and images are represented as numpy arrays.
@@ -64,7 +65,7 @@ def main():
 
         # Grab a YUV frame with manual exposure of sensitivity = 200, exposure
         # duration = 50ms.
-        req = its.objects.manual_capture_request(200, 50)
+        req = its.objects.manual_capture_request(200, 50*1000*1000)
         cap = cam.do_capture(req)
 
         # Print the properties of the captured frame; width and height are
@@ -112,8 +113,9 @@ def main():
         # requests, meaning it is an object with integer numerators and
         # denominators. The 3A routine returns simple floats instead, however,
         # so a conversion from float to rational must be performed.
-        req = its.objects.manual_capture_request(sens, exp/1000000.0)
-        xform_rat = [{"numerator":int(f*100),"denominator":100} for f in xform]
+        req = its.objects.manual_capture_request(sens, exp)
+        xform_rat = [{"numerator":math.floor(v*128+0.5), "denominator":128}
+                     for v in xform]
         req["android.colorCorrection.transform"] = xform_rat
         req["android.colorCorrection.gains"] = gains
         cap = cam.do_capture(req)

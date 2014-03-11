@@ -44,7 +44,7 @@ def main():
         sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]
 
         for s in sensitivities:
-            req = its.objects.manual_capture_request(s, expt/1000000.0)
+            req = its.objects.manual_capture_request(s, expt)
             cap = cam.do_capture(req)
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(

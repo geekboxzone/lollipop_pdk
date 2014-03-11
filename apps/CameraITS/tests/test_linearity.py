@@ -55,7 +55,7 @@ def main():
         sens_step = (sens_range[1] - sens_range[0]) / float(NUM_STEPS-1)
         sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]
 
-        req = its.objects.manual_capture_request(0, expt/1000000.0)
+        req = its.objects.manual_capture_request(0, expt)
         req["android.blackLevel.lock"] = True
         req["android.tonemap.mode"] = 0
         req["android.tonemap.curveRed"] = gamma_lut.tolist()

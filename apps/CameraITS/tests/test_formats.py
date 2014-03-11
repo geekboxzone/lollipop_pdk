@@ -27,7 +27,7 @@ def main():
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
         for size in props['android.scaler.availableProcessedSizes']:
-            req = its.objects.manual_capture_request(100,10)
+            req = its.objects.manual_capture_request(100,10*1000*1000)
             out_surface = copy.deepcopy(size)
             out_surface["format"] = "yuv"
             cap = cam.do_capture(req, out_surface)
@@ -36,7 +36,7 @@ def main():
             assert(cap["height"] == size["height"])
             print "Captured YUV %dx%d" % (cap["width"], cap["height"])
         for size in props['android.scaler.availableJpegSizes']:
-            req = its.objects.manual_capture_request(100,10)
+            req = its.objects.manual_capture_request(100,10*1000*1000)
             out_surface = copy.deepcopy(size)
             out_surface["format"] = "jpg"
             cap = cam.do_capture(req, out_surface)

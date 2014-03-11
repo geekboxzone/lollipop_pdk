@@ -50,7 +50,7 @@ def main():
         rgb_means = []
 
         for n in [0,1]:
-            req = its.objects.manual_capture_request(100,50)
+            req = its.objects.manual_capture_request(100,50*1000*1000)
             req["android.tonemap.mode"] = 0
             req["android.tonemap.curveRed"] = (
                     sum([[i/LM1, (1+0.5*n)*i/LM1] for i in range(L)], []))
@@ -78,7 +78,7 @@ def main():
         for size in [32,64]:
             m = float(size-1)
             curve = sum([[i/m, i/m] for i in range(size)], [])
-            req = its.objects.manual_capture_request(100,50)
+            req = its.objects.manual_capture_request(100,50*1000*1000)
             req["android.tonemap.mode"] = 0
             req["android.tonemap.curveRed"] = curve
             req["android.tonemap.curveGreen"] = curve

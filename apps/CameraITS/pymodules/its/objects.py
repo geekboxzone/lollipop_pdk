@@ -37,15 +37,15 @@ def int_to_rational(i):
     else:
         return {"numerator":i, "denominator":1}
 
-def manual_capture_request(sensitivity, exp_time_ms):
+def manual_capture_request(sensitivity, exp_time):
     """Return a capture request with everything set to manual.
 
     Uses identity/unit color correction, and the default tonemap curve.
 
     Args:
         sensitivity: The sensitivity value to populate the request with.
-        exp_time_ms: The exposure time, in milliseconds, to populate the
-            request with.
+        exp_time: The exposure time, in nanoseconds, to populate the request
+            with.
 
     Returns:
         The default manual capture request, ready to be passed to the
@@ -59,7 +59,7 @@ def manual_capture_request(sensitivity, exp_time_ms):
         "android.control.effectMode": 0,
         "android.sensor.frameDuration": 0,
         "android.sensor.sensitivity": sensitivity,
-        "android.sensor.exposureTime": exp_time_ms*1000*1000,
+        "android.sensor.exposureTime": exp_time,
         "android.colorCorrection.mode": 0,
         "android.colorCorrection.transform":
                 int_to_rational([1,0,0, 0,1,0, 0,0,1]),
