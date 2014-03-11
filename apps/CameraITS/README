@@ -122,14 +122,15 @@ the modules (rather than importing them).
 -------------------
 
 The its.device.ItsSession class encapsulates a session with a connected device
-under test (which is running ItsService.apk).
+under test (which is running ItsService.apk). The session is over TCP, which is
+forwarded over adb.
 
 As an overview, the ItsSession.do_capture() function takes a Python dictionary
 object as an argument, converts that object to JSON, and sends it to the
-device over adb which then deserializes from the JSON object representation to
+device over tcp which then deserializes from the JSON object representation to
 Camera2 Java objects (CaptureRequests) which are used to specify one or more
 captures. Once the captures are complete, the resultant images are copied back
-to the host machine (using adb pull), along with JSON representations of the
+to the host machine (over tcp again), along with JSON representations of the
 CaptureResult and other objects that describe the shot that was actually taken.
 
 The Python capture request object(s) can contain key/value entries corresponding
@@ -183,6 +184,10 @@ default is 30 seconds.
     python tests/test_linearity.py reboot
     python tests/test_linearity.py reboot=20
 
+It's possible that a test could leave the camera in a bad state, in particular
+if there are any bugs in the HAL or the camera framework. Rebooting the device
+can be used to get it into a known clean state again.
+
 3.4. Target exposure
 --------------------
 
@@ -210,6 +215,13 @@ The pydoc tool can generate HTML docs for the ITS Python modules, using the
 following command (run after PYTHONPATH has been set up as described above):
 
     pydoc -w its its.device its.image its.error its.objects
+
+There is a tutorial script in the tests folder (named tutorial.py). It
+illustrates a number of the its.image and its.device primitives, and shows
+how to work with image data in general using this infrastructure. (Its code
+is commented with explanatory remarks.)
+
+    python tests/tutorial.py
 
 4. Known issues
 ---------------
