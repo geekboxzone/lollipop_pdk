@@ -163,6 +163,17 @@ def main():
         rgbimg_mat = its.image.apply_matrix_to_image(rgbimg, mat)
         its.image.write_image(rgbimg_mat, "%s_rgb_2_mat.jpg" % (NAME))
 
+        # Compute a histogram of the luma image, in 256 buckeits.
+        yimg,_,_ = its.image.convert_capture_to_yuv_planes(cap)
+        hist,_ = numpy.histogram(yimg*255, 256, (0,256))
+
+        # Plot the histogram using matplotlib, and save as a PNG image.
+        pylab.plot(range(256), hist.tolist())
+        pylab.xlabel("Luma DN")
+        pylab.ylabel("Pixel count")
+        pylab.title("Histogram of luma channel of captured image")
+        matplotlib.pyplot.savefig("%s_histogram.png" % (NAME))
+
 # This is the standard boilerplate in each test that allows the script to both
 # be executed directly and imported as a module.
 if __name__ == '__main__':
