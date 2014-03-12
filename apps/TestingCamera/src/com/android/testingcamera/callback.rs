@@ -17,6 +17,21 @@ uint32_t v_start;
 float x_scale;
 float y_scale;
 
+static const float CLAMP_MIN = 0;
+static const float CLAMP_MAX = 255;
+
+/**
+ * JFIF standard YCbCr <-> RGB conversion matrix,
+ * column-major order.
+ */
+static const float YUV2RGB[] = {
+    1.0f, 1.0f, 1.0f, 0.0f,
+    0.0f, -0.34414f, 1.772f, 0.0f,
+    1.402f, -0.71414f, 0.0f, 0.0f,
+    -0.701f, 0.529f, -0.886f, 1.0f
+};
+rs_matrix4x4 yuv2rgb_matrix;
+
 enum ImageFormat {
     NV16 = 16,
     NV21 = 17,
@@ -33,6 +48,7 @@ void init_convert(uint32_t yw, uint32_t yh, uint32_t format,
     yuv_width = yw;
     out_width = ow;
     out_height = oh;
+    rsMatrixLoad(&yuv2rgb_matrix, YUV2RGB);
 
     x_scale = (float)yuv_width / out_width;
     y_scale = (float)yuv_height / out_height;
@@ -68,6 +84,14 @@ void init_convert(uint32_t yw, uint32_t yh, uint32_t format,
     }
 }
 
+// Multiply by color matrix and clamp to range [0, 255]
+static inline uchar4 multiply_and_clamp(const rs_matrix4x4* mat, uchar4 input) {
+    float4 intermediate = convert_float4(input);
+    intermediate = rsMatrixMultiply(mat, intermediate);
+    intermediate = clamp(intermediate, CLAMP_MIN, CLAMP_MAX);
+    return convert_uchar4(intermediate);
+}
+
 // Makes up a conversion for unknown YUV types to try to display something
 // Asssumes that there's at least 1bpp in input YUV data
 uchar4 __attribute__((kernel)) convert_unknown(uint32_t x, uint32_t y) {
@@ -79,7 +103,9 @@ uchar4 __attribute__((kernel)) convert_unknown(uint32_t x, uint32_t y) {
     out.g = 128;
     out.b = 128;
     out.a = 255; // For affine transform later
-    return out;
+
+    // Apply yuv->rgb color transform
+    return multiply_and_clamp(&yuv2rgb_matrix, out);
 }
 
 // Converts semiplanar YVU to interleaved YUV, nearest neighbor
@@ -96,7 +122,9 @@ uchar4 __attribute__((kernel)) convert_semiplanar(uint32_t x, uint32_t y) {
     out.g = yuv_in[u_start + vu_pixel];
     out.b = yuv_in[v_start + vu_pixel];
     out.a = 255; // For affine transform later
-    return out;
+
+    // Apply yuv->rgb color transform
+    return multiply_and_clamp(&yuv2rgb_matrix, out);
 }
 
 // Converts planar YVU to interleaved YUV, nearest neighbor
@@ -112,7 +140,9 @@ uchar4 __attribute__((kernel)) convert_planar(uint32_t x, uint32_t y) {
     out.g = yuv_in[u_start + vu_pixel];
     out.b = yuv_in[v_start + vu_pixel];
     out.a = 255; // For affine transform later
-    return out;
+
+    // Apply yuv->rgb color transform
+    return multiply_and_clamp(&yuv2rgb_matrix, out);
 }
 
 // Converts interleaved 4:2:2 YUV to interleaved YUV, nearest neighbor
@@ -128,5 +158,7 @@ uchar4 __attribute__((kernel)) convert_interleaved(uint32_t x, uint32_t y) {
     out.g = yuv_in[u_start + vu_pixel];
     out.b = yuv_in[v_start + vu_pixel];
     out.a = 255; // For affine transform later
-    return out;
+
+    // Apply yuv->rgb color transform
+    return multiply_and_clamp(&yuv2rgb_matrix, out);
 }
