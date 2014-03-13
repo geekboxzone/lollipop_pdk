@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import os.path
 import matplotlib
@@ -30,29 +31,29 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    S = 150 # Sensitivity
-    E = 10 # Exposure time, ms
-
-    reqs = [
-        its.objects.manual_capture_request(S,  E  ),
-        its.objects.manual_capture_request(S,  E  ),
-        its.objects.manual_capture_request(S*8,E  ),
-        its.objects.manual_capture_request(S*8,E  ),
-        its.objects.manual_capture_request(S,  E  ),
-        its.objects.manual_capture_request(S,  E  ),
-        its.objects.manual_capture_request(S,  E*8),
-        its.objects.manual_capture_request(S,  E  ),
-        its.objects.manual_capture_request(S*8,E  ),
-        its.objects.manual_capture_request(S,  E  ),
-        its.objects.manual_capture_request(S,  E*8),
-        its.objects.manual_capture_request(S,  E  ),
-        ]
-
     r_means = []
     g_means = []
     b_means = []
 
     with its.device.ItsSession() as cam:
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        s = s / 2.0
+
+        reqs = [
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s*4,e/1000000.0  ),
+            its.objects.manual_capture_request(s*4,e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e/1000000.0*4),
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s*4,e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e/1000000.0*4),
+            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            ]
+
         fnames, w, h, cap_mds = cam.do_capture(reqs)
         for i, fname in enumerate(fnames):
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)

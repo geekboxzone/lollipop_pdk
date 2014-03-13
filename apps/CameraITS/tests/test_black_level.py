@@ -35,7 +35,7 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     NUM_REPEAT = 3
-    NUM_SENSITIVITY_STEPS = 3
+    NUM_STEPS = 3
 
     # Only check the center part where LSC has little effects.
     R = 200
@@ -49,11 +49,10 @@ def main():
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
         sens_range = props['android.sensor.info.sensitivityRange']
-        sensitivities = range(sens_range[0],
-                              sens_range[1]+1,
-                              int((sens_range[1] - sens_range[0]) /
-                                  (NUM_SENSITIVITY_STEPS - 1)))
+        sens_step = (sens_range[1] - sens_range[0]) / float(NUM_STEPS-1)
+        sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]
         print "Sensitivities:", sensitivities
+
         for si, s in enumerate(sensitivities):
             for rep in xrange(NUM_REPEAT):
                 req = its.objects.manual_capture_request(100, 1)

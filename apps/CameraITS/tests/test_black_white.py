@@ -35,9 +35,13 @@ def main():
     b_means = []
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        expt_range = props['android.sensor.info.exposureTimeRange']
+        sens_range = props['android.sensor.info.sensitivityRange']
+
         # Take a shot with very low ISO and exposure time. Expect it to
         # be black.
-        req = its.objects.manual_capture_request(100, 0.1)
+        req = its.objects.manual_capture_request(sens_range[0], expt_range[0]/1000000.0)
         fname, w, h, cap_md = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_black.jpg" % (NAME))
@@ -50,7 +54,7 @@ def main():
 
         # Take a shot with very high ISO and exposure time. Expect it to
         # be black.
-        req = its.objects.manual_capture_request(10000, 1000)
+        req = its.objects.manual_capture_request(sens_range[1], expt_range[1]/1000000.0)
         fname, w, h, cap_md = cam.do_capture(req)
         img = its.image.load_yuv420_to_rgb_image(fname, w, h)
         its.image.write_image(img, "%s_white.jpg" % (NAME))

@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import os.path
 import matplotlib
@@ -25,27 +26,25 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # Pass/fail thresholds.
-    THRESHOLD_MAX_MIN_DIFF = 0.3
-    THRESHOLD_MAX_MIN_RATIO = 2.0
+    # Pass/fail threshold.
+    THRESHOLD_MIN_DIFF = 0.02
 
-    req = {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0,
-        "android.sensor.sensitivity": 200
-        }
+    NUM_STEPS = 5
 
-    exposures = range(1,101,20) # ms
+    exp_times = None
     r_means = []
     g_means = []
     b_means = []
 
     with its.device.ItsSession() as cam:
-        for e in exposures:
-            req["android.sensor.exposureTime"] = e*1000*1000
+        _,sens = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        props = cam.get_camera_properties()
+        expt_range = props['android.sensor.info.exposureTimeRange']
+        expt_step = (expt_range[1] - expt_range[0]) / float(NUM_STEPS-1)
+        exp_times = [expt_range[0] + i * expt_step for i in range(NUM_STEPS)]
+
+        for e in exp_times:
+            req = its.objects.manual_capture_request(sens, e/1000000.0)
             fname, w, h, cap_md = cam.do_capture(req)
             img = its.image.load_yuv420_to_rgb_image(fname, w, h)
             its.image.write_image(
@@ -57,24 +56,16 @@ def main():
             b_means.append(rgb_means[2])
 
     # Draw a plot.
-    pylab.plot(exposures, r_means, 'r')
-    pylab.plot(exposures, g_means, 'g')
-    pylab.plot(exposures, b_means, 'b')
+    pylab.plot(exp_times, r_means, 'r')
+    pylab.plot(exp_times, g_means, 'g')
+    pylab.plot(exp_times, b_means, 'b')
     pylab.ylim([0,1])
     matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
 
-    # Test for pass/fail: just check that that images get brighter by an amount
-    # that is more than could be expected by random noise. Don't assume the
-    # curve has any specific shape or gradient. This test is just checking that
-    # the sensitivity parameter actually does something. Note the intensity
-    # may be clamped to 0 or 1 for part of the ramp, so only test that the
-    # brightness difference between the first and last samples are above a
-    # given threshold.
+    # Test for pass/fail: check that each shot is brighter than the previous.
     for means in [r_means, g_means, b_means]:
         for i in range(len(means)-1):
-            assert(means[i] <= means[i+1])
-        assert(means[-1] - means[0] > THRESHOLD_MAX_MIN_DIFF)
-        assert(means[-1] / means[0] > THRESHOLD_MAX_MIN_RATIO)
+            assert(means[i+1] - means[i] > THRESHOLD_MIN_DIFF)
 
 if __name__ == '__main__':
     main()

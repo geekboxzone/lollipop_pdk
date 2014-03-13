@@ -33,6 +33,9 @@ def main():
     b_means_corner = []
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        expt_range = props['android.sensor.info.exposureTimeRange']
+
         # Get AE+AWB lock first, so the auto values in the capture result are
         # populated properly.
         r = [0,0,1,1]
@@ -48,7 +51,8 @@ def main():
 
         # Capture range of exposures from 1/100x to 4x of AE estimate.
         exposures = [ae_exp*x/100.0 for x in [1]+range(10,401,20)]
-        print "Exposures:", exposures
+        exposures = [e for e in exposures
+                     if e >= expt_range[0]/1000000 and e <= expt_range[1]/1000000]
 
         # Convert the transform back to rational.
         awb_transform_rat = [{"numerator":int(100*x),"denominator":100}
