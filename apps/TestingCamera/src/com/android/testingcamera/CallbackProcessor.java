@@ -44,17 +44,6 @@ class CallbackProcessor {
     private boolean mDone = false;
     private boolean mTaskInProgress = false;
 
-     /**
-      * JFIF standard YCbCr <-> RGB conversion matrix,
-      * column-major order.
-      */
-    static final private float[] kJpegYuv2Rgb = new float[] {
-            1.f,     1.f,      1.f,     0.f,
-            0.f,    -0.34414f, 1.772f,  0.f,
-            1.402f, -0.71414f, 0.f,     0.f,
-           -0.701f,  0.529f,  -0.886f, 1.0f
-    };
-
     static final private int kStopTimeout = 2000; // ms
 
     private static final String TAG = "CallbackProcessor";
@@ -87,6 +76,7 @@ class CallbackProcessor {
         swizzleScript.invoke_init_convert(mWidth, mHeight,
             mFormat, viewWidth, viewHeight);
         Script.KernelID swizzleId;
+
         switch (mFormat) {
         case ImageFormat.NV21:
             swizzleId = swizzleScript.getKernelID_convert_semiplanar();
@@ -102,20 +92,11 @@ class CallbackProcessor {
             swizzleId = swizzleScript.getKernelID_convert_unknown();
         }
 
-        ScriptIntrinsicColorMatrix colorMatrix =
-                ScriptIntrinsicColorMatrix.create(rs, Element.U8_4(mRS));
-
-        Matrix4f yuv2rgb = new Matrix4f(kJpegYuv2Rgb);
-        colorMatrix.setColorMatrix(yuv2rgb);
-
         ScriptGroup.Builder b = new ScriptGroup.Builder(rs);
         b.addKernel(swizzleId);
-        b.addKernel(colorMatrix.getKernelID());
-        b.addConnection(outType, swizzleId,
-                colorMatrix.getKernelID());
         mConverter = b.create();
 
-        mConverter.setOutput(colorMatrix.getKernelID(), mAllocationOut);
+        mConverter.setOutput(swizzleId, mAllocationOut);
     }
 
     public boolean stop() {
