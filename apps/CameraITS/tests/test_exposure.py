@@ -51,8 +51,8 @@ def main():
         while s*m < sens_range[1] and e/m > expt_range[0]:
             mults.append(m)
             req = its.objects.manual_capture_request(s*m, e/1000000.0/m)
-            fname, w, h, md_obj = cam.do_capture(req)
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_mult=%02d.jpg" % (NAME, m))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             rgb_means = its.image.compute_image_means(tile)

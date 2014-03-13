@@ -53,8 +53,8 @@ def main():
                               int((sens_range[1] - sens_range[0]) / NUM_STEPS))
         for si, s in enumerate(sensitivities):
             req["android.sensor.sensitivity"] = s
-            fname, w, h, cap_md = cam.do_capture(req)
-            yimg,_,_ = its.image.load_yuv420_to_yuv_planes(fname, w, h)
+            cap = cam.do_capture(req)
+            yimg,_,_ = its.image.convert_capture_to_yuv_planes(cap)
             hist,_ = numpy.histogram(yimg*255, 256, (0,256))
             modes.append(numpy.argmax(hist))
 

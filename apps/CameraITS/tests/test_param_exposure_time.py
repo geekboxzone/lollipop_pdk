@@ -45,8 +45,8 @@ def main():
 
         for e in exp_times:
             req = its.objects.manual_capture_request(sens, e/1000000.0)
-            fname, w, h, cap_md = cam.do_capture(req)
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(
                     img, "%s_time=%03dms.jpg" % (NAME, e))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)

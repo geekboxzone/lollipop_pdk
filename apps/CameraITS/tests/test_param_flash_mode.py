@@ -33,10 +33,10 @@ def main():
     with its.device.ItsSession() as cam:
         for f in [0,1,2]:
             req["android.flash.mode"] = f
-            fname, w, h, cap_md = cam.do_capture(req)
-            flash_modes_reported.append(cap_md["android.flash.mode"])
-            flash_states_reported.append(cap_md["android.flash.state"])
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            flash_modes_reported.append(cap["metadata"]["android.flash.mode"])
+            flash_states_reported.append(cap["metadata"]["android.flash.state"])
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_mode=%d.jpg" % (NAME, f))
 
     assert(flash_modes_reported == [0,1,2])

@@ -73,10 +73,10 @@ def __do_target_exposure_measurement(its_session):
     req["android.tonemap.curveBlue"] = tmap
     req["android.colorCorrection.transform"] = xform_rat
     req["android.colorCorrection.gains"] = gains
-    fname, w, h, cap_res = its_session.do_capture(req)
+    cap = its_session.do_capture(req)
 
     # Compute the mean luma of a center patch.
-    yimg,uimg,vimg = its.image.load_yuv420_to_yuv_planes(fname,w,h)
+    yimg,uimg,vimg = its.image.convert_capture_to_yuv_planes(cap)
     tile = its.image.get_image_patch(yimg, 0.45, 0.45, 0.1, 0.1)
     luma_mean = its.image.compute_image_means(tile)
 

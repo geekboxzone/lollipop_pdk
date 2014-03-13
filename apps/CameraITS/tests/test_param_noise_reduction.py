@@ -55,11 +55,11 @@ def main():
         req["android.noiseReduction.mode"] = 0
         req["android.sensor.sensitivity"] = 100
         req["android.sensor.exposureTime"] = 20*1000*1000
-        fname, w, h, md_obj = cam.do_capture(req)
+        cap = cam.do_capture(req)
         its.image.write_image(
-                its.image.load_yuv420_to_rgb_image(fname, w, h),
+                its.image.convert_capture_to_rgb_image(cap),
                 "%s_low_gain.jpg" % (NAME))
-        planes = its.image.load_yuv420_to_yuv_planes(fname, w, h)
+        planes = its.image.convert_capture_to_yuv_planes(cap)
         for j in range(3):
             img = planes[j]
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
@@ -70,12 +70,13 @@ def main():
             req["android.noiseReduction.mode"] = i
             req["android.sensor.sensitivity"] = 100*16
             req["android.sensor.exposureTime"] = (20*1000*1000/16)
-            fname, w, h, md_obj = cam.do_capture(req)
-            nr_modes_reported.append(md_obj["android.noiseReduction.mode"])
+            cap = cam.do_capture(req)
+            nr_modes_reported.append(
+                    cap["metadata"]["android.noiseReduction.mode"])
             its.image.write_image(
-                    its.image.load_yuv420_to_rgb_image(fname, w, h),
+                    its.image.convert_capture_to_rgb_image(cap),
                     "%s_high_gain_nr=%d.jpg" % (NAME, i))
-            planes = its.image.load_yuv420_to_yuv_planes(fname, w, h)
+            planes = its.image.convert_capture_to_yuv_planes(cap)
             for j in range(3):
                 img = planes[j]
                 tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)

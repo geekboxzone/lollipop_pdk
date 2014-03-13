@@ -58,8 +58,10 @@ def main():
                 req = its.objects.manual_capture_request(100, 1)
                 req["android.blackLevel.lock"] = True
                 req["android.sensor.sensitivity"] = s
-                fname, w, h, cap_md = cam.do_capture(req)
-                yimg,uimg,vimg = its.image.load_yuv420_to_yuv_planes(fname,w,h)
+                cap = cam.do_capture(req)
+                yimg,uimg,vimg = its.image.convert_capture_to_yuv_planes(cap)
+                w = cap["width"]
+                h = cap["height"]
 
                 # Magnify the noise in saved images to help visualize.
                 its.image.write_image(yimg * 2,

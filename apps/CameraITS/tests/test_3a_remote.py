@@ -45,24 +45,24 @@ def main():
             req['android.control.afTrigger'] = (0 if triggered else 1)
             triggered = True
 
-            fname, w, h, cap_res = cam.do_capture(req)
+            cap = cam.do_capture(req)
 
-            ae_state = cap_res["android.control.aeState"]
-            awb_state = cap_res["android.control.awbState"]
-            af_state = cap_res["android.control.afState"]
-            gains = cap_res["android.colorCorrection.gains"]
-            transform = cap_res["android.colorCorrection.transform"]
-            exp_time = cap_res['android.sensor.exposureTime']
-            lsc_map = cap_res["android.statistics.lensShadingMap"]
-            foc_dist = cap_res['android.lens.focusDistance']
-            foc_range = cap_res['android.lens.focusRange']
+            ae_state = cap["metadata"]["android.control.aeState"]
+            awb_state = cap["metadata"]["android.control.awbState"]
+            af_state = cap["metadata"]["android.control.afState"]
+            gains = cap["metadata"]["android.colorCorrection.gains"]
+            transform = cap["metadata"]["android.colorCorrection.transform"]
+            exp_time = cap["metadata"]['android.sensor.exposureTime']
+            lsc_map = cap["metadata"]["android.statistics.lensShadingMap"]
+            foc_dist = cap["metadata"]['android.lens.focusDistance']
+            foc_range = cap["metadata"]['android.lens.focusRange']
 
             print "States (AE,AWB,AF):", ae_state, awb_state, af_state
             print "Gains:", gains
             print "Transform:", [r2f(t) for t in transform]
-            print "AE region:", cap_res['android.control.aeRegions']
-            print "AF region:", cap_res['android.control.afRegions']
-            print "AWB region:", cap_res['android.control.awbRegions']
+            print "AE region:", cap["metadata"]['android.control.aeRegions']
+            print "AF region:", cap["metadata"]['android.control.afRegions']
+            print "AWB region:", cap["metadata"]['android.control.awbRegions']
             print "LSC map:", w_map, h_map, lsc_map[:8]
             print "Focus (dist,range):", foc_dist, foc_range
             print ""

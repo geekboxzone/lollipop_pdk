@@ -68,8 +68,8 @@ def main():
 
         for sens in sensitivities:
             req["android.sensor.sensitivity"] = sens
-            fname, w, h, cap_md = cam.do_capture(req)
-            img = its.image.load_yuv420_to_rgb_image(fname, w, h)
+            cap = cam.do_capture(req)
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(
                     img, "%s_sens=%04d.jpg" % (NAME, sens))
             img = its.image.apply_lut_to_image(img, inv_gamma_lut[1::2] * LM1)

@@ -45,25 +45,29 @@ import com.android.ex.camera2.blocking.BlockingStateListener;
 
 import org.json.JSONObject;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.math.BigInteger;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
 public class ItsService extends Service {
     public static final String TAG = ItsService.class.getSimpleName();
-    public static final String PYTAG = "CAMERA-ITS-PY";
-
-    // Supported intents
-    public static final String ACTION_CAPTURE = "com.android.camera2.its.CAPTURE";
-    public static final String ACTION_3A = "com.android.camera2.its.3A";
-    public static final String ACTION_GETPROPS = "com.android.camera2.its.GETPROPS";
-    private static final int MESSAGE_CAPTURE = 1;
-    private static final int MESSAGE_3A = 2;
-    private static final int MESSAGE_GETPROPS = 3;
 
     // Timeouts, in seconds.
     public static final int TIMEOUT_CAPTURE = 10;
@@ -74,6 +78,8 @@ public class ItsService extends Service {
     private static final long TIMEOUT_STATE_MS = 500;
 
     private static final int MAX_CONCURRENT_READER_BUFFERS = 8;
+
+    public static final int SERVERPORT = 6000;
 
     public static final String REGION_KEY = "regions";
     public static final String REGION_AE_KEY = "ae";
@@ -91,14 +97,20 @@ public class ItsService extends Service {
     private ImageReader mCaptureReader = null;
     private CameraCharacteristics mCameraCharacteristics = null;
 
-    private HandlerThread mCommandThread;
-    private Handler mCommandHandler;
     private HandlerThread mSaveThread;
     private Handler mSaveHandler;
     private HandlerThread mResultThread;
     private Handler mResultHandler;
 
-    private ConditionVariable mInterlock3A = new ConditionVariable(true);
+    private volatile ServerSocket mSocket = null;
+    private volatile SocketRunnable mSocketRunnableObj = null;
+    private volatile Thread mSocketThread = null;
+    private volatile Thread mSocketWriteRunnable = null;
+    private volatile boolean mSocketThreadExitFlag = false;
+    private volatile BlockingQueue<ByteBuffer> mSocketWriteQueue = new LinkedBlockingDeque<ByteBuffer>();
+    private final Object mSocketWriteLock = new Object();
+
+    private volatile ConditionVariable mInterlock3A = new ConditionVariable(true);
     private volatile boolean mIssuedRequest3A = false;
     private volatile boolean mConvergedAE = false;
     private volatile boolean mConvergedAF = false;
@@ -119,7 +131,6 @@ public class ItsService extends Service {
 
     @Override
     public void onCreate() {
-
         try {
             // Get handle to camera manager.
             mCameraManager = (CameraManager) this.getSystemService(Context.CAMERA_SERVICE);
@@ -165,49 +176,19 @@ public class ItsService extends Service {
             mResultThread.start();
             mResultHandler = new Handler(mResultThread.getLooper());
 
-            // Create a thread to process commands.
-            mCommandThread = new HandlerThread("CaptureThread");
-            mCommandThread.start();
-            mCommandHandler = new Handler(mCommandThread.getLooper(), new Handler.Callback() {
-                @Override
-                public boolean handleMessage(Message msg) {
-                    try {
-                        switch (msg.what) {
-                            case MESSAGE_CAPTURE:
-                                doCapture((Uri) msg.obj);
-                                break;
-                            case MESSAGE_3A:
-                                do3A((Uri) msg.obj);
-                                break;
-                            case MESSAGE_GETPROPS:
-                                doGetProps();
-                                break;
-                            default:
-                                throw new ItsException("Unknown message type");
-                        }
-                        Log.i(PYTAG, "### DONE");
-                        return true;
-                    }
-                    catch (ItsException e) {
-                        Log.e(TAG, "Script failed: ", e);
-                        Log.e(PYTAG, "### FAIL");
-                        return true;
-                    }
-                }
-            });
+            // Create a thread to process commands, listening on a TCP socket.
+            mSocketRunnableObj = new SocketRunnable();
+            mSocketThread = new Thread(mSocketRunnableObj);
+            mSocketThread.start();
         } catch (ItsException e) {
-            Log.e(TAG, "Script failed: ", e);
-            Log.e(PYTAG, "### FAIL");
+            Log.e(TAG, "Service failed to start: ", e);
         }
     }
 
     @Override
     public void onDestroy() {
         try {
-            if (mCommandThread != null) {
-                mCommandThread.quit();
-                mCommandThread = null;
-            }
+            mSocketThreadExitFlag = true;
             if (mSaveThread != null) {
                 mSaveThread.quit();
                 mSaveThread = null;
@@ -223,38 +204,225 @@ public class ItsService extends Service {
             }
         } catch (ItsException e) {
             Log.e(TAG, "Script failed: ", e);
-            Log.e(PYTAG, "### FAIL");
         }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        try {
-            Log.i(PYTAG, "### RECV");
-            String action = intent.getAction();
-            if (ACTION_CAPTURE.equals(action)) {
-                Uri uri = intent.getData();
-                Message m = mCommandHandler.obtainMessage(MESSAGE_CAPTURE, uri);
-                mCommandHandler.sendMessage(m);
-            } else if (ACTION_3A.equals(action)) {
-                Uri uri = intent.getData();
-                Message m = mCommandHandler.obtainMessage(MESSAGE_3A, uri);
-                mCommandHandler.sendMessage(m);
-            } else if (ACTION_GETPROPS.equals(action)) {
-                Uri uri = intent.getData();
-                Message m = mCommandHandler.obtainMessage(MESSAGE_GETPROPS, uri);
-                mCommandHandler.sendMessage(m);
-            } else {
-                throw new ItsException("Unhandled intent: " + intent.toString());
-            }
-        } catch (ItsException e) {
-            Log.e(TAG, "Script failed: ", e);
-            Log.e(PYTAG, "### FAIL");
-        }
         return START_STICKY;
     }
 
-    private ImageReader.OnImageAvailableListener
+    class SocketWriteRunnable implements Runnable {
+
+        // Use a separate thread to service a queue of objects to be written to the socket,
+        // writing each sequentially in order. This is needed since different handler functions
+        // (called on different threads) will need to send data back to the host script.
+
+        public Socket mOpenSocket = null;
+
+        public SocketWriteRunnable(Socket openSocket) {
+            mOpenSocket = openSocket;
+        }
+
+        public void run() {
+            Log.i(TAG, "Socket writer thread starting");
+            while (true) {
+                try {
+                    ByteBuffer b = mSocketWriteQueue.take();
+                    //Log.i(TAG, String.format("Writing to socket: %d bytes", b.capacity()));
+                    if (b.hasArray()) {
+                        mOpenSocket.getOutputStream().write(b.array());
+                    } else {
+                        byte[] barray = new byte[b.capacity()];
+                        b.get(barray);
+                        mOpenSocket.getOutputStream().write(barray);
+                    }
+                    mOpenSocket.getOutputStream().flush();
+                } catch (IOException e) {
+                    Log.e(TAG, "Error writing to socket");
+                    break;
+                } catch (java.lang.InterruptedException e) {
+                    Log.e(TAG, "Error writing to socket (interrupted)");
+                    break;
+                }
+            }
+            Log.i(TAG, "Socket writer thread terminated");
+        }
+    }
+
+    class SocketRunnable implements Runnable {
+
+        // Format of sent messages (over the socket):
+        // * Serialized JSON object on a single line (newline-terminated)
+        // * For byte buffers, the binary data then follows
+        //
+        // Format of received messages (from the socket):
+        // * Serialized JSON object on a single line (newline-terminated)
+
+        private Socket mOpenSocket = null;
+        private SocketWriteRunnable mSocketWriteRunnable = null;
+
+        public void run() {
+            Log.i(TAG, "Socket thread starting");
+            try {
+                mSocket = new ServerSocket(SERVERPORT);
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to create socket");
+            }
+            try {
+                Log.i(TAG, "Waiting for client to connect to socket");
+                mOpenSocket = mSocket.accept();
+                if (mOpenSocket == null) {
+                    Log.e(TAG, "Socket connection error");
+                    return;
+                }
+                Log.i(TAG, "Socket connected");
+            } catch (IOException e) {
+                Log.e(TAG, "Socket open error: " + e);
+                return;
+            }
+            mSocketThread = new Thread(new SocketWriteRunnable(mOpenSocket));
+            mSocketThread.start();
+            while (!mSocketThreadExitFlag) {
+                try {
+                    BufferedReader input = new BufferedReader(
+                            new InputStreamReader(mOpenSocket.getInputStream()));
+                    if (input == null) {
+                        Log.e(TAG, "Failed to get socket input stream");
+                        break;
+                    }
+                    String line = input.readLine();
+                    if (line == null) {
+                        Log.e(TAG, "Failed to read socket line");
+                        break;
+                    }
+                    processSocketCommand(line);
+                } catch (IOException e) {
+                    Log.e(TAG, "Socket read error: " + e);
+                    break;
+                } catch (ItsException e) {
+                    Log.e(TAG, "Script error: " + e);
+                    break;
+                }
+            }
+            Log.i(TAG, "Socket server loop exited");
+            try {
+                if (mOpenSocket != null) {
+                    mOpenSocket.close();
+                    mOpenSocket = null;
+                }
+            } catch (java.io.IOException e) {
+                Log.w(TAG, "Exception closing socket");
+            }
+            try {
+                if (mSocket != null) {
+                    mSocket.close();
+                    mSocket = null;
+                }
+            } catch (java.io.IOException e) {
+                Log.w(TAG, "Exception closing socket");
+            }
+            Log.i(TAG, "Socket server thread exited");
+        }
+
+        public void processSocketCommand(String cmd)
+                throws ItsException {
+            // Each command is a serialized JSON object.
+            try {
+                JSONObject cmdObj = new JSONObject(cmd);
+                if ("getCameraProperties".equals(cmdObj.getString("cmdName"))) {
+                    doGetProps();
+                }
+                else if ("do3A".equals(cmdObj.getString("cmdName"))) {
+                    do3A(cmdObj);
+                }
+                else if ("doCapture".equals(cmdObj.getString("cmdName"))) {
+                    doCapture(cmdObj);
+                }
+                else {
+                    throw new ItsException("Unknown command: " + cmd);
+                }
+            } catch (org.json.JSONException e) {
+                Log.e(TAG, "Invalid command: ", e);
+            }
+        }
+
+        public void sendResponse(String tag, String str, JSONObject obj, ByteBuffer bbuf)
+                throws ItsException {
+            try {
+                JSONObject jsonObj = new JSONObject();
+                jsonObj.put("tag", tag);
+                if (str != null) {
+                    jsonObj.put("strValue", str);
+                }
+                if (obj != null) {
+                    jsonObj.put("objValue", obj);
+                }
+                if (bbuf != null) {
+                    jsonObj.put("bufValueSize", bbuf.capacity());
+                }
+                ByteBuffer bstr = ByteBuffer.wrap(
+                        (jsonObj.toString()+"\n").getBytes(Charset.defaultCharset()));
+                synchronized(mSocketWriteLock) {
+                    if (bstr != null) {
+                        mSocketWriteQueue.put(bstr);
+                    }
+                    if (bbuf != null) {
+                        mSocketWriteQueue.put(bbuf);
+                    }
+                }
+            } catch (org.json.JSONException e) {
+                throw new ItsException("JSON error: ", e);
+            } catch (java.lang.InterruptedException e) {
+                throw new ItsException("Socket error: ", e);
+            }
+        }
+
+        public void sendResponse(String tag, String str)
+                throws ItsException {
+            sendResponse(tag, str, null, null);
+        }
+
+        public void sendResponse(String tag, JSONObject obj)
+                throws ItsException {
+            sendResponse(tag, null, obj, null);
+        }
+
+        public void sendResponse(String tag, ByteBuffer bbuf)
+                throws ItsException {
+            sendResponse(tag, null, null, bbuf);
+        }
+
+        public void sendResponse(CameraCharacteristics props)
+                throws ItsException {
+            try {
+                JSONObject jsonObj = new JSONObject();
+                jsonObj.put("cameraProperties", ItsSerializer.serialize(props));
+                sendResponse("cameraProperties", null, jsonObj, null);
+            } catch (org.json.JSONException e) {
+                throw new ItsException("JSON error: ", e);
+            }
+        }
+
+        public void sendResponse(CameraCharacteristics props,
+                                 CaptureRequest request,
+                                 CaptureResult result)
+                throws ItsException {
+            try {
+                JSONObject jsonObj = new JSONObject();
+                jsonObj.put("cameraProperties", ItsSerializer.serialize(props));
+                jsonObj.put("captureRequest", ItsSerializer.serialize(request));
+                jsonObj.put("captureResult", ItsSerializer.serialize(result));
+                jsonObj.put("width", mCaptureReader.getWidth());
+                jsonObj.put("height", mCaptureReader.getHeight());
+                sendResponse("captureResults", null, jsonObj, null);
+            } catch (org.json.JSONException e) {
+                throw new ItsException("JSON error: ", e);
+            }
+        }
+    }
+
+    public ImageReader.OnImageAvailableListener
             createAvailableListener(final CaptureListener listener) {
         return new ImageReader.OnImageAvailableListener() {
             @Override
@@ -284,12 +452,7 @@ public class ItsService extends Service {
     }
 
     private void doGetProps() throws ItsException {
-        String fileName = ItsUtils.getMetadataFileName(0);
-        File mdFile = ItsUtils.getOutputFile(ItsService.this, fileName);
-        ItsUtils.storeCameraCharacteristics(mCameraCharacteristics, mdFile);
-        Log.i(PYTAG,
-              String.format("### FILE %s",
-                            ItsUtils.getExternallyVisiblePath(ItsService.this, mdFile.toString())));
+        mSocketRunnableObj.sendResponse(mCameraCharacteristics);
     }
 
     private void prepareCaptureReader(int width, int height, int format) {
@@ -305,12 +468,8 @@ public class ItsService extends Service {
         }
     }
 
-    private void do3A(Uri uri) throws ItsException {
+    private void do3A(JSONObject params) throws ItsException {
         try {
-            if (uri == null || !uri.toString().endsWith(".json")) {
-                throw new ItsException("Invalid URI: " + uri);
-            }
-
             // Start a 3A action, and wait for it to converge.
             // Get the converged values for each "A", and package into JSON result for caller.
 
@@ -342,7 +501,6 @@ public class ItsService extends Service {
             int[] regionAE = new int[]{0,0,width-1,height-1,1};
             int[] regionAF = new int[]{0,0,width-1,height-1,1};
             int[] regionAWB = new int[]{0,0,width-1,height-1,1};
-            JSONObject params = ItsUtils.loadJsonFile(uri);
             if (params.has(REGION_KEY)) {
                 JSONObject regions = params.getJSONObject(REGION_KEY);
                 if (regions.has(REGION_AE_KEY)) {
@@ -388,7 +546,6 @@ public class ItsService extends Service {
             boolean triggeredAF = false;
 
             // Keep issuing capture requests until 3A has converged.
-            // First do AE, then do AF and AWB together.
             while (true) {
 
                 // Block until can take the next 3A frame. Only want one outstanding frame
@@ -451,17 +608,16 @@ public class ItsService extends Service {
             throw new ItsException("Access error: ", e);
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error: ", e);
+        } finally {
+            mSocketRunnableObj.sendResponse("3aDone", "");
         }
     }
 
-    private void doCapture(Uri uri) throws ItsException {
+    private void doCapture(JSONObject params) throws ItsException {
         try {
-            if (uri == null || !uri.toString().endsWith(".json")) {
-                throw new ItsException("Invalid URI: " + uri);
-            }
-
             // Parse the JSON to get the list of capture requests.
-            List<CaptureRequest.Builder> requests = ItsUtils.loadRequestList(mCamera, uri);
+            List<CaptureRequest.Builder> requests = ItsSerializer.deserializeRequestList(
+                    mCamera, params);
 
             // Set the output surface and listeners.
             try {
@@ -475,7 +631,7 @@ public class ItsService extends Service {
                 int height = sizes[0].getHeight();
                 int format = ImageFormat.YUV_420_888;
 
-                JSONObject jsonOutputSpecs = ItsUtils.getOutputSpecs(uri);
+                JSONObject jsonOutputSpecs = ItsUtils.getOutputSpecs(params);
                 if (jsonOutputSpecs != null) {
                     // Use the user's JSON capture spec.
                     int width2 = jsonOutputSpecs.optInt("width");
@@ -497,8 +653,6 @@ public class ItsService extends Service {
                         throw new ItsException("Unsupported format: " + sformat);
                     }
                 }
-
-                Log.i(PYTAG, String.format("### SIZE %d %d", width, height));
 
                 prepareCaptureReader(width, height, format);
                 List<Surface> outputSurfaces = new ArrayList<Surface>(1);
@@ -526,7 +680,6 @@ public class ItsService extends Service {
             // Initiate the captures.
             for (int i = 0; i < requests.size(); i++) {
                 CaptureRequest.Builder req = requests.get(i);
-                Log.i(PYTAG, String.format("### CAPT %d of %d", i+1, requests.size()));
                 req.addTarget(mCaptureReader.getSurface());
                 mCamera.capture(req.build(), mCaptureResultListener, mResultHandler);
             }
@@ -553,22 +706,21 @@ public class ItsService extends Service {
                 int format = capture.getFormat();
                 String extFileName = null;
                 if (format == ImageFormat.JPEG) {
-                    String fileName = ItsUtils.getJpegFileName(capture.getTimestamp());
                     ByteBuffer buf = capture.getPlanes()[0].getBuffer();
-                    extFileName = ItsUtils.writeImageToFile(ItsService.this, buf, fileName);
+                    Log.i(TAG, "Received JPEG capture");
+                    mSocketRunnableObj.sendResponse("jpegImage", buf);
                 } else if (format == ImageFormat.YUV_420_888) {
-                    String fileName = ItsUtils.getYuvFileName(capture.getTimestamp());
                     byte[] img = ItsUtils.getDataFromImage(capture);
                     ByteBuffer buf = ByteBuffer.wrap(img);
-                    extFileName = ItsUtils.writeImageToFile(ItsService.this, buf, fileName);
+                    Log.i(TAG, "Received YUV capture");
+                    mSocketRunnableObj.sendResponse("yuvImage", buf);
                 } else {
                     throw new ItsException("Unsupported image format: " + format);
                 }
-                Log.i(PYTAG, String.format("### FILE %s", extFileName));
                 mCaptureCallbackLatch.countDown();
             } catch (ItsException e) {
                 Log.e(TAG, "Script error: " + e);
-                Log.e(PYTAG, "### FAIL");
+                mSocketThreadExitFlag = true;
             }
         }
     };
@@ -630,32 +782,36 @@ public class ItsService extends Service {
                         result.get(CaptureResult.LENS_FOCUS_DISTANCE)));
                 Log.i(TAG, logMsg.toString());
 
-                mConvergedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
-                                          CaptureResult.CONTROL_AE_STATE_CONVERGED;
-                mConvergedAF = result.get(CaptureResult.CONTROL_AF_STATE) ==
-                                          CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED;
-                mConvergedAWB = result.get(CaptureResult.CONTROL_AWB_STATE) ==
-                                           CaptureResult.CONTROL_AWB_STATE_CONVERGED;
+                if (result.get(CaptureResult.CONTROL_AE_STATE) != null) {
+                    mConvergedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
+                                              CaptureResult.CONTROL_AE_STATE_CONVERGED;
+                }
+                if (result.get(CaptureResult.CONTROL_AF_STATE) != null) {
+                    mConvergedAF = result.get(CaptureResult.CONTROL_AF_STATE) ==
+                                              CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED;
+                }
+                if (result.get(CaptureResult.CONTROL_AWB_STATE) != null) {
+                    mConvergedAWB = result.get(CaptureResult.CONTROL_AWB_STATE) ==
+                                               CaptureResult.CONTROL_AWB_STATE_CONVERGED;
+                }
 
                 if (mConvergedAE) {
-                    Log.i(PYTAG, String.format(
-                            "### 3A-E %d %d",
+                    mSocketRunnableObj.sendResponse("aeResult", String.format("%d %d",
                             result.get(CaptureResult.SENSOR_SENSITIVITY).intValue(),
                             result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue()
                             ));
                 }
 
                 if (mConvergedAF) {
-                    Log.i(PYTAG, String.format(
-                            "### 3A-F %f",
+                    mSocketRunnableObj.sendResponse("afResult", String.format("%f",
                             result.get(CaptureResult.LENS_FOCUS_DISTANCE)
                             ));
                 }
 
                 if (mConvergedAWB && result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null
                         && result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
-                    Log.i(PYTAG, String.format(
-                            "### 3A-W %f %f %f %f %f %f %f %f %f %f %f %f %f",
+                    mSocketRunnableObj.sendResponse("awbResult", String.format(
+                            "%f %f %f %f %f %f %f %f %f %f %f %f %f",
                             result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
                             result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
                             result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
@@ -676,18 +832,15 @@ public class ItsService extends Service {
                     mIssuedRequest3A = false;
                     mInterlock3A.open();
                 } else {
-                    String fileName = ItsUtils.getMetadataFileName(
-                            result.get(CaptureResult.SENSOR_TIMESTAMP));
-                    File mdFile = ItsUtils.getOutputFile(ItsService.this, fileName);
-                    ItsUtils.storeResults(mCameraCharacteristics, request, result, mdFile);
+                    mSocketRunnableObj.sendResponse(mCameraCharacteristics, request, result);
                     mCaptureCallbackLatch.countDown();
                 }
             } catch (ItsException e) {
                 Log.e(TAG, "Script error: " + e);
-                Log.e(PYTAG, "### FAIL");
+                mSocketThreadExitFlag = true;
             } catch (Exception e) {
                 Log.e(TAG, "Script error: " + e);
-                Log.e(PYTAG, "### FAIL");
+                mSocketThreadExitFlag = true;
             }
         }
 
@@ -696,8 +849,6 @@ public class ItsService extends Service {
                 CaptureFailure failure) {
             mCaptureCallbackLatch.countDown();
             Log.e(TAG, "Script error: capture failed");
-            Log.e(PYTAG, "### FAIL");
         }
     };
-
 }

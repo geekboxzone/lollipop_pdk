@@ -30,10 +30,10 @@ def main():
     reqs = [its.objects.manual_capture_request(100,e) for e in exp_times]
 
     with its.device.ItsSession() as cam:
-        fnames, w, h, cap_mds = cam.do_capture(reqs)
-        for i,md in enumerate(cap_mds):
+        caps = cam.do_capture(reqs)
+        for i,cap in enumerate(caps):
             e_req = exp_times[i]*1000*1000
-            e_res = md["android.sensor.exposureTime"]
+            e_res = cap["metadata"]["android.sensor.exposureTime"]
             print e_req, e_res
 
 if __name__ == '__main__':
