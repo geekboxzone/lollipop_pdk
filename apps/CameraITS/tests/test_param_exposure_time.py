@@ -44,7 +44,7 @@ def main():
         exp_times = [expt_range[0] + i * expt_step for i in range(NUM_STEPS)]
 
         for e in exp_times:
-            req = its.objects.manual_capture_request(sens, e/1000000.0)
+            req = its.objects.manual_capture_request(sens, e)
             cap = cam.do_capture(req)
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(

@@ -50,12 +50,12 @@ def main():
         props = cam.get_camera_properties()
         sens_range = props['android.sensor.info.sensitivityRange']
         sens_step = (sens_range[1] - sens_range[0]) / float(NUM_STEPS-1)
-        sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]
+        sensitivities = [sens_range[0] + i*sens_step for i in range(NUM_STEPS)]
         print "Sensitivities:", sensitivities
 
         for si, s in enumerate(sensitivities):
             for rep in xrange(NUM_REPEAT):
-                req = its.objects.manual_capture_request(100, 1)
+                req = its.objects.manual_capture_request(100, 1*1000*1000)
                 req["android.blackLevel.lock"] = True
                 req["android.sensor.sensitivity"] = s
                 cap = cam.do_capture(req)

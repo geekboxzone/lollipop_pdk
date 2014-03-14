@@ -26,7 +26,7 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    exp_times = range(1, 100, 9)
+    exp_times = range(1*1000*1000, 100*1000*1000, 9*1000*1000)
     reqs = [its.objects.manual_capture_request(100,e) for e in exp_times]
 
     with its.device.ItsSession() as cam:

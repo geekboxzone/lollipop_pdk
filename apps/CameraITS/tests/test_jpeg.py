@@ -33,7 +33,7 @@ def main():
         props = cam.get_camera_properties()
 
         # YUV
-        req = its.objects.manual_capture_request(100,100)
+        req = its.objects.manual_capture_request(100,100*1000*1000)
         size = props['android.scaler.availableProcessedSizes'][0]
         out_surface = copy.deepcopy(size)
         out_surface["format"] = "yuv"
@@ -44,7 +44,7 @@ def main():
         rgb0 = its.image.compute_image_means(tile)
 
         # JPEG
-        req = its.objects.manual_capture_request(100,100)
+        req = its.objects.manual_capture_request(100,100*1000*1000)
         size = props['android.scaler.availableJpegSizes'][0]
         out_surface = copy.deepcopy(size)
         out_surface["format"] = "jpg"

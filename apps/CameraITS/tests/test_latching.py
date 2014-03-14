@@ -40,18 +40,18 @@ def main():
         s = s / 2.0
 
         reqs = [
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
-            its.objects.manual_capture_request(s*4,e/1000000.0  ),
-            its.objects.manual_capture_request(s*4,e/1000000.0  ),
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
-            its.objects.manual_capture_request(s,  e/1000000.0*4),
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
-            its.objects.manual_capture_request(s*4,e/1000000.0  ),
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
-            its.objects.manual_capture_request(s,  e/1000000.0*4),
-            its.objects.manual_capture_request(s,  e/1000000.0  ),
+            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s*4,e  ),
+            its.objects.manual_capture_request(s*4,e  ),
+            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s,  e*4),
+            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s*4,e  ),
+            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s,  e*4),
+            its.objects.manual_capture_request(s,  e  ),
             ]
 
         caps = cam.do_capture(reqs)

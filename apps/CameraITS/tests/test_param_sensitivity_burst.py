@@ -27,7 +27,8 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     sensitivities = range(350, 400, 7)
-    reqs = [its.objects.manual_capture_request(s,10) for s in sensitivities]
+    reqs = [its.objects.manual_capture_request(s,10*1000*1000)
+            for s in sensitivities]
 
     with its.device.ItsSession() as cam:
         caps = cam.do_capture(reqs)

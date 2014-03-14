@@ -66,7 +66,7 @@ def __do_target_exposure_measurement(its_session):
 
     # Capture a manual shot with this exposure, using a linear tonemap.
     # Use the gains+transform returned by the AWB pass.
-    req = its.objects.manual_capture_request(sens, exp_time / 1000000.0)
+    req = its.objects.manual_capture_request(sens, exp_time)
     req["android.tonemap.mode"] = 0
     req["android.tonemap.curveRed"] = tmap
     req["android.tonemap.curveGreen"] = tmap
