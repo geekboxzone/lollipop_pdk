@@ -25,9 +25,9 @@ import unittest
 import cStringIO
 
 DEFAULT_YUV_TO_RGB_CCM = numpy.matrix([
-                                [1.000,  1.402,  0.000],
-                                [1.000, -0.714, -0.344],
-                                [1.000,  0.000,  1.772]])
+                                [1.000,  0.000,  1.402],
+                                [1.000, -0.344, -0.714],
+                                [1.000,  1.772,  0.000]])
 
 DEFAULT_YUV_OFFSETS = numpy.array([0, 128, 128])
 
