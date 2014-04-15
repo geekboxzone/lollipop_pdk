@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.testingcamera2;
+package com.android.testingcamera2.v1;
 
 import android.content.Context;
 import android.hardware.camera2.CaptureRequest;

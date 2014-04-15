@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.testingcamera2;
+package com.android.testingcamera2.v1;
 
 /**
  * Exception for the public API (mostly Camera2) failing in ways it shouldn't.
