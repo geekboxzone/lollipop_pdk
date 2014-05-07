@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!-- Copyright (C) 2013 The Android Open Source Project
+<!--
+     Copyright (C) 2013 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -16,30 +17,52 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      android:versionCode="1"
-          android:versionName="1.0" package="com.android.testingcamera2">
-  <uses-permission android:name="android.permission.CAMERA" />
-  <uses-feature android:name="android.hardware.camera" />
-  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    package="com.android.testingcamera2"
+    android:versionCode="1"
+    android:versionName="1.0" >
 
-  <uses-sdk android:minSdkVersion="18" android:targetSdkVersion="19"/>
-  <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
-  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-  <application
-       android:icon="@mipmap/launcher_testingcamera2"
-       android:label="@string/app_name"
-       android:theme="@android:style/Theme.Holo"
-       >
-    <activity
-         android:name=".TestingCamera2"
-         android:configChanges="orientation|keyboardHidden|screenSize"
-         android:label="@string/app_name">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-      </intent-filter>
-    </activity>
-  </application>
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
+    <uses-sdk
+        android:minSdkVersion="L"
+        android:targetSdkVersion="L" />
+
+    <uses-feature
+        android:name="android.hardware.camera.front"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <application
+        android:icon="@mipmap/launcher_testingcamera2"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.Holo">
+        <activity
+            android:name="com.android.testingcamera2.v1.TestingCamera2"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:label="@string/v1_app_name" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.android.testingcamera2.TestingCamera21"
+            android:label="@string/app_name"
+            android:configChanges="orientation|keyboardHidden|screenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
 </manifest>
