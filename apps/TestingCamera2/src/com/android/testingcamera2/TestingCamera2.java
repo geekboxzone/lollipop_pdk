@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.testingcamera2.v1;
+package com.android.testingcamera2;
 
 import android.app.Activity;
 import android.content.res.Configuration;
@@ -51,8 +51,6 @@ import android.widget.ToggleButton;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
-
-import com.android.testingcamera2.R;
 
 public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 

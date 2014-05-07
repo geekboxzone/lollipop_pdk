@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.testingcamera2.v1;
+package com.android.testingcamera2;
 
 /**
  * A camera control class wraps the control parameters.
