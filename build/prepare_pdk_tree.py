@@ -57,8 +57,9 @@ class ManifestHandler(object):
 def isInGroups(groupsAttrib, groups):
     if groupsAttrib is None:
         return False
+    groupsAttribList = groupsAttrib.split(',')
     for group in groups:
-        if group in groupsAttrib:
+        if group in groupsAttribList:
             return True
     return False
 
