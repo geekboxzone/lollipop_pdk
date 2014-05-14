@@ -18,7 +18,7 @@ package com.android.testingcamera2.v1;
 
 import android.content.Context;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.Size;
+import android.util.Size;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;

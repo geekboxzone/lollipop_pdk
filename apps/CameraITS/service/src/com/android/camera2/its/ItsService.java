@@ -27,7 +27,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
-import android.hardware.camera2.Rational;
+import android.util.Rational;
 import android.media.Image;
 import android.media.ImageReader;
 import android.net.Uri;
@@ -474,7 +474,7 @@ public class ItsService extends Service {
             // Get the converged values for each "A", and package into JSON result for caller.
 
             // 3A happens on full-res frames.
-            android.hardware.camera2.Size sizes[] = mCameraCharacteristics.get(
+            android.util.Size sizes[] = mCameraCharacteristics.get(
                     CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
             int width = sizes[0].getWidth();
             int height = sizes[0].getHeight();
@@ -625,7 +625,7 @@ public class ItsService extends Service {
                 // Capture full-frame images. Use the reported JPEG size rather than the sensor
                 // size since this is more likely to be the unscaled size; the crop from sensor
                 // size is probably for the ISP (e.g. demosaicking) rather than the encoder.
-                android.hardware.camera2.Size sizes[] = mCameraCharacteristics.get(
+                android.util.Size sizes[] = mCameraCharacteristics.get(
                         CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
                 int width = sizes[0].getWidth();
                 int height = sizes[0].getHeight();

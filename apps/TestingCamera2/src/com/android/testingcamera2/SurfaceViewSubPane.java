@@ -21,8 +21,8 @@ import java.util.List;
 
 import android.content.Context;
 import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.Size;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.util.Size;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.Surface;
@@ -69,17 +69,12 @@ public class SurfaceViewSubPane extends TargetSubPane implements SurfaceHolder.C
                 oldSize = mSizes[mCurrentSizeId];
             }
 
-            List<Size> outputList = new ArrayList<Size>();
-            CameraCharacteristics info = target.getCharacteristics();
-
-            StreamConfigurationMap streamConfigMap =
-                    info.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            for (android.util.Size outputSize : streamConfigMap.getOutputSizes(
-                    SurfaceHolder.class)) {
-                outputList.add(new Size(outputSize.getWidth(), outputSize.getHeight()));
+            {
+                CameraCharacteristics info = target.getCharacteristics();
+                StreamConfigurationMap streamConfigMap =
+                        info.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                mSizes = streamConfigMap.getOutputSizes(SurfaceHolder.class);
             }
-
-            mSizes = outputList.toArray(new Size[0]);
 
             int newSelectionId = 0;
             for (int i = 0; i < mSizes.length; i++) {

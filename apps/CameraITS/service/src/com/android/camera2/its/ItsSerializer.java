@@ -19,7 +19,7 @@ package com.android.camera2.its;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.Rational;
+import android.util.Rational;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -67,9 +67,9 @@ public class ItsSerializer {
                 ratObj.put("numerator", md.get(key2).getNumerator());
                 ratObj.put("denominator", md.get(key2).getDenominator());
                 return new MetadataEntry(key.getName(), ratObj);
-            } else if (keyType == android.hardware.camera2.Size.class) {
-                CameraMetadata.Key<android.hardware.camera2.Size> key2 =
-                        (CameraMetadata.Key<android.hardware.camera2.Size>)keyObj;
+            } else if (keyType == android.util.Size.class) {
+                CameraMetadata.Key<android.util.Size> key2 =
+                        (CameraMetadata.Key<android.util.Size>)keyObj;
                 JSONObject sizeObj = new JSONObject();
                 sizeObj.put("width", md.get(key2).getWidth());
                 sizeObj.put("height", md.get(key2).getHeight());
@@ -114,9 +114,9 @@ public class ItsSerializer {
                     jsonArray.put(ratObj);
                 }
                 return new MetadataEntry(key.getName(), jsonArray);
-            } else if (elmtType == android.hardware.camera2.Size.class) {
-                CameraMetadata.Key<android.hardware.camera2.Size[]> key2 =
-                        (CameraMetadata.Key<android.hardware.camera2.Size[]>)keyObj;
+            } else if (elmtType == android.util.Size.class) {
+                CameraMetadata.Key<android.util.Size[]> key2 =
+                        (CameraMetadata.Key<android.util.Size[]>)keyObj;
                 JSONArray jsonArray = new JSONArray();
                 for (int i = 0; i < Array.getLength(md.get(key)); i++) {
                     JSONObject sizeObj = new JSONObject();
@@ -138,9 +138,9 @@ public class ItsSerializer {
                     jsonArray.put(rectObj);
                 }
                 return new MetadataEntry(key.getName(), jsonArray);
-            } else if (elmtType == android.hardware.camera2.Face.class) {
-                CameraMetadata.Key<android.hardware.camera2.Face[]> key2 =
-                        (CameraMetadata.Key<android.hardware.camera2.Face[]>)keyObj;
+            } else if (elmtType == android.hardware.camera2.params.Face.class) {
+                CameraMetadata.Key<android.hardware.camera2.params.Face[]> key2 =
+                        (CameraMetadata.Key<android.hardware.camera2.params.Face[]>)keyObj;
 
                 // TODO: Serialize an array of faces to JSON.
                 // Will also need to deserialize JSON faces in the appropriate method.
@@ -248,9 +248,9 @@ public class ItsSerializer {
                                             Array.set(val, i, ja.getBoolean(i));
                                         } else if (elmtType == String.class) {
                                             Array.set(val, i, ja.getString(i));
-                                        } else if (elmtType == android.hardware.camera2.Size.class){
+                                        } else if (elmtType == android.util.Size.class){
                                             JSONObject obj = ja.getJSONObject(i);
-                                            Array.set(val, i, new android.hardware.camera2.Size(
+                                            Array.set(val, i, new android.util.Size(
                                                     obj.getInt("width"), obj.getInt("height")));
                                         } else if (elmtType == android.graphics.Rect.class) {
                                             JSONObject obj = ja.getJSONObject(i);
@@ -288,9 +288,9 @@ public class ItsSerializer {
                                         val = jsonReq.getBoolean(keyName);
                                     } else if (keyType == String.class) {
                                         val = jsonReq.getString(keyName);
-                                    } else if (keyType == android.hardware.camera2.Size.class) {
+                                    } else if (keyType == android.util.Size.class) {
                                         JSONObject obj = jsonReq.getJSONObject(keyName);
-                                        val = new android.hardware.camera2.Size(
+                                        val = new android.util.Size(
                                                 obj.getInt("width"), obj.getInt("height"));
                                     } else if (keyType == android.graphics.Rect.class) {
                                         JSONObject obj = jsonReq.getJSONObject(keyName);
