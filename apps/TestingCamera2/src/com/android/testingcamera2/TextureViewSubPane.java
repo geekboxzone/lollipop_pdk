@@ -23,6 +23,7 @@ import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.Size;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.Surface;
@@ -37,10 +38,10 @@ import android.widget.AdapterView.OnItemSelectedListener;
 public class TextureViewSubPane extends TargetSubPane implements TextureView.SurfaceTextureListener {
 
     private static final int NO_SIZE = -1;
-    private TextureView mTextureView;
+    private final TextureView mTextureView;
     private SurfaceTexture mSurfaceTexture;
 
-    private Spinner mSizeSpinner;
+    private final Spinner mSizeSpinner;
     private Size[] mSizes;
     private int mCurrentSizeId = NO_SIZE;
     private CameraControlPane mCurrentCamera;
@@ -68,19 +69,13 @@ public class TextureViewSubPane extends TargetSubPane implements TextureView.Sur
                 oldSize = mSizes[mCurrentSizeId];
             }
 
-            final int MAGIC_IMPLEMENTATION_DEFINED_FORMAT = 0x22;
             List<Size> outputList = new ArrayList<Size>();
             CameraCharacteristics info = target.getCharacteristics();
-            int[] availableConfigs =
-                    info.get(CameraCharacteristics.SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
-            for (int i = 0; i < availableConfigs.length; i += 4) {
-                int type = availableConfigs[i];
-                boolean isOutput =
-                        availableConfigs[i + 3] ==
-                        CameraCharacteristics.SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT;
-                if (type == MAGIC_IMPLEMENTATION_DEFINED_FORMAT && isOutput) {
-                    outputList.add(new Size(availableConfigs[i + 1], availableConfigs[i + 2]));
-                }
+            StreamConfigurationMap streamConfigMap =
+                    info.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            for (android.util.Size outputSize : streamConfigMap.getOutputSizes(
+                    SurfaceTexture.class)) {
+                outputList.add(new Size(outputSize.getWidth(), outputSize.getHeight()));
             }
             mSizes = outputList.toArray(new Size[0]);
             // TODO: Replace above with StreamConfigurationMap
@@ -129,7 +124,7 @@ public class TextureViewSubPane extends TargetSubPane implements TextureView.Sur
         return (mSurfaceTexture != null) ? new Surface(mSurfaceTexture) : null;
     }
 
-    private OnItemSelectedListener mSizeSpinnerListener = new OnItemSelectedListener() {
+    private final OnItemSelectedListener mSizeSpinnerListener = new OnItemSelectedListener() {
         @Override
         public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
             mCurrentSizeId = pos;
