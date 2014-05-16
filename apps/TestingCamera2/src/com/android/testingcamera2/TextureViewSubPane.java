@@ -25,6 +25,7 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.util.Size;
 import android.util.AttributeSet;
+import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -98,6 +99,12 @@ public class TextureViewSubPane extends TargetSubPane implements TextureView.Sur
         }
     }
 
+    @Override
+    public void setUiOrientation(int orientation) {
+        // TODO Auto-generated method stub
+
+    }
+
     private void updateSizes() {
         if (mCurrentSizeId != NO_SIZE) {
             Size s = mSizes[mCurrentSizeId];
@@ -155,5 +162,4 @@ public class TextureViewSubPane extends TargetSubPane implements TextureView.Sur
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {
         // ignore
     }
-
 }

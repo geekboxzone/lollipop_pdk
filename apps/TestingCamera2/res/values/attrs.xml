@@ -19,4 +19,7 @@
    <declare-styleable name="PaneLayout">
        <attr name="headerTitle" format="string" />
    </declare-styleable>
+   <declare-styleable name="FixedAspectSurfaceView">
+       <attr name="aspectRatio" format="float" />
+   </declare-styleable>
 </resources>

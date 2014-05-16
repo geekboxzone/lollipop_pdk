@@ -80,6 +80,8 @@ public class TargetControlPane extends ControlPane {
 
     private TargetSubPane mCurrentOutput;
 
+    private int mOrientation = 0;
+
     /**
      * Constructor for tooling only
      */
@@ -149,6 +151,13 @@ public class TargetControlPane extends ControlPane {
             break;
         default:
             super.notifyPaneEvent(sourcePane, event);
+        }
+    }
+
+    public void onOrientationChange(int orientation) {
+        mOrientation = orientation;
+        if (mCurrentOutput != null) {
+            mCurrentOutput.setUiOrientation(mOrientation);
         }
     }
 
@@ -226,9 +235,9 @@ public class TargetControlPane extends ControlPane {
             OutputViewType outputType =
                     OutputViewType.valueOf((String) mOutputSpinner.getSelectedItem());
             mCurrentOutput = createOutputView(outputType);
-
             if (mCurrentOutput != null) {
                 TargetControlPane.this.addView(mCurrentOutput);
+                mCurrentOutput.setUiOrientation(mOrientation);
                 updateSubPaneCamera();
             }
         }
