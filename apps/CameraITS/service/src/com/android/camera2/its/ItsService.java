@@ -28,6 +28,7 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
 import android.util.Rational;
 import android.media.Image;
 import android.media.ImageReader;
@@ -499,25 +500,31 @@ public class ItsService extends Service {
             // Note that the user specifies normalized [x,y,w,h], which is converted below
             // to an [x0,y0,x1,y1] region in sensor coords. The capture request region
             // also has a fifth "weight" element: [x0,y0,x1,y1,w].
-            int[] regionAE = new int[]{0,0,width-1,height-1,1};
-            int[] regionAF = new int[]{0,0,width-1,height-1,1};
-            int[] regionAWB = new int[]{0,0,width-1,height-1,1};
+            MeteringRectangle[] regionAE = new MeteringRectangle[]{
+                    new MeteringRectangle(0, 0, width, height, 1)};
+            MeteringRectangle[] regionAF = new MeteringRectangle[]{
+                    new MeteringRectangle(0, 0, width, height, 1)};
+            MeteringRectangle[] regionAWB = new MeteringRectangle[]{
+                    new MeteringRectangle(0, 0, width, height, 1)};
             if (params.has(REGION_KEY)) {
                 JSONObject regions = params.getJSONObject(REGION_KEY);
                 if (regions.has(REGION_AE_KEY)) {
                     int[] r = ItsUtils.getJsonRectFromArray(
                             regions.getJSONArray(REGION_AE_KEY), true, width, height);
-                    regionAE = new int[]{r[0],r[1],r[0]+r[2]-1,r[1]+r[3]-1,1};
+                    regionAE = new MeteringRectangle[]{
+                            new MeteringRectangle(r[0],r[1],r[2],r[3],1)};
                 }
                 if (regions.has(REGION_AF_KEY)) {
                     int[] r = ItsUtils.getJsonRectFromArray(
                             regions.getJSONArray(REGION_AF_KEY), true, width, height);
-                    regionAF = new int[]{r[0],r[1],r[0]+r[2]-1,r[1]+r[3]-1,1};
+                    regionAF = new MeteringRectangle[]{
+                            new MeteringRectangle(r[0],r[1],r[2],r[3],1)};
                 }
                 if (regions.has(REGION_AWB_KEY)) {
                     int[] r = ItsUtils.getJsonRectFromArray(
                             regions.getJSONArray(REGION_AWB_KEY), true, width, height);
-                    regionAWB = new int[]{r[0],r[1],r[0]+r[2]-1,r[1]+r[3]-1,1};
+                    regionAWB = new MeteringRectangle[]{
+                            new MeteringRectangle(r[0],r[1],r[2],r[3],1)};
                 }
             }
             Log.i(TAG, "AE region: " + Arrays.toString(regionAE));
