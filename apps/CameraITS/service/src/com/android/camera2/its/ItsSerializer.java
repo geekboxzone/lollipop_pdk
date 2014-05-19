@@ -53,6 +53,10 @@ public class ItsSerializer {
     @SuppressWarnings("unchecked")
     private static MetadataEntry serializeEntry(Type keyType, Object keyObj, CameraMetadata md)
             throws ItsException {
+        throw new ItsException("TODO: Fix serialization");
+
+        /*
+
         CameraMetadata.Key key = (CameraMetadata.Key)keyObj;
         try {
             if (md.get(key) == null) {
@@ -90,11 +94,16 @@ public class ItsSerializer {
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error for key: " + key.getName() + ": ", e);
         }
+        */
     }
 
     @SuppressWarnings("unchecked")
     private static MetadataEntry serializeArrayEntry(Type keyType, Object keyObj, CameraMetadata md)
             throws ItsException {
+        throw new ItsException("TODO: Fix serialization");
+
+        /*
+
         CameraMetadata.Key key = (CameraMetadata.Key)keyObj;
         try {
             if (md.get(key) == null) {
@@ -155,11 +164,14 @@ public class ItsSerializer {
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error for key: " + key.getName() + ": ", e);
         }
+        */
     }
 
     @SuppressWarnings("unchecked")
     public static JSONObject serialize(CameraMetadata md)
             throws ItsException {
+        throw new ItsException("TODO: fix serialization");
+        /*
         JSONObject jsonObj = new JSONObject();
         Field[] allFields = md.getClass().getDeclaredFields();
         for (Field field : allFields) {
@@ -198,11 +210,16 @@ public class ItsSerializer {
             }
         }
         return jsonObj;
+        */
     }
 
     @SuppressWarnings("unchecked")
     public static CaptureRequest.Builder deserialize(CaptureRequest.Builder mdDefault,
             JSONObject jsonReq) throws ItsException {
+
+        throw new ItsException("TODO: fix serialization");
+
+        /*
         try {
             Log.i(TAG, "Parsing JSON capture request ...");
 
@@ -334,6 +351,7 @@ public class ItsSerializer {
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error: ", e);
         }
+        */
     }
 
     @SuppressWarnings("unchecked")

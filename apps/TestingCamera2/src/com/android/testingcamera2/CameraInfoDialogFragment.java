@@ -75,7 +75,8 @@ public class CameraInfoDialogFragment extends DialogFragment {
                .setMessage(infoText)
                .setPositiveButton(R.string.camera_info_dialog_ok_button,
                        new DialogInterface.OnClickListener() {
-                   public void onClick(DialogInterface dialog, int id) {
+                @Override
+                public void onClick(DialogInterface dialog, int id) {
                        // do nothing, dialog fragment will hide itself
                    }
                });
@@ -94,7 +95,7 @@ public class CameraInfoDialogFragment extends DialogFragment {
         if (info != null) {
             StringBuilder infoBuilder = new StringBuilder("Camera characteristics:\n\n");
 
-            for (CameraMetadata.Key<?> key : info.getKeys()) {
+            for (CameraCharacteristics.Key<?> key : info.getKeys()) {
                 infoBuilder.append(String.format(Locale.US, "%s:  ", key.getName()));
 
                 Object val = info.get(key);
