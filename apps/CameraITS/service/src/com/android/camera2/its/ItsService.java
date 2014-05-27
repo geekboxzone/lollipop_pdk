@@ -27,6 +27,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
 import android.util.Rational;
 import android.media.Image;
 import android.media.ImageReader;
@@ -736,7 +737,7 @@ public class ItsService extends Service {
 
         @Override
         public void onCaptureCompleted(CameraDevice camera, CaptureRequest request,
-                CaptureResult result) {
+                TotalCaptureResult result) {
             try {
                 // Currently result has all 0 values.
                 if (request == null || result == null) {

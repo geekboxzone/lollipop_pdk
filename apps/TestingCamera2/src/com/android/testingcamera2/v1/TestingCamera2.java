@@ -26,6 +26,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
 import android.media.Image;
 import android.media.MediaMuxer;
 import android.os.AsyncTask;
@@ -372,7 +373,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
                 @Override
                 public void onCaptureCompleted(
-                        CameraDevice camera, CaptureRequest request, CaptureResult result) {
+                        CameraDevice camera, CaptureRequest request, TotalCaptureResult result) {
                     Log.i(TAG, "Capture result is available");
                     Integer reqCtrlMode;
                     Integer resCtrlMode;
