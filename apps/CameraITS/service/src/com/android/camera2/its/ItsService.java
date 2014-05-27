@@ -28,7 +28,9 @@ import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.ColorSpaceTransform;
 import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.camera2.params.RggbChannelVector;
 import android.util.Rational;
 import android.media.Image;
 import android.media.ImageReader;
@@ -760,28 +762,30 @@ public class ItsService extends Service {
                         result.get(CaptureResult.SENSOR_SENSITIVITY),
                         result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue() / 1000000.0f,
                         result.get(CaptureResult.SENSOR_FRAME_DURATION).intValue() / 1000000.0f));
-                if (result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null) {
+                RggbChannelVector gains = result.get(CaptureResult.COLOR_CORRECTION_GAINS);
+                if (gains != null) {
                     logMsg.append(String.format(
                             "gains=[%.1f, %.1f, %.1f, %.1f], ",
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[3]));
+                            gains.getRed(),
+                            gains.getGreenEven(),
+                            gains.getGreenOdd(),
+                            gains.getBlue()));
                 } else {
                     logMsg.append("gains=[], ");
                 }
-                if (result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
+                ColorSpaceTransform transform = result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM);
+                if (transform != null) {
                     logMsg.append(String.format(
                             "xform=[%.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f, %.1f], ",
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[0]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[1]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[2]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[3]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[4]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[5]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[6]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[7]),
-                             r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[8])));
+                            r2f(transform.getElement(0,0)),
+                            r2f(transform.getElement(1,0)),
+                            r2f(transform.getElement(2,0)),
+                            r2f(transform.getElement(0,1)),
+                            r2f(transform.getElement(1,1)),
+                            r2f(transform.getElement(2,1)),
+                            r2f(transform.getElement(0,2)),
+                            r2f(transform.getElement(1,2)),
+                            r2f(transform.getElement(2,2))));
                 } else {
                     logMsg.append("xform=[], ");
                 }
@@ -820,19 +824,19 @@ public class ItsService extends Service {
                         && result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
                     mSocketRunnableObj.sendResponse("awbResult", String.format(
                             "%f %f %f %f %f %f %f %f %f %f %f %f %f",
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[0],
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[1],
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[2],
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS)[3],
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[0]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[1]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[2]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[3]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[4]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[5]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[6]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[7]),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM)[8])
+                            gains.getRed(),
+                            gains.getGreenEven(),
+                            gains.getGreenOdd(),
+                            gains.getBlue(),
+                            r2f(transform.getElement(0,0)),
+                            r2f(transform.getElement(1,0)),
+                            r2f(transform.getElement(2,0)),
+                            r2f(transform.getElement(0,1)),
+                            r2f(transform.getElement(1,1)),
+                            r2f(transform.getElement(2,1)),
+                            r2f(transform.getElement(0,2)),
+                            r2f(transform.getElement(1,2)),
+                            r2f(transform.getElement(2,2))
                             ));
                 }
 
