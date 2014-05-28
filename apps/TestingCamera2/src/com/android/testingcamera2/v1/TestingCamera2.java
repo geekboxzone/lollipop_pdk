@@ -33,6 +33,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.util.Range;
 import android.view.OrientationEventListener;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -449,17 +450,18 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
               @Override
               public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                  int[] defaultRange = {MIN_SENSITIVITY, MAX_SENSITIVITY};
+                  Range<Integer> defaultRange = new Range<Integer>(MIN_SENSITIVITY,
+                          MAX_SENSITIVITY);
                   CameraCharacteristics properties = mCameraOps.getCameraCharacteristics();
-                  int[] sensitivityRange = properties.get(
+                  Range<Integer> sensitivityRange = properties.get(
                           CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE);
-                  if (sensitivityRange == null || sensitivityRange.length < 2 ||
-                          sensitivityRange[0] > MIN_SENSITIVITY || sensitivityRange[1] < MAX_SENSITIVITY) {
+                  if (sensitivityRange == null || sensitivityRange.getLower() > MIN_SENSITIVITY ||
+                          sensitivityRange.getUpper() < MAX_SENSITIVITY) {
                       Log.e(TAG, "unable to get sensitivity range, use default range");
                       sensitivityRange = defaultRange;
                   }
-                  int min = sensitivityRange[0];
-                  int max = sensitivityRange[1];
+                  int min = sensitivityRange.getLower();
+                  int max = sensitivityRange.getUpper();
                   float progressFactor = progress / (float)mSeekBarMax;
                   int curSensitivity = (int) (min + (max - min) * progressFactor);
                   curSensitivity = (curSensitivity / STEP_SIZE ) * STEP_SIZE;
@@ -485,19 +487,19 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
               @Override
               public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                  long[] defaultRange = {MIN_EXPOSURE, MAX_EXPOSURE};
+                  Range<Long> defaultRange = new Range<Long>(MIN_EXPOSURE, MAX_EXPOSURE);
                   CameraCharacteristics properties = mCameraOps.getCameraCharacteristics();
-                  long[] exposureRange = properties.get(
+                  Range<Long> exposureRange = properties.get(
                           CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE);
                   // Not enforce the max value check here, most of the devices don't support
                   // larger than 30s exposure time
-                  if (exposureRange == null || exposureRange.length < 2 ||
-                          exposureRange[0] > MIN_EXPOSURE || exposureRange[1] < 0) {
+                  if (exposureRange == null || exposureRange.getLower() > MIN_EXPOSURE ||
+                          exposureRange.getUpper() < 0) {
                       exposureRange = defaultRange;
                       Log.e(TAG, "exposure time range is invalid, use default range");
                   }
-                  long min = exposureRange[0];
-                  long max = exposureRange[1];
+                  long min = exposureRange.getLower();
+                  long max = exposureRange.getUpper();
                   float progressFactor = progress / (float)mSeekBarMax;
                   long curExposureTime = (long) (min + (max - min) * progressFactor);
                   mCameraControl.setExposure(curExposureTime);
