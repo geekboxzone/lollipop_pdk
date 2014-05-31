@@ -32,22 +32,27 @@ DEFAULT_YUV_TO_RGB_CCM = numpy.matrix([
 DEFAULT_YUV_OFFSETS = numpy.array([0, 128, 128])
 
 DEFAULT_GAMMA_LUT = numpy.array(
-        [math.floor(65535 * math.pow(i/65535.0, 1/2.2) + 0.5) for i in xrange(65536)])
+        [math.floor(65535 * math.pow(i/65535.0, 1/2.2) + 0.5)
+         for i in xrange(65536)])
 
 DEFAULT_INVGAMMA_LUT = numpy.array(
-        [math.floor(65535 * math.pow(i/65535.0, 2.2) + 0.5) for i in xrange(65536)])
+        [math.floor(65535 * math.pow(i/65535.0, 2.2) + 0.5)
+         for i in xrange(65536)])
 
 MAX_LUT_SIZE = 65536
 
 def convert_capture_to_rgb_image(cap,
                                  ccm_yuv_to_rgb=DEFAULT_YUV_TO_RGB_CCM,
-                                 yuv_off=DEFAULT_YUV_OFFSETS):
+                                 yuv_off=DEFAULT_YUV_OFFSETS,
+                                 props=None):
     """Convert a captured image object to a RGB image.
 
     Args:
         cap: A capture object as returned by its.device.do_capture.
         ccm_yuv_to_rgb: (Optional) the 3x3 CCM to convert from YUV to RGB.
         yuv_off: (Optional) offsets to subtract from each of Y,U,V values.
+        props: (Optional) camera properties object (of static values);
+            required for processing raw images.
 
     Returns:
         RGB float-3 image array, with pixel values in [0.0, 1.0].
@@ -60,23 +65,37 @@ def convert_capture_to_rgb_image(cap,
         v = cap["data"][w*h*5/4:w*h*6/4]
         return convert_yuv420_to_rgb_image(y, u, v, w, h)
     elif cap["format"] == "jpeg":
-        # TODO: Convert JPEG to RGB.
-        raise its.error.Error('Invalid format %s' % (cap["format"]))
+        return decompress_jpeg_to_rgb_image(cap["data"])
+    elif cap["format"] == "raw":
+        r,gr,gb,b = convert_capture_to_planes(cap, props)
+        return convert_raw_to_rgb_image(r,gr,gb,b, props, cap["metadata"])
     else:
         raise its.error.Error('Invalid format %s' % (cap["format"]))
 
-def convert_capture_to_yuv_planes(cap):
-    """Convert a captured image object to separate Y,U,V image planes.
+def convert_capture_to_planes(cap, props=None):
+    """Convert a captured image object to separate image planes.
 
-    The only input format that is supported is planar YUV420, and the planes
-    that are returned are such that the U,V planes are 1/2 x 1/2 of the Y
-    plane size.
+    Decompose an image into multiple images, corresponding to different planes.
+
+    For YUV420 captures ("yuv"):
+        Returns Y,U,V planes, where the Y plane is full-res and the U,V planes
+        are each 1/2 x 1/2 of the full res.
+
+    For Bayer captures ("raw"):
+        Returns planes in the order R,Gr,Gb,B, regardless of the Bayer pattern
+        layout. Each plane is 1/2 x 1/2 of the full res.
+
+    For JPEG captures ("jpeg"):
+        Returns R,G,B full-res planes.
 
     Args:
         cap: A capture object as returned by its.device.do_capture.
+        props: (Optional) camera properties object (of static values);
+            required for processing raw images.
 
     Returns:
-        Three float arrays, for the Y,U,V planes, with pixel values in [0,1].
+        A tuple of float numpy arrays (one per plane), consisting of pixel
+            values in the range [0.0, 1.0].
     """
     w = cap["width"]
     h = cap["height"]
@@ -87,8 +106,78 @@ def convert_capture_to_yuv_planes(cap):
         return ((y.astype(numpy.float32) / 255.0).reshape(h, w, 1),
                 (u.astype(numpy.float32) / 255.0).reshape(h/2, w/2, 1),
                 (v.astype(numpy.float32) / 255.0).reshape(h/2, w/2, 1))
+    elif cap["format"] == "jpeg":
+        rgb = decompress_jpeg_to_rgb_image(cap["data"]).reshape(w*h*3)
+        return (rgb[::3].reshape(h,w,1),
+                rgb[1::3].reshape(h,w,1),
+                rgb[2::3].reshape(h,w,1))
+    elif cap["format"] == "raw":
+
+        # TODO: Take crop region into account in the CFA logic.
+        cfa_pat = props['android.sensor.info.colorFilterArrangement']
+
+        white_level = float(props['android.sensor.info.whiteLevel'])
+
+        img = numpy.ndarray(shape=(h*w,), dtype='<u2',
+                            buffer=cap["data"][0:w*h*2])
+        img = img.astype(numpy.float32).reshape(h,w) / white_level
+        img0 = img[::2].reshape(w*h/2)[::2].reshape(h/2,w/2,1)
+        img1 = img[::2].reshape(w*h/2)[1::2].reshape(h/2,w/2,1)
+        img2 = img[1::2].reshape(w*h/2)[::2].reshape(h/2,w/2,1)
+        img3 = img[1::2].reshape(w*h/2)[1::2].reshape(h/2,w/2,1)
+        if cfa_pat == 0:
+            return (img0,img1,img2,img3)
+        elif cfa_pat == 1:
+            return (img1,img0,img3,img2)
+        elif cfa_pat == 2:
+            return (img2,img3,img0,img1)
+        else:
+            return (img3,img2,img1,img0)
     else:
         raise its.error.Error('Invalid format %s' % (cap["format"]))
+
+def convert_raw_to_rgb_image(r_plane, gr_plane, gb_plane, b_plane,
+                             props, cap_res):
+    """Convert a Bayer raw-16 image to an RGB image.
+
+    Includes some extremely rudimentary demosaicking and color processing
+    operations; the output of this function shouldn't be used for any image
+    quality analysis.
+
+    Args:
+        r_plane,gr_plane,gb_plane,b_plane: Numpy arrays for each color plane
+            in the Bayer image, with pixels in the [0.0, 1.0] range.
+        props: Camera properties object.
+        cap_res: Capture result (metadata) object.
+
+    Returns:
+        RGB float-3 image array, with pixel values in [0.0, 1.0]
+    """
+    # Values required for the RAW to RGB conversion.
+    white_level = float(props['android.sensor.info.whiteLevel'])
+    black_levels = props['android.sensor.blackLevelPattern']
+    gains = cap_res['android.colorCorrection.gains']
+    ccm = cap_res['android.colorCorrection.transform']
+
+    # Convert CCM from rational to float, as numpy arrays.
+    ccm = numpy.array(its.objects.rational_to_float(ccm)).reshape(3,3)
+
+    # Need to scale the image back to the full [0,1] range after subtracting
+    # the black level from each pixel.
+    scale = white_level / (white_level - max(black_levels))
+
+    # Three-channel black levels, normalized to [0,1] by white_level.
+    black_levels = numpy.array([b/white_level for b in [
+            black_levels[i] for i in [0,1,3]]])
+
+    # Three-channel gains.
+    gains = numpy.array([gains[i] for i in [0,1,3]])
+
+    h,w = r_plane.shape[:2]
+    img = numpy.dstack([r_plane,(gr_plane+gb_plane)/2.0,b_plane])
+    img = (((img.reshape(h,w,3) - black_levels) * scale) * gains).clip(0.0,1.0)
+    img = numpy.dot(img.reshape(w*h,3), ccm.T).reshape(h,w,3).clip(0.0,1.0)
+    return img
 
 def convert_yuv420_to_rgb_image(y_plane, u_plane, v_plane,
                                 w, h,

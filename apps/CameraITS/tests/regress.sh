@@ -45,11 +45,21 @@ for T in \
          test_param_sensitivity.py \
          test_param_tonemap_mode.py \
          \
+         test_auto.py \
+         test_crop_region.py \
+         test_jitter.py \
          test_latching.py \
          test_linearity.py \
+         test_long_burst.py \
          test_param_edge_mode.py \
          test_param_flash_mode.py \
-         test_predicted_wb.py \
+         test_test_patterns.py \
+         test_yuv_plus_jpeg.py \
+         test_yuv_plus_raw.py \
+
+         #test_format_combos.py \
+         #test_blc_lsc.py \
+         #test_dng_tags.py \
 
 do
     let testcount=testcount+1

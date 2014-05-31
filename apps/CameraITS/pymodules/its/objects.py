@@ -21,6 +21,7 @@ import tempfile
 import time
 import unittest
 import subprocess
+import math
 
 def int_to_rational(i):
     """Function to convert Python integers to Camera2 rationals.
@@ -29,7 +30,7 @@ def int_to_rational(i):
         i: Python integer or list of integers.
 
     Returns:
-        Python dictionary or list of dictionary representing the given int(s)
+        Python dictionary or list of dictionaries representing the given int(s)
         as rationals with denominator=1.
     """
     if isinstance(i, list):
@@ -37,21 +38,56 @@ def int_to_rational(i):
     else:
         return {"numerator":i, "denominator":1}
 
-def manual_capture_request(sensitivity, exp_time):
+def float_to_rational(f, denom=128):
+    """Function to convert Python floats to Camera2 rationals.
+
+    Args:
+        f: Python float or list of floats.
+        denom: (Optonal) the denominator to use in the output rationals.
+
+    Returns:
+        Python dictionary or list of dictionaries representing the given
+        float(s) as rationals.
+    """
+    if isinstance(f, list):
+        return [{"numerator":math.floor(val*denom+0.5), "denominator":denom}
+                for val in f]
+    else:
+        return {"numerator":math.floor(f*denom+0.5), "denominator":denom}
+
+def rational_to_float(r):
+    """Function to convert Camera2 rational objects to Python floats.
+
+    Args:
+        r: Rational or list of rationals, as Python dictionaries.
+
+    Returns:
+        Float or list of floats.
+    """
+    if isinstance(r, list):
+        return [float(val["numerator"]) / float(val["denominator"])
+                for val in r]
+    else:
+        return float(r["numerator"]) / float(r["denominator"])
+
+def manual_capture_request(sensitivity, exp_time, linear_tonemap=False):
     """Return a capture request with everything set to manual.
 
     Uses identity/unit color correction, and the default tonemap curve.
+    Optionally, the tonemap can be specified as being linear.
 
     Args:
         sensitivity: The sensitivity value to populate the request with.
         exp_time: The exposure time, in nanoseconds, to populate the request
             with.
+        linear_tonemap: [Optional] whether a linear tonemap should be used
+            in this request.
 
     Returns:
         The default manual capture request, ready to be passed to the
         its.device.do_capture function.
     """
-    return {
+    req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,
         "android.control.awbMode": 0,
@@ -66,6 +102,12 @@ def manual_capture_request(sensitivity, exp_time):
         "android.colorCorrection.gains": [1,1,1,1],
         "android.tonemap.mode": 1,
         }
+    if linear_tonemap:
+        req["android.tonemap.mode"] = 0
+        req["android.tonemap.curveRed"] = [0.0,0.0, 1.0,1.0]
+        req["android.tonemap.curveGreen"] = [0.0,0.0, 1.0,1.0]
+        req["android.tonemap.curveBlue"] = [0.0,0.0, 1.0,1.0]
+    return req
 
 def auto_capture_request():
     """Return a capture request with everything set to auto.

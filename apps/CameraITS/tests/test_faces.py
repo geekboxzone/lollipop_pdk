@@ -1,4 +1,4 @@
-# Copyright 2013 The Android Open Source Project
+# Copyright 2014 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,33 +15,26 @@
 import its.image
 import its.device
 import its.objects
-import pylab
 import os.path
-import matplotlib
-import matplotlib.pyplot
 
 def main():
-    """Test that the android.edge.mode parameter is applied.
+    """Test face detection.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    req = {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0,
-        "android.sensor.exposureTime": 30*1000*1000,
-        "android.sensor.sensitivity": 100
-        }
-
     with its.device.ItsSession() as cam:
-        sens, exp, gains, xform, focus = cam.do_3a()
-        for e in [0,1,2]:
-            req["android.edge.mode"] = e
-            cap = cam.do_capture(req)
-            img = its.image.convert_capture_to_rgb_image(cap)
-            its.image.write_image(img, "%s_mode=%d.jpg" % (NAME, e))
+        cam.do_3a()
+        req = its.objects.auto_capture_request()
+        req['android.statistics.faceDetectMode'] = 2
+        caps = cam.do_capture([req]*5)
+        for i,cap in enumerate(caps):
+            md = cap['metadata']
+            print "Frame %d face metadata:" % i
+            print "  Ids:", md['android.statistics.faceIds']
+            print "  Landmarks:", md['android.statistics.faceLandmarks']
+            print "  Rectangles:", md['android.statistics.faceRectangles']
+            print "  Scores:", md['android.statistics.faceScores']
+            print ""
 
 if __name__ == '__main__':
     main()

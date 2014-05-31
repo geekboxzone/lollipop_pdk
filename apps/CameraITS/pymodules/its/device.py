@@ -59,20 +59,48 @@ class ItsSession(object):
     PACKAGE = 'com.android.camera2.its'
     INTENT_START = 'com.android.camera2.its.START'
 
+    # Definitions for some of the common output format options for do_capture().
+    # Each gets images of full resolution for each requested format.
+    CAP_RAW = {"format":"raw"}
+    CAP_DNG = {"format":"dng"}
+    CAP_YUV = {"format":"yuv"}
+    CAP_JPEG = {"format":"jpeg"}
+    CAP_RAW_YUV = [{"format":"raw"}, {"format":"yuv"}]
+    CAP_DNG_YUV = [{"format":"dng"}, {"format":"yuv"}]
+    CAP_RAW_JPEG = [{"format":"raw"}, {"format":"jpeg"}]
+    CAP_DNG_JPEG = [{"format":"dng"}, {"format":"jpeg"}]
+    CAP_YUV_JPEG = [{"format":"yuv"}, {"format":"jpeg"}]
+    CAP_RAW_YUV_JPEG = [{"format":"raw"}, {"format":"yuv"}, {"format":"jpeg"}]
+    CAP_DNG_YUV_JPEG = [{"format":"dng"}, {"format":"yuv"}, {"format":"jpeg"}]
+
     def __init__(self):
         reboot_device_on_argv()
         # TODO: Figure out why "--user 0" is needed, and fix the problem
         _run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
         _run(('%s shell am startservice --user 0 -t text/plain '
               '-a %s') % (self.ADB, self.INTENT_START))
+        self._wait_until_socket_ready()
         _run('%s forward tcp:%d tcp:%d' % (self.ADB,self.PORT,self.PORT))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.IPADDR, self.PORT))
         self.sock.settimeout(self.SOCK_TIMEOUT)
 
+    def _wait_until_socket_ready(self):
+        proc = subprocess.Popen(
+                self.ADB.split() + ["logcat", "-s", "'ItsService:v'"],
+                stdout=subprocess.PIPE)
+        logcat = proc.stdout
+        while True:
+            line = logcat.readline().strip()
+            if line.find('Waiting for client to connect to socket'):
+                break
+        proc.kill()
+
     def __del__(self):
-        if self.sock:
+        if hasattr(self, 'sock') and self.sock:
             self.sock.close()
+        # TODO: Figure out why uncommenting this here causes socket errors.
+        #_run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
 
     def __enter__(self):
         return self
@@ -114,8 +142,10 @@ class ItsSession(object):
             raise its.error.Error('Invalid command response')
         return data['objValue']['cameraProperties']
 
-    def do_3a(self, region_ae, region_awb, region_af,
-              do_ae=True, do_awb=True, do_af=True):
+    def do_3a(self, regions_ae=[[0,0,1,1,1]],
+                    regions_awb=[[0,0,1,1,1]],
+                    regions_af=[[0,0,1,1,1]],
+                    do_ae=True, do_awb=True, do_af=True):
         """Perform a 3A operation on the device.
 
         Triggers some or all of AE, AWB, and AF, and returns once they have
@@ -124,9 +154,17 @@ class ItsSession(object):
         Throws an assertion if 3A fails to converge.
 
         Args:
-            region_ae: Normalized rect. (x,y,w,h) specifying the AE region.
-            region_awb: Normalized rect. (x,y,w,h) specifying the AWB region.
-            region_af: Normalized rect. (x,y,w,h) specifying the AF region.
+            regions_ae: List of weighted AE regions.
+            regions_awb: List of weighted AWB regions.
+            regions_af: List of weighted AF regions.
+
+        Region format in args:
+            Arguments are lists of weighted regions; each weighted region is a
+            list of 5 values, [x,y,w,h, wgt], and each argument is a list of
+            these 5-value lists. The coordinates are given as normalized
+            rectangles (x,y,w,h) specifying the region. For example:
+                [[0.0, 0.0, 1.0, 0.5, 5], [0.0, 0.5, 1.0, 0.5, 10]].
+            Weights are non-negative integers.
 
         Returns:
             Five values:
@@ -139,7 +177,9 @@ class ItsSession(object):
         print "Running vendor 3A on device"
         cmd = {}
         cmd["cmdName"] = "do3A"
-        cmd["regions"] = {"ae": region_ae, "awb": region_awb, "af": region_af}
+        cmd["regions"] = {"ae": sum(regions_ae, []),
+                          "awb": sum(regions_awb, []),
+                          "af": sum(regions_af, [])}
         cmd["triggers"] = {"ae": do_ae, "af": do_af}
         self.sock.send(json.dumps(cmd) + "\n")
 
@@ -168,16 +208,22 @@ class ItsSession(object):
             raise its.error.Error('3A failed to converge')
         return ae_sens, ae_exp, awb_gains, awb_transform, af_dist
 
-    def do_capture(self, cap_request, out_surface=None):
+    def do_capture(self, cap_request, out_surfaces=None):
         """Issue capture request(s), and read back the image(s) and metadata.
 
         The main top-level function for capturing one or more images using the
         device. Captures a single image if cap_request is a single object, and
         captures a burst if it is a list of objects.
 
-        The out_surface field can specify the width, height, and format of
-        the captured image. The format may be "yuv" or "jpeg". The default is
-        a YUV420 frame ("yuv") corresponding to a full sensor frame.
+        The out_surfaces field can specify the width(s), height(s), and
+        format(s) of the captured image. The formats may be "yuv", "jpeg",
+        "dng",or "raw". The default is a YUV420 frame ("yuv") corresponding to
+        a full sensor frame. Note that one or more surfaces can be specified,
+        allowing a capture to request images back in multiple formats (e.g.)
+        raw+yuv, raw+jpeg, yuv+jpeg, raw+yuv+jpeg. If the size is omitted for
+        a surface, the default is the largest resolution available for the
+        format of that surface. At most one output surface can be specified for
+        a given format, and raw+dng is not supported as a combination.
 
         Example of a single capture request:
 
@@ -199,7 +245,7 @@ class ItsSession(object):
                 }
             ]
 
-        Example of an output surface specification:
+        Examples of output surface specifications:
 
             {
                 "width": 640,
@@ -207,20 +253,57 @@ class ItsSession(object):
                 "format": "yuv"
             }
 
+            [
+                {
+                    "format": "jpeg"
+                },
+                {
+                    "format": "raw"
+                }
+            ]
+
+        The following variables defined in this class are shortcuts for
+        specifying one or more formats where each output is the full size for
+        that format; they can be used as values for the out_surfaces arguments:
+
+            CAP_RAW
+            CAP_DNG
+            CAP_YUV
+            CAP_JPEG
+            CAP_RAW_YUV
+            CAP_DNG_YUV
+            CAP_RAW_JPEG
+            CAP_DNG_JPEG
+            CAP_YUV_JPEG
+            CAP_RAW_YUV_JPEG
+            CAP_DNG_YUV_JPEG
+
+        If multiple formats are specified, then this function returns multuple
+        capture objects, one for each requested format. If multiple formats and
+        multiple captures (i.e. a burst) are specified, then this function
+        returns multiple lists of capture objects. In both cases, the order of
+        the returned objects matches the order of the requested formats in the
+        out_surfaces parameter. For example:
+
+            yuv_cap            = do_capture( req1                           )
+            yuv_cap            = do_capture( req1,        yuv_fmt           )
+            yuv_cap,  raw_cap  = do_capture( req1,        [yuv_fmt,raw_fmt] )
+            yuv_caps           = do_capture( [req1,req2], yuv_fmt           )
+            yuv_caps, raw_caps = do_capture( [req1,req2], [yuv_fmt,raw_fmt] )
+
         Args:
             cap_request: The Python dict/list specifying the capture(s), which
                 will be converted to JSON and sent to the device.
-            out_surface: (Optional) the width,height,format to use for all
-                captured images.
+            out_surfaces: (Optional) specifications of the output image formats
+                and sizes to use for each capture.
 
         Returns:
-            An object or list of objects (depending on whether the request was
-            for a single or burst capture), where each object contains the
-            following fields:
+            An object, list of objects, or list of lists of objects, where each
+            object contains the following fields:
             * data: the image data as a numpy array of bytes.
             * width: the width of the captured image.
             * height: the height of the captured image.
-            * format: the format of the image, in ["yuv", "jpeg"].
+            * format: the format of the image, in ["yuv", "jpeg". "raw", "dng"].
             * metadata: the capture result object (Python dictionaty).
         """
         cmd = {}
@@ -229,38 +312,64 @@ class ItsSession(object):
             cmd["captureRequests"] = [cap_request]
         else:
             cmd["captureRequests"] = cap_request
-        if out_surface is not None:
-            cmd["outputSurface"] = out_surface
-        n = len(cmd["captureRequests"])
-        print "Capturing %d image%s" % (n, "s" if n>1 else "")
+        if out_surfaces is not None:
+            if not isinstance(out_surfaces, list):
+                cmd["outputSurfaces"] = [out_surfaces]
+            else:
+                cmd["outputSurfaces"] = out_surfaces
+            formats = [c["format"] if c.has_key("format") else "yuv"
+                       for c in cmd["outputSurfaces"]]
+            formats = [s if s != "jpg" else "jpeg" for s in formats]
+        else:
+            formats = ['yuv']
+        ncap = len(cmd["captureRequests"])
+        nsurf = 1 if out_surfaces is None else len(cmd["outputSurfaces"])
+        if len(formats) > len(set(formats)):
+            raise its.error.Error('Duplicate format requested')
+        if "dng" in formats and "raw" in formats:
+            raise its.error.Error('RAW+DNG not supported')
+        print "Capturing %d frame%s with %d format%s [%s]" % (
+                  ncap, "s" if ncap>1 else "", nsurf, "s" if nsurf>1 else "",
+                  ",".join(formats))
         self.sock.send(json.dumps(cmd) + "\n")
 
-        # Wait for n images and n metadata responses from the device.
-        bufs = []
+        # Wait for ncap*nsurf images and ncap metadata responses.
+        # Assume that captures come out in the same order as requested in
+        # the burst, however indifidual images of different formats ca come
+        # out in any order for that capture.
+        nbufs = 0
+        bufs = {"yuv":[], "raw":[], "dng":[], "jpeg":[]}
         mds = []
-        fmts = []
-        width = None
-        height = None
-        while len(bufs) < n or len(mds) < n:
+        widths = None
+        heights = None
+        while nbufs < ncap*nsurf or len(mds) < ncap:
             jsonObj,buf = self.__read_response_from_socket()
-            if jsonObj['tag'] in ['jpegImage','yuvImage'] and buf is not None:
-                bufs.append(buf)
-                fmts.append(jsonObj['tag'][:-5])
+            if jsonObj['tag'] in ['jpegImage','yuvImage','rawImage','dngImage']\
+                    and buf is not None:
+                fmt = jsonObj['tag'][:-5]
+                bufs[fmt].append(buf)
+                nbufs += 1
             elif jsonObj['tag'] == 'captureResults':
                 mds.append(jsonObj['objValue']['captureResult'])
-                width = jsonObj['objValue']['width']
-                height = jsonObj['objValue']['height']
-
-        objs = []
-        for i in range(n):
-            obj = {}
-            obj["data"] = bufs[i]
-            obj["width"] = width
-            obj["height"] = height
-            obj["format"] = fmts[i]
-            obj["metadata"] = mds[i]
-            objs.append(obj)
-        return objs if n>1 else objs[0]
+                outputs = jsonObj['objValue']['outputs']
+                widths = [out['width'] for out in outputs]
+                heights = [out['height'] for out in outputs]
+            else:
+                # Just ignore other tags
+                None
+        rets = []
+        for j,fmt in enumerate(formats):
+            objs = []
+            for i in range(ncap):
+                obj = {}
+                obj["data"] = bufs[fmt][i]
+                obj["width"] = widths[j]
+                obj["height"] = heights[j]
+                obj["format"] = fmt
+                obj["metadata"] = mds[i]
+                objs.append(obj)
+            rets.append(objs if ncap>1 else objs[0])
+        return rets if len(rets)>1 else rets[0]
 
 def _run(cmd):
     """Replacement for os.system, with hiding of stdout+stderr messages.

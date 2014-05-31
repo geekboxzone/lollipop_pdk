@@ -30,7 +30,7 @@ def main():
     manual_tonemap = [0,0, 1,1] # Linear
     manual_transform = its.objects.int_to_rational([1,2,3, 4,5,6, 7,8,9])
     manual_gains = [1,2,3,4]
-    manual_region = [8,8,128,128]
+    manual_region = [{"x":8,"y":8,"width":128,"height":128,"weight":1}]
     manual_exp_time = 100*1000*1000
     manual_sensitivity = 100
 
@@ -58,9 +58,6 @@ def main():
         "android.statistics.lensShadingMapMode":1
         }
 
-    def r2f(r):
-        return float(r["numerator"]) / float(r["denominator"])
-
     # A very loose definition for two floats being close to each other;
     # there may be different interpolation and rounding used to get the
     # two values, and all this test is looking at is whether there is
@@ -69,24 +66,23 @@ def main():
         return abs(n1 - n2) < 0.05
 
     def is_close_rational(n1, n2):
-        return is_close_float(r2f(n1), r2f(n2))
+        return is_close_float(its.objects.rational_to_float(n1),
+                              its.objects.rational_to_float(n2))
 
     def draw_lsc_plot(w_map, h_map, lsc_map, name):
         fig = matplotlib.pyplot.figure()
         ax = fig.gca(projection='3d')
-        xs = numpy.array([range(h_map)] * w_map).reshape(w_map, h_map)
-        ys = numpy.array([[i]*h_map for i in range(w_map)]).reshape(w_map, h_map)
+        xs = numpy.array([range(w_map)] * h_map).reshape(h_map, w_map)
+        ys = numpy.array([[i]*w_map for i in range(h_map)]).reshape(h_map, w_map)
         for ch in range(4):
-            size = w_map*h_map
-            start = ch * size
-            zs = numpy.array(lsc_map[start:start+size]).reshape(w_map, h_map)
+            zs = numpy.array(lsc_map[ch::4]).reshape(h_map, w_map)
             ax.plot_wireframe(xs, ys, zs)
         matplotlib.pyplot.savefig("%s_plot_lsc_%s.png" % (NAME, name))
 
     def test_auto(cam, w_map, h_map):
         # Get 3A lock first, so the auto values in the capture result are
         # populated properly.
-        rect = [0,0,1,1]
+        rect = [[0,0,1,1,1]]
         cam.do_3a(rect, rect, rect, True, True, False)
 
         cap = cam.do_capture(auto_req)
@@ -100,7 +96,8 @@ def main():
 
         print "Control mode:", ctrl_mode
         print "Gains:", gains
-        print "Transform:", [r2f(t) for t in transform]
+        print "Transform:", [its.objects.rational_to_float(t)
+                             for t in transform]
         print "AE region:", cap_res['android.control.aeRegions']
         print "AF region:", cap_res['android.control.afRegions']
         print "AWB region:", cap_res['android.control.awbRegions']
@@ -123,11 +120,6 @@ def main():
         # Exposure time must be valid.
         assert(exp_time > 0)
 
-        # 3A regions must be valid.
-        assert(len(cap_res['android.control.aeRegions']) == 5)
-        assert(len(cap_res['android.control.afRegions']) == 5)
-        assert(len(cap_res['android.control.awbRegions']) == 5)
-
         # Lens shading map must be valid.
         assert(w_map > 0 and h_map > 0 and w_map * h_map * 4 == len(lsc_map))
         assert(all([m >= 1 for m in lsc_map]))
@@ -137,7 +129,7 @@ def main():
         return lsc_map
 
     def test_manual(cam, w_map, h_map, lsc_map_auto):
-        cap = cam.do_capture(auto_req)
+        cap = cam.do_capture(manual_req)
         cap_res = cap["metadata"]
 
         gains = cap_res["android.colorCorrection.gains"]
@@ -151,7 +143,8 @@ def main():
 
         print "Control mode:", ctrl_mode
         print "Gains:", gains
-        print "Transform:", [r2f(t) for t in transform]
+        print "Transform:", [its.objects.rational_to_float(t)
+                             for t in transform]
         print "Tonemap:", curves[0][1::16]
         print "AE region:", cap_res['android.control.aeRegions']
         print "AF region:", cap_res['android.control.afRegions']
@@ -180,20 +173,9 @@ def main():
         # Exposure time must be close to the requested exposure time.
         assert(is_close_float(exp_time/1000000.0, manual_exp_time/1000000.0))
 
-        # 3A regions must be valid. They don't need to actually match what was
-        # requesed, since the SOC may not support those regions exactly.
-        assert(len(cap_res['android.control.aeRegions']) == 5)
-        assert(len(cap_res['android.control.afRegions']) == 5)
-        assert(len(cap_res['android.control.awbRegions']) == 5)
-
         # Lens shading map must be valid.
         assert(w_map > 0 and h_map > 0 and w_map * h_map * 4 == len(lsc_map))
         assert(all([m >= 1 for m in lsc_map]))
-
-        # Lens shading map must take into account the manual color correction
-        # settings. Test this by ensuring that the map is different between
-        # the auto and manual test cases.
-        assert(lsc_map != lsc_map_auto)
 
         draw_lsc_plot(w_map, h_map, lsc_map, "manual")
 

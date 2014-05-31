@@ -37,21 +37,21 @@ def main():
 
     with its.device.ItsSession() as cam:
         e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
-        s = s / 2.0
+        e = e / 2.0
 
         reqs = [
-            its.objects.manual_capture_request(s,  e  ),
-            its.objects.manual_capture_request(s,  e  ),
-            its.objects.manual_capture_request(s*4,e  ),
-            its.objects.manual_capture_request(s*4,e  ),
-            its.objects.manual_capture_request(s,  e  ),
-            its.objects.manual_capture_request(s,  e  ),
-            its.objects.manual_capture_request(s,  e*4),
-            its.objects.manual_capture_request(s,  e  ),
-            its.objects.manual_capture_request(s*4,e  ),
-            its.objects.manual_capture_request(s,  e  ),
-            its.objects.manual_capture_request(s,  e*4),
-            its.objects.manual_capture_request(s,  e  ),
+            its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s*4,e,   True),
+            its.objects.manual_capture_request(s*4,e,   True),
+            its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s,  e*4, True),
+            its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s*4,e,   True),
+            its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s,  e*4, True),
+            its.objects.manual_capture_request(s,  e,   True),
             ]
 
         caps = cam.do_capture(reqs)

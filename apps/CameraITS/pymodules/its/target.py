@@ -55,7 +55,7 @@ def __do_target_exposure_measurement(its_session):
 
     # Get AE+AWB lock first, so the auto values in the capture result are
     # populated properly.
-    r = [0,0,1,1]
+    r = [[0.45, 0.45, 0.1, 0.1, 1]]
     sens, exp_time, gains, xform, _ = its_session.do_3a(r,r,r,True,True,False)
 
     # Convert the transform to rational.
@@ -76,7 +76,7 @@ def __do_target_exposure_measurement(its_session):
     cap = its_session.do_capture(req)
 
     # Compute the mean luma of a center patch.
-    yimg,uimg,vimg = its.image.convert_capture_to_yuv_planes(cap)
+    yimg,uimg,vimg = its.image.convert_capture_to_planes(cap)
     tile = its.image.get_image_patch(yimg, 0.45, 0.45, 0.1, 0.1)
     luma_mean = its.image.compute_image_means(tile)
 

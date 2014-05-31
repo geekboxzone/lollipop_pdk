@@ -59,7 +59,7 @@ def main():
                 req["android.blackLevel.lock"] = True
                 req["android.sensor.sensitivity"] = s
                 cap = cam.do_capture(req)
-                yimg,uimg,vimg = its.image.convert_capture_to_yuv_planes(cap)
+                yimg,uimg,vimg = its.image.convert_capture_to_planes(cap)
                 w = cap["width"]
                 h = cap["height"]
 

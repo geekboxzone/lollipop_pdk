@@ -54,7 +54,7 @@ def main():
         for si, s in enumerate(sensitivities):
             req["android.sensor.sensitivity"] = s
             cap = cam.do_capture(req)
-            yimg,_,_ = its.image.convert_capture_to_yuv_planes(cap)
+            yimg,_,_ = its.image.convert_capture_to_planes(cap)
             hist,_ = numpy.histogram(yimg*255, 256, (0,256))
             modes.append(numpy.argmax(hist))
 

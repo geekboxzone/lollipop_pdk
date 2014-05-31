@@ -27,9 +27,6 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    def r2f(r):
-        return float(r["numerator"]) / float(r["denominator"])
-
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
         w_map = props["android.lens.info.shadingMapSize"]["width"]
@@ -59,7 +56,8 @@ def main():
 
             print "States (AE,AWB,AF):", ae_state, awb_state, af_state
             print "Gains:", gains
-            print "Transform:", [r2f(t) for t in transform]
+            print "Transform:", [its.objects.rational_to_float(t)
+                                 for t in transform]
             print "AE region:", cap["metadata"]['android.control.aeRegions']
             print "AF region:", cap["metadata"]['android.control.afRegions']
             print "AWB region:", cap["metadata"]['android.control.awbRegions']

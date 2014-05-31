@@ -59,7 +59,7 @@ def main():
         its.image.write_image(
                 its.image.convert_capture_to_rgb_image(cap),
                 "%s_low_gain.jpg" % (NAME))
-        planes = its.image.convert_capture_to_yuv_planes(cap)
+        planes = its.image.convert_capture_to_planes(cap)
         for j in range(3):
             img = planes[j]
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
@@ -76,7 +76,7 @@ def main():
             its.image.write_image(
                     its.image.convert_capture_to_rgb_image(cap),
                     "%s_high_gain_nr=%d.jpg" % (NAME, i))
-            planes = its.image.convert_capture_to_yuv_planes(cap)
+            planes = its.image.convert_capture_to_planes(cap)
             for j in range(3):
                 img = planes[j]
                 tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)

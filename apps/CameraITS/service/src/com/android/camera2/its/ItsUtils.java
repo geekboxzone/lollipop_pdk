@@ -22,17 +22,22 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.camera2.params.StreamConfiguration;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.Image.Plane;
 import android.net.Uri;
 import android.os.Environment;
 import android.util.Log;
+import android.util.Size;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ItsUtils {
@@ -42,57 +47,74 @@ public class ItsUtils {
         return ByteBuffer.wrap(jsonObj.toString().getBytes(Charset.defaultCharset()));
     }
 
-    public static int[] getJsonRectFromArray(
+    public static MeteringRectangle[] getJsonWeightedRectsFromArray(
             JSONArray a, boolean normalized, int width, int height)
             throws ItsException {
         try {
-            // Returns [x,y,w,h]
-            if (normalized) {
-                return new int[]{(int)Math.floor(a.getDouble(0) * width + 0.5f),
-                                 (int)Math.floor(a.getDouble(1) * height + 0.5f),
-                                 (int)Math.floor(a.getDouble(2) * width + 0.5f),
-                                 (int)Math.floor(a.getDouble(3) * height + 0.5f) };
-            } else {
-                return new int[]{a.getInt(0),
-                                 a.getInt(1),
-                                 a.getInt(2),
-                                 a.getInt(3) };
+            // Returns [x0,y0,x1,y1,wgt,  x0,y0,x1,y1,wgt,  x0,y0,x1,y1,wgt,  ...]
+            assert(a.length() % 5 == 0);
+            MeteringRectangle[] ma = new MeteringRectangle[a.length() / 5];
+            for (int i = 0; i < a.length(); i += 5) {
+                int x,y,w,h;
+                if (normalized) {
+                    x = (int)Math.floor(a.getDouble(i+0) * width + 0.5f);
+                    y = (int)Math.floor(a.getDouble(i+1) * height + 0.5f);
+                    w = (int)Math.floor(a.getDouble(i+2) * width + 0.5f);
+                    h = (int)Math.floor(a.getDouble(i+3) * height + 0.5f);
+                } else {
+                    x = a.getInt(i+0);
+                    y = a.getInt(i+1);
+                    w = a.getInt(i+2);
+                    h = a.getInt(i+3);
+                }
+                x = Math.max(x, 0);
+                y = Math.max(y, 0);
+                w = Math.min(w, width-x);
+                h = Math.min(h, height-y);
+                int wgt = a.getInt(i+4);
+                ma[i/5] = new MeteringRectangle(x,y,w,h,wgt);
             }
+            return ma;
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error: ", e);
         }
     }
 
-    public static int getCallbacksPerCapture(int format)
-            throws ItsException {
-        // Regardless of the format, there is one callback for the CaptureResult object; this
-        // prepares the output metadata file.
-        int n = 1;
-
-        switch (format) {
-            case ImageFormat.YUV_420_888:
-            case ImageFormat.JPEG:
-                // A single output image callback is made, with either the JPEG or the YUV data.
-                n += 1;
-                break;
-
-            default:
-                throw new ItsException("Unsupported format: " + format);
-        }
-
-        return n;
-    }
-
-    public static JSONObject getOutputSpecs(JSONObject jsonObjTop)
+    public static JSONArray getOutputSpecs(JSONObject jsonObjTop)
             throws ItsException {
         try {
-            if (jsonObjTop.has("outputSurface")) {
-                return jsonObjTop.getJSONObject("outputSurface");
+            if (jsonObjTop.has("outputSurfaces")) {
+                return jsonObjTop.getJSONArray("outputSurfaces");
             }
             return null;
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error: ", e);
         }
+    }
+
+    public static Size[] getRawOutputSizes(CameraCharacteristics ccs)
+            throws ItsException {
+        return getOutputSizes(ccs, ImageFormat.RAW_SENSOR);
+    }
+
+    public static Size[] getJpegOutputSizes(CameraCharacteristics ccs)
+            throws ItsException {
+        return getOutputSizes(ccs, ImageFormat.JPEG);
+    }
+
+    public static Size[] getYuvOutputSizes(CameraCharacteristics ccs)
+            throws ItsException {
+        return getOutputSizes(ccs, ImageFormat.YUV_420_888);
+    }
+
+    private static Size[] getOutputSizes(CameraCharacteristics ccs, int format)
+            throws ItsException {
+        StreamConfigurationMap configMap = ccs.get(
+                CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+        if (configMap == null) {
+            throw new ItsException("Failed to get stream config");
+        }
+        return configMap.getOutputSizes(format);
     }
 
     public static byte[] getDataFromImage(Image image)
@@ -118,7 +140,8 @@ public class ItsUtils {
             data = new byte[buffer.capacity()];
             buffer.get(data);
             return data;
-        } else if (format == ImageFormat.YUV_420_888) {
+        } else if (format == ImageFormat.YUV_420_888 || format == ImageFormat.RAW_SENSOR) {
+            Log.i(TAG, String.format("Reading image, format %d", format));
             int offset = 0;
             data = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
             byte[] rowData = new byte[planes[0].getRowStride()];
@@ -155,6 +178,7 @@ public class ItsUtils {
                     }
                 }
             }
+            Log.i(TAG, String.format("Done reading image, format %d", format));
             return data;
         } else {
             throw new ItsException("Unsupported image format: " + format);
@@ -169,6 +193,7 @@ public class ItsUtils {
             case ImageFormat.NV21:
             case ImageFormat.YV12:
                 return 3 == planes.length;
+            case ImageFormat.RAW_SENSOR:
             case ImageFormat.JPEG:
                 return 1 == planes.length;
             default:

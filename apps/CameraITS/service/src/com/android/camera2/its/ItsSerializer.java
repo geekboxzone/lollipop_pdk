@@ -16,11 +16,30 @@
 
 package com.android.camera2.its;
 
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.CaptureRequest;
-import android.util.Rational;
+import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.ColorSpaceTransform;
+import android.hardware.camera2.params.Face;
+import android.hardware.camera2.params.LensShadingMap;
+import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.camera2.params.RggbChannelVector;
+import android.hardware.camera2.params.StreamConfiguration;
+import android.hardware.camera2.params.StreamConfigurationDuration;
+import android.hardware.camera2.params.StreamConfigurationMap;
+import android.hardware.camera2.params.TonemapCurve;
+import android.location.Location;
 import android.util.Log;
+import android.util.Pair;
+import android.util.Rational;
+import android.util.Size;
+import android.util.SizeF;
+import android.util.Range;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -51,133 +70,427 @@ public class ItsSerializer {
     }
 
     @SuppressWarnings("unchecked")
+    private static Object serializeRational(Rational rat) throws org.json.JSONException {
+        JSONObject ratObj = new JSONObject();
+        ratObj.put("numerator", rat.getNumerator());
+        ratObj.put("denominator", rat.getDenominator());
+        return ratObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeSize(Size size) throws org.json.JSONException {
+        JSONObject sizeObj = new JSONObject();
+        sizeObj.put("width", size.getWidth());
+        sizeObj.put("height", size.getHeight());
+        return sizeObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeSizeF(SizeF size) throws org.json.JSONException {
+        JSONObject sizeObj = new JSONObject();
+        sizeObj.put("width", size.getWidth());
+        sizeObj.put("height", size.getHeight());
+        return sizeObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeRect(Rect rect) throws org.json.JSONException {
+        JSONObject rectObj = new JSONObject();
+        rectObj.put("left", rect.left);
+        rectObj.put("right", rect.right);
+        rectObj.put("top", rect.top);
+        rectObj.put("bottom", rect.bottom);
+        return rectObj;
+    }
+
+    private static Object serializePoint(Point point) throws org.json.JSONException {
+        JSONObject pointObj = new JSONObject();
+        pointObj.put("x", point.x);
+        pointObj.put("y", point.y);
+        return pointObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeFace(Face face)
+            throws org.json.JSONException {
+        JSONObject faceObj = new JSONObject();
+        faceObj.put("bounds", serializeRect(face.getBounds()));
+        faceObj.put("score", face.getScore());
+        faceObj.put("id", face.getId());
+        faceObj.put("leftEye", serializePoint(face.getLeftEyePosition()));
+        faceObj.put("rightEye", serializePoint(face.getRightEyePosition()));
+        faceObj.put("mouth", serializePoint(face.getMouthPosition()));
+        return faceObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeStreamConfiguration(
+            StreamConfiguration cfg)
+            throws org.json.JSONException {
+        JSONObject cfgObj = new JSONObject();
+        cfgObj.put("format", cfg.getFormat());
+        cfgObj.put("width", cfg.getWidth());
+        cfgObj.put("height", cfg.getHeight());
+        cfgObj.put("input", cfg.isInput());
+        return cfgObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeStreamConfigurationDuration(
+            StreamConfigurationDuration dur)
+            throws org.json.JSONException {
+        JSONObject durObj = new JSONObject();
+        durObj.put("format", dur.getFormat());
+        durObj.put("width", dur.getWidth());
+        durObj.put("height", dur.getHeight());
+        durObj.put("duration", dur.getDuration());
+        return durObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeStreamConfigurationMap(
+            StreamConfigurationMap map)
+            throws org.json.JSONException {
+        JSONObject mapObj = new JSONObject();
+
+        // TODO: Finish serializeStreamConfigurationMap.
+        // The code below doesn't seem to work properly; it returns an empty list.
+        /*
+        JSONArray durArray = new JSONArray();
+        int fmts[] = map.getOutputFormats();
+        if (fmts != null) {
+            for (int f = 0; f < Array.getLength(fmts); f++) {
+                Size sizes[] = map.getOutputSizes(f);
+                if (sizes != null) {
+                    for (int s = 0; s < Array.getLength(sizes); s++) {
+                        long minDur = map.getOutputMinFrameDuration(fmts[f], sizes[s]);
+                        long stallDur = map.getOutputStallDuration(fmts[f], sizes[s]);
+                        JSONObject durObj = new JSONObject();
+                        durObj.put("format", fmts[f]);
+                        durObj.put("size", serializeSize(sizes[s]));
+                        durObj.put("minFrameDuration", minDur);
+                        durObj.put("stallDiration", stallDur);
+                        durArray.put(durObj);
+                    }
+                }
+            }
+        }
+        mapObj.put("durations", durArray);
+        */
+
+        return mapObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeMeteringRectangle(MeteringRectangle rect)
+            throws org.json.JSONException {
+        JSONObject rectObj = new JSONObject();
+        rectObj.put("x", rect.getX());
+        rectObj.put("y", rect.getY());
+        rectObj.put("width", rect.getWidth());
+        rectObj.put("height", rect.getHeight());
+        rectObj.put("weight", rect.getMeteringWeight());
+        return rectObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializePair(Pair pair)
+            throws org.json.JSONException {
+        JSONArray pairObj = new JSONArray();
+        pairObj.put(pair.first);
+        pairObj.put(pair.second);
+        return pairObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeRange(Range range)
+            throws org.json.JSONException {
+        JSONArray rangeObj = new JSONArray();
+        rangeObj.put(range.getLower());
+        rangeObj.put(range.getUpper());
+        return rangeObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeColorSpaceTransform(ColorSpaceTransform xform)
+            throws org.json.JSONException {
+        JSONArray xformObj = new JSONArray();
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                xformObj.put(serializeRational(xform.getElement(col,row)));
+            }
+        }
+        return xformObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeTonemapCurve(TonemapCurve curve)
+            throws org.json.JSONException {
+        JSONObject curveObj = new JSONObject();
+        String names[] = {"red", "green", "blue"};
+        for (int ch = 0; ch < 3; ch++) {
+            JSONArray curveArr = new JSONArray();
+            int len = curve.getPointCount(ch);
+            for (int i = 0; i < len; i++) {
+                curveArr.put(curve.getPoint(ch,i).x);
+                curveArr.put(curve.getPoint(ch,i).y);
+            }
+            curveObj.put(names[ch], curveArr);
+        }
+        return curveObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeRggbChannelVector(RggbChannelVector vec)
+            throws org.json.JSONException {
+        JSONArray vecObj = new JSONArray();
+        vecObj.put(vec.getRed());
+        vecObj.put(vec.getGreenEven());
+        vecObj.put(vec.getGreenOdd());
+        vecObj.put(vec.getBlue());
+        return vecObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeLocation(Location loc)
+            throws org.json.JSONException {
+        return loc.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeLensShadingMap(LensShadingMap map)
+            throws org.json.JSONException {
+        JSONArray mapObj = new JSONArray();
+        for (int row = 0; row < map.getRowCount(); row++) {
+            for (int col = 0; col < map.getColumnCount(); col++) {
+                for (int ch = 0; ch < 4; ch++) {
+                    mapObj.put(map.getGainFactor(ch, col, row));
+                }
+            }
+        }
+        return mapObj;
+    }
+
+    private static String getKeyName(Object keyObj) throws ItsException {
+        if (keyObj.getClass() == CaptureResult.Key.class
+                || keyObj.getClass() == TotalCaptureResult.class) {
+            return ((CaptureResult.Key)keyObj).getName();
+        } else if (keyObj.getClass() == CaptureRequest.Key.class) {
+            return ((CaptureRequest.Key)keyObj).getName();
+        } else if (keyObj.getClass() == CameraCharacteristics.Key.class) {
+            return ((CameraCharacteristics.Key)keyObj).getName();
+        }
+        throw new ItsException("Invalid key object");
+    }
+
+    private static Object getKeyValue(CameraMetadata md, Object keyObj) throws ItsException {
+        if (md.getClass() == CaptureResult.class || md.getClass() == TotalCaptureResult.class) {
+            return ((CaptureResult)md).get((CaptureResult.Key)keyObj);
+        } else if (md.getClass() == CaptureRequest.class) {
+            return ((CaptureRequest)md).get((CaptureRequest.Key)keyObj);
+        } else if (md.getClass() == CameraCharacteristics.class) {
+            return ((CameraCharacteristics)md).get((CameraCharacteristics.Key)keyObj);
+        }
+        throw new ItsException("Invalid key object");
+    }
+
+    @SuppressWarnings("unchecked")
     private static MetadataEntry serializeEntry(Type keyType, Object keyObj, CameraMetadata md)
             throws ItsException {
-        throw new ItsException("TODO: Fix serialization");
+        String keyName = getKeyName(keyObj);
 
-        /*
-
-        CameraMetadata.Key key = (CameraMetadata.Key)keyObj;
         try {
-            if (md.get(key) == null) {
-                return new MetadataEntry(key.getName(), JSONObject.NULL);
-            }
-            if (keyType == Integer.class || keyType == Long.class    || keyType == Byte.class ||
-                keyType == Float.class   || keyType == Boolean.class || keyType == String.class) {
-                return new MetadataEntry(key.getName(), md.get(key));
+            Object keyValue = getKeyValue(md, keyObj);
+            if (keyValue == null) {
+                return new MetadataEntry(keyName, JSONObject.NULL);
+            } else if (keyType == Float.class) {
+                // The JSON serializer doesn't handle floating point NaN or Inf.
+                if (((Float)keyValue).isInfinite() || ((Float)keyValue).isNaN()) {
+                    Log.w(TAG, "Inf/NaN floating point value serialized: " + keyName);
+                    return null;
+                }
+                return new MetadataEntry(keyName, keyValue);
+            } else if (keyType == Integer.class || keyType == Long.class || keyType == Byte.class ||
+                       keyType == Boolean.class || keyType == String.class) {
+                return new MetadataEntry(keyName, keyValue);
             } else if (keyType == Rational.class) {
-                CameraMetadata.Key<Rational> key2 = (CameraMetadata.Key<Rational>)keyObj;
-                JSONObject ratObj = new JSONObject();
-                ratObj.put("numerator", md.get(key2).getNumerator());
-                ratObj.put("denominator", md.get(key2).getDenominator());
-                return new MetadataEntry(key.getName(), ratObj);
-            } else if (keyType == android.util.Size.class) {
-                CameraMetadata.Key<android.util.Size> key2 =
-                        (CameraMetadata.Key<android.util.Size>)keyObj;
-                JSONObject sizeObj = new JSONObject();
-                sizeObj.put("width", md.get(key2).getWidth());
-                sizeObj.put("height", md.get(key2).getHeight());
-                return new MetadataEntry(key.getName(), sizeObj);
-            } else if (keyType == android.graphics.Rect.class) {
-                CameraMetadata.Key<android.graphics.Rect> key2 =
-                        (CameraMetadata.Key<android.graphics.Rect>)keyObj;
-                JSONObject rectObj = new JSONObject();
-                rectObj.put("left", md.get(key2).left);
-                rectObj.put("right", md.get(key2).right);
-                rectObj.put("top", md.get(key2).top);
-                rectObj.put("bottom", md.get(key2).bottom);
-                return new MetadataEntry(key.getName(), rectObj);
+                return new MetadataEntry(keyName, serializeRational((Rational)keyValue));
+            } else if (keyType == Size.class) {
+                return new MetadataEntry(keyName, serializeSize((Size)keyValue));
+            } else if (keyType == SizeF.class) {
+                return new MetadataEntry(keyName, serializeSizeF((SizeF)keyValue));
+            } else if (keyType == Rect.class) {
+                return new MetadataEntry(keyName, serializeRect((Rect)keyValue));
+            } else if (keyType == Face.class) {
+                return new MetadataEntry(keyName, serializeFace((Face)keyValue));
+            } else if (keyType == StreamConfiguration.class) {
+                return new MetadataEntry(keyName,
+                        serializeStreamConfiguration((StreamConfiguration)keyValue));
+            } else if (keyType == StreamConfigurationDuration.class) {
+                return new MetadataEntry(keyName,
+                        serializeStreamConfigurationDuration(
+                                (StreamConfigurationDuration)keyValue));
+            } else if (keyType == StreamConfigurationMap.class) {
+                return new MetadataEntry(keyName,
+                        serializeStreamConfigurationMap((StreamConfigurationMap)keyValue));
+            } else if (keyType instanceof ParameterizedType &&
+                    ((ParameterizedType)keyType).getRawType() == Range.class) {
+                return new MetadataEntry(keyName, serializeRange((Range)keyValue));
+            } else if (keyType == ColorSpaceTransform.class) {
+                return new MetadataEntry(keyName,
+                        serializeColorSpaceTransform((ColorSpaceTransform)keyValue));
+            } else if (keyType == MeteringRectangle.class) {
+                return new MetadataEntry(keyName,
+                        serializeMeteringRectangle((MeteringRectangle)keyValue));
+            } else if (keyType == Location.class) {
+                return new MetadataEntry(keyName,
+                        serializeLocation((Location)keyValue));
+            } else if (keyType == RggbChannelVector.class) {
+                return new MetadataEntry(keyName,
+                        serializeRggbChannelVector((RggbChannelVector)keyValue));
+            } else if (keyType == TonemapCurve.class) {
+                return new MetadataEntry(keyName,
+                        serializeTonemapCurve((TonemapCurve)keyValue));
+            } else if (keyType == Point.class) {
+                return new MetadataEntry(keyName,
+                        serializePoint((Point)keyValue));
+            } else if (keyType == LensShadingMap.class) {
+                return new MetadataEntry(keyName,
+                        serializeLensShadingMap((LensShadingMap)keyValue));
+            } else if (keyType instanceof ParameterizedType &&
+                    ((ParameterizedType)keyType).getRawType() == Pair.class) {
+                return new MetadataEntry(keyName, serializePair((Pair)keyValue));
             } else {
                 throw new ItsException(
                         "Unsupported key type in metadata serializer: " + keyType);
             }
         } catch (org.json.JSONException e) {
-            throw new ItsException("JSON error for key: " + key.getName() + ": ", e);
+            throw new ItsException("JSON error for key: " + keyName + ": ", e);
         }
-        */
     }
 
     @SuppressWarnings("unchecked")
     private static MetadataEntry serializeArrayEntry(Type keyType, Object keyObj, CameraMetadata md)
             throws ItsException {
-        throw new ItsException("TODO: Fix serialization");
-
-        /*
-
-        CameraMetadata.Key key = (CameraMetadata.Key)keyObj;
+        String keyName = getKeyName(keyObj);
         try {
-            if (md.get(key) == null) {
-                return new MetadataEntry(key.getName(), JSONObject.NULL);
+            Object keyValue = getKeyValue(md, keyObj);
+            if (keyValue == null) {
+                return new MetadataEntry(keyName, JSONObject.NULL);
             }
+            int arrayLen = Array.getLength(keyValue);
             Type elmtType = ((GenericArrayType)keyType).getGenericComponentType();
             if (elmtType == int.class  || elmtType == float.class || elmtType == byte.class ||
-                elmtType == long.class || elmtType == double.class) {
-                return new MetadataEntry(key.getName(), new JSONArray(md.get(key)));
+                elmtType == long.class || elmtType == double.class || elmtType == boolean.class) {
+                return new MetadataEntry(keyName, new JSONArray(keyValue));
             } else if (elmtType == Rational.class) {
-                CameraMetadata.Key<Rational[]> key2 = (CameraMetadata.Key<Rational[]>)keyObj;
                 JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < Array.getLength(md.get(key)); i++) {
-                    JSONObject ratObj = new JSONObject();
-                    ratObj.put("numerator", md.get(key2)[i].getNumerator());
-                    ratObj.put("denominator", md.get(key2)[i].getDenominator());
-                    jsonArray.put(ratObj);
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeRational((Rational)Array.get(keyValue,i)));
                 }
-                return new MetadataEntry(key.getName(), jsonArray);
-            } else if (elmtType == android.util.Size.class) {
-                CameraMetadata.Key<android.util.Size[]> key2 =
-                        (CameraMetadata.Key<android.util.Size[]>)keyObj;
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == Size.class) {
                 JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < Array.getLength(md.get(key)); i++) {
-                    JSONObject sizeObj = new JSONObject();
-                    sizeObj.put("width", md.get(key2)[i].getWidth());
-                    sizeObj.put("height", md.get(key2)[i].getHeight());
-                    jsonArray.put(sizeObj);
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeSize((Size)Array.get(keyValue,i)));
                 }
-                return new MetadataEntry(key.getName(), jsonArray);
-            } else if (elmtType == android.graphics.Rect.class) {
-                CameraMetadata.Key<android.graphics.Rect[]> key2 =
-                        (CameraMetadata.Key<android.graphics.Rect[]>)keyObj;
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == Rect.class) {
                 JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < Array.getLength(md.get(key)); i++) {
-                    JSONObject rectObj = new JSONObject();
-                    rectObj.put("left", md.get(key2)[i].left);
-                    rectObj.put("right", md.get(key2)[i].right);
-                    rectObj.put("top", md.get(key2)[i].top);
-                    rectObj.put("bottom", md.get(key2)[i].bottom);
-                    jsonArray.put(rectObj);
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeRect((Rect)Array.get(keyValue,i)));
                 }
-                return new MetadataEntry(key.getName(), jsonArray);
-            } else if (elmtType == android.hardware.camera2.params.Face.class) {
-                CameraMetadata.Key<android.hardware.camera2.params.Face[]> key2 =
-                        (CameraMetadata.Key<android.hardware.camera2.params.Face[]>)keyObj;
-
-                // TODO: Serialize an array of faces to JSON.
-                // Will also need to deserialize JSON faces in the appropriate method.
-                if (Array.getLength(md.get(key)) != 0) {
-                    throw new ItsException("Serialization of faces not implemented yet");
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == Face.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeFace((Face)Array.get(keyValue, i)));
                 }
-                return new MetadataEntry(key.getName(), new JSONArray());
-
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == StreamConfiguration.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeStreamConfiguration(
+                            (StreamConfiguration)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == StreamConfigurationDuration.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeStreamConfigurationDuration(
+                            (StreamConfigurationDuration)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == StreamConfigurationMap.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeStreamConfigurationMap(
+                            (StreamConfigurationMap)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType instanceof ParameterizedType &&
+                    ((ParameterizedType)elmtType).getRawType() == Range.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeRange((Range)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType instanceof ParameterizedType &&
+                    ((ParameterizedType)elmtType).getRawType() == Pair.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializePair((Pair)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == MeteringRectangle.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeMeteringRectangle(
+                            (MeteringRectangle)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == Location.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeLocation((Location)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == RggbChannelVector.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeRggbChannelVector(
+                            (RggbChannelVector)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == Point.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializePoint((Point)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
             } else {
                 throw new ItsException("Unsupported array type: " + elmtType);
             }
         } catch (org.json.JSONException e) {
-            throw new ItsException("JSON error for key: " + key.getName() + ": ", e);
+            throw new ItsException("JSON error for key: " + keyName + ": ", e);
         }
-        */
     }
 
     @SuppressWarnings("unchecked")
     public static JSONObject serialize(CameraMetadata md)
             throws ItsException {
-        throw new ItsException("TODO: fix serialization");
-        /*
         JSONObject jsonObj = new JSONObject();
         Field[] allFields = md.getClass().getDeclaredFields();
+        if (md.getClass() == TotalCaptureResult.class) {
+            allFields = CaptureResult.class.getDeclaredFields();
+        }
         for (Field field : allFields) {
             if (Modifier.isPublic(field.getModifiers()) &&
                     Modifier.isStatic(field.getModifiers()) &&
-                    field.getType() == CameraMetadata.Key.class &&
+                    (field.getType() == CaptureRequest.Key.class
+                      || field.getType() == CaptureResult.Key.class
+                      || field.getType() == TotalCaptureResult.Key.class
+                      || field.getType() == CameraCharacteristics.Key.class) &&
                     field.getGenericType() instanceof ParameterizedType) {
                 ParameterizedType paramType = (ParameterizedType)field.getGenericType();
                 Type[] argTypes = paramType.getActualTypeArguments();
@@ -191,8 +504,21 @@ public class ItsSerializer {
                         } else {
                             entry = serializeEntry(keyType, keyObj, md);
                         }
-                        if (entry != null) {
+
+                        // TODO: Figure this weird case out.
+                        // There is a weird case where the entry is non-null but the toString
+                        // of the entry is null, and if this happens, the null-ness spreads like
+                        // a virus and makes the whole JSON object null from the top level down.
+                        // Not sure if it's a bug in the library or I'm just not using it right.
+                        // Workaround by checking for this case explicitly and not adding the
+                        // value to the jsonObj when it is detected.
+                        if (entry != null && entry.key != null && entry.value != null
+                                          && entry.value.toString() == null) {
+                            Log.w(TAG, "Error encountered serializing value for key: " + entry.key);
+                        } else if (entry != null) {
                             jsonObj.put(entry.key, entry.value);
+                        } else {
+                            // Ignore.
                         }
                     } catch (IllegalAccessException e) {
                         throw new ItsException(
@@ -200,141 +526,182 @@ public class ItsSerializer {
                     } catch (org.json.JSONException e) {
                         throw new ItsException(
                                 "JSON error for field: " + field + ": ", e);
-                    } catch (IllegalArgumentException e) {
-                        // TODO: Remove this HACK once all keys are implemented (especially
-                        // android.statistics.faces).
-                        // If the key isn't plumbed all the way down, can get an exception by
-                        // trying to get it. Swallow the exception.
                     }
                 }
             }
         }
         return jsonObj;
-        */
     }
 
     @SuppressWarnings("unchecked")
     public static CaptureRequest.Builder deserialize(CaptureRequest.Builder mdDefault,
             JSONObject jsonReq) throws ItsException {
-
-        throw new ItsException("TODO: fix serialization");
-
-        /*
         try {
             Log.i(TAG, "Parsing JSON capture request ...");
 
-            // Iterate over the CameraMetadata reflected fields.
+            // Iterate over the CaptureRequest reflected fields.
             CaptureRequest.Builder md = mdDefault;
             Field[] allFields = CaptureRequest.class.getDeclaredFields();
             for (Field field : allFields) {
                 if (Modifier.isPublic(field.getModifiers()) &&
                         Modifier.isStatic(field.getModifiers()) &&
-                        field.getType() == CameraMetadata.Key.class &&
+                        field.getType() == CaptureRequest.Key.class &&
                         field.getGenericType() instanceof ParameterizedType) {
                     ParameterizedType paramType = (ParameterizedType)field.getGenericType();
                     Type[] argTypes = paramType.getActualTypeArguments();
-                    try {
-                        if (argTypes.length > 0) {
-                            CameraMetadata.Key key = (CameraMetadata.Key)field.get(md);
-                            String keyName = key.getName();
-                            Type keyType = argTypes[0];
+                    if (argTypes.length > 0) {
+                        CaptureRequest.Key key = (CaptureRequest.Key)field.get(md);
+                        String keyName = key.getName();
+                        Type keyType = argTypes[0];
 
-                            // For each reflected CameraMetadata entry, look inside the JSON object
-                            // to see if it is being set. If it is found, remove the key from the
-                            // JSON object. After this process, there should be no keys left in the
-                            // JSON (otherwise an invalid key was specified).
+                        // For each reflected CaptureRequest entry, look inside the JSON object
+                        // to see if it is being set. If it is found, remove the key from the
+                        // JSON object. After this process, there should be no keys left in the
+                        // JSON (otherwise an invalid key was specified).
 
-                            if (jsonReq.has(keyName) && !jsonReq.isNull(keyName)) {
-                                if (keyType instanceof GenericArrayType) {
-                                    Type elmtType =
-                                            ((GenericArrayType)keyType).getGenericComponentType();
-                                    JSONArray ja = jsonReq.getJSONArray(keyName);
-                                    Object val[] = new Object[ja.length()];
-                                    for (int i = 0; i < ja.length(); i++) {
-                                        if (elmtType == int.class) {
-                                            Array.set(val, i, ja.getInt(i));
-                                        } else if (elmtType == byte.class) {
-                                            Array.set(val, i, (byte)ja.getInt(i));
-                                        } else if (elmtType == float.class) {
-                                            Array.set(val, i, (float)ja.getDouble(i));
-                                        } else if (elmtType == long.class) {
-                                            Array.set(val, i, ja.getLong(i));
-                                        } else if (elmtType == double.class) {
-                                            Array.set(val, i, ja.getDouble(i));
-                                        } else if (elmtType == boolean.class) {
-                                            Array.set(val, i, ja.getBoolean(i));
-                                        } else if (elmtType == String.class) {
-                                            Array.set(val, i, ja.getString(i));
-                                        } else if (elmtType == android.util.Size.class){
-                                            JSONObject obj = ja.getJSONObject(i);
-                                            Array.set(val, i, new android.util.Size(
-                                                    obj.getInt("width"), obj.getInt("height")));
-                                        } else if (elmtType == android.graphics.Rect.class) {
-                                            JSONObject obj = ja.getJSONObject(i);
-                                            Array.set(val, i, new android.graphics.Rect(
-                                                    obj.getInt("left"), obj.getInt("top"),
-                                                    obj.getInt("bottom"), obj.getInt("right")));
-                                        } else if (elmtType == Rational.class) {
-                                            JSONObject obj = ja.getJSONObject(i);
-                                            Array.set(val, i, new Rational(
-                                                    obj.getInt("numerator"),
-                                                    obj.getInt("denominator")));
-                                        } else {
-                                            throw new ItsException(
-                                                    "Failed to parse key from JSON: " + keyName);
-                                        }
-                                    }
-                                    if (val != null) {
-                                        Log.i(TAG, "Set: "+keyName+" -> "+Arrays.toString(val));
-                                        md.set(key, val);
-                                        jsonReq.remove(keyName);
-                                    }
-                                } else {
-                                    Object val = null;
-                                    if (keyType == Integer.class) {
-                                        val = jsonReq.getInt(keyName);
-                                    } else if (keyType == Byte.class) {
-                                        val = (byte)jsonReq.getInt(keyName);
-                                    } else if (keyType == Double.class) {
-                                        val = jsonReq.getDouble(keyName);
-                                    } else if (keyType == Long.class) {
-                                        val = jsonReq.getLong(keyName);
-                                    } else if (keyType == Float.class) {
-                                        val = (float)jsonReq.getDouble(keyName);
-                                    } else if (keyType == Boolean.class) {
-                                        val = jsonReq.getBoolean(keyName);
-                                    } else if (keyType == String.class) {
-                                        val = jsonReq.getString(keyName);
-                                    } else if (keyType == android.util.Size.class) {
-                                        JSONObject obj = jsonReq.getJSONObject(keyName);
-                                        val = new android.util.Size(
-                                                obj.getInt("width"), obj.getInt("height"));
-                                    } else if (keyType == android.graphics.Rect.class) {
-                                        JSONObject obj = jsonReq.getJSONObject(keyName);
-                                        val = new android.graphics.Rect(
+                        if (jsonReq.has(keyName) && !jsonReq.isNull(keyName)) {
+                            if (keyType instanceof GenericArrayType) {
+                                Type elmtType =
+                                        ((GenericArrayType)keyType).getGenericComponentType();
+                                JSONArray ja = jsonReq.getJSONArray(keyName);
+                                Object val[] = new Object[ja.length()];
+                                for (int i = 0; i < ja.length(); i++) {
+                                    if (elmtType == int.class) {
+                                        Array.set(val, i, ja.getInt(i));
+                                    } else if (elmtType == byte.class) {
+                                        Array.set(val, i, (byte)ja.getInt(i));
+                                    } else if (elmtType == float.class) {
+                                        Array.set(val, i, (float)ja.getDouble(i));
+                                    } else if (elmtType == long.class) {
+                                        Array.set(val, i, ja.getLong(i));
+                                    } else if (elmtType == double.class) {
+                                        Array.set(val, i, ja.getDouble(i));
+                                    } else if (elmtType == boolean.class) {
+                                        Array.set(val, i, ja.getBoolean(i));
+                                    } else if (elmtType == String.class) {
+                                        Array.set(val, i, ja.getString(i));
+                                    } else if (elmtType == Size.class){
+                                        JSONObject obj = ja.getJSONObject(i);
+                                        Array.set(val, i, new Size(
+                                                obj.getInt("width"), obj.getInt("height")));
+                                    } else if (elmtType == Rect.class) {
+                                        JSONObject obj = ja.getJSONObject(i);
+                                        Array.set(val, i, new Rect(
                                                 obj.getInt("left"), obj.getInt("top"),
-                                                obj.getInt("right"), obj.getInt("bottom"));
-                                    } else if (keyType == Rational.class) {
-                                        JSONObject obj = jsonReq.getJSONObject(keyName);
-                                        val = new Rational(obj.getInt("numerator"),
-                                                           obj.getInt("denominator"));
+                                                obj.getInt("bottom"), obj.getInt("right")));
+                                    } else if (elmtType == Rational.class) {
+                                        JSONObject obj = ja.getJSONObject(i);
+                                        Array.set(val, i, new Rational(
+                                                obj.getInt("numerator"),
+                                                obj.getInt("denominator")));
+                                    } else if (elmtType == RggbChannelVector.class) {
+                                        JSONArray arr = ja.getJSONArray(i);
+                                        Array.set(val, i, new RggbChannelVector(
+                                                (float)arr.getDouble(0),
+                                                (float)arr.getDouble(1),
+                                                (float)arr.getDouble(2),
+                                                (float)arr.getDouble(3)));
+                                    } else if (elmtType == ColorSpaceTransform.class) {
+                                        JSONArray arr = ja.getJSONArray(i);
+                                        Rational xform[] = new Rational[9];
+                                        for (int j = 0; j < 9; j++) {
+                                            xform[j] = new Rational(
+                                                    arr.getJSONObject(j).getInt("numerator"),
+                                                    arr.getJSONObject(j).getInt("denominator"));
+                                        }
+                                        Array.set(val, i, new ColorSpaceTransform(xform));
+                                    } else if (elmtType == MeteringRectangle.class) {
+                                        JSONObject obj = ja.getJSONObject(i);
+                                        Array.set(val, i, new MeteringRectangle(
+                                                obj.getInt("x"),
+                                                obj.getInt("y"),
+                                                obj.getInt("width"),
+                                                obj.getInt("height"),
+                                                obj.getInt("weight")));
                                     } else {
                                         throw new ItsException(
                                                 "Failed to parse key from JSON: " + keyName);
                                     }
-                                    if (val != null) {
-                                        Log.i(TAG, "Set: " + keyName + " -> " + val);
-                                        md.set(key ,val);
-                                        jsonReq.remove(keyName);
+                                }
+                                if (val != null) {
+                                    Log.i(TAG, "Set: "+keyName+" -> "+Arrays.toString(val));
+                                    md.set(key, val);
+                                    jsonReq.remove(keyName);
+                                }
+                            } else {
+                                Object val = null;
+                                if (keyType == Integer.class) {
+                                    val = jsonReq.getInt(keyName);
+                                } else if (keyType == Byte.class) {
+                                    val = (byte)jsonReq.getInt(keyName);
+                                } else if (keyType == Double.class) {
+                                    val = jsonReq.getDouble(keyName);
+                                } else if (keyType == Long.class) {
+                                    val = jsonReq.getLong(keyName);
+                                } else if (keyType == Float.class) {
+                                    val = (float)jsonReq.getDouble(keyName);
+                                } else if (keyType == Boolean.class) {
+                                    val = jsonReq.getBoolean(keyName);
+                                } else if (keyType == String.class) {
+                                    val = jsonReq.getString(keyName);
+                                } else if (keyType == Size.class) {
+                                    JSONObject obj = jsonReq.getJSONObject(keyName);
+                                    val = new Size(
+                                            obj.getInt("width"), obj.getInt("height"));
+                                } else if (keyType == Rect.class) {
+                                    JSONObject obj = jsonReq.getJSONObject(keyName);
+                                    val = new Rect(
+                                            obj.getInt("left"), obj.getInt("top"),
+                                            obj.getInt("right"), obj.getInt("bottom"));
+                                } else if (keyType == Rational.class) {
+                                    JSONObject obj = jsonReq.getJSONObject(keyName);
+                                    val = new Rational(obj.getInt("numerator"),
+                                                       obj.getInt("denominator"));
+                                } else if (keyType == RggbChannelVector.class) {
+                                    JSONObject obj = jsonReq.optJSONObject(keyName);
+                                    JSONArray arr = jsonReq.optJSONArray(keyName);
+                                    if (arr != null) {
+                                        val = new RggbChannelVector(
+                                                (float)arr.getDouble(0),
+                                                (float)arr.getDouble(1),
+                                                (float)arr.getDouble(2),
+                                                (float)arr.getDouble(3));
+                                    } else if (obj != null) {
+                                        val = new RggbChannelVector(
+                                                (float)obj.getDouble("red"),
+                                                (float)obj.getDouble("greenEven"),
+                                                (float)obj.getDouble("greenOdd"),
+                                                (float)obj.getDouble("blue"));
+                                    } else {
+                                        throw new ItsException("Invalid RggbChannelVector object");
                                     }
+                                } else if (keyType == ColorSpaceTransform.class) {
+                                    JSONArray arr = jsonReq.getJSONArray(keyName);
+                                    Rational a[] = new Rational[9];
+                                    for (int i = 0; i < 9; i++) {
+                                        a[i] = new Rational(
+                                                arr.getJSONObject(i).getInt("numerator"),
+                                                arr.getJSONObject(i).getInt("denominator"));
+                                    }
+                                    val = new ColorSpaceTransform(a);
+                                } else if (keyType instanceof ParameterizedType &&
+                                        ((ParameterizedType)keyType).getRawType() == Range.class &&
+                                        ((ParameterizedType)keyType).getActualTypeArguments().length == 1 &&
+                                        ((ParameterizedType)keyType).getActualTypeArguments()[0] == Integer.class) {
+                                    JSONArray arr = jsonReq.getJSONArray(keyName);
+                                    val = new Range<Integer>(arr.getInt(0), arr.getInt(1));
+                                } else {
+                                    throw new ItsException(
+                                            "Failed to parse key from JSON: " +
+                                            keyName + ", " + keyType);
+                                }
+                                if (val != null) {
+                                    Log.i(TAG, "Set: " + keyName + " -> " + val);
+                                    md.set(key ,val);
+                                    jsonReq.remove(keyName);
                                 }
                             }
                         }
-                    } catch (IllegalArgumentException e) {
-                        // TODO: Remove this HACK once all keys are implemented (especially
-                        // android.statistics.faces).
-                        // If the key isn't plumbed all the way down, can get an exception by
-                        // trying to get it. Swallow the exception.
                     }
                 }
             }
@@ -351,7 +718,6 @@ public class ItsSerializer {
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error: ", e);
         }
-        */
     }
 
     @SuppressWarnings("unchecked")

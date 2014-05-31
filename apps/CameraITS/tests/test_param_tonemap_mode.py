@@ -53,11 +53,11 @@ def main():
             req = its.objects.manual_capture_request(100,50*1000*1000)
             req["android.tonemap.mode"] = 0
             req["android.tonemap.curveRed"] = (
-                    sum([[i/LM1, (1+0.5*n)*i/LM1] for i in range(L)], []))
+                    sum([[i/LM1, min(1.0,(1+0.5*n)*i/LM1)] for i in range(L)], []))
             req["android.tonemap.curveGreen"] = (
-                    sum([[i/LM1, (1+1.0*n)*i/LM1] for i in range(L)], []))
+                    sum([[i/LM1, min(1.0,(1+1.0*n)*i/LM1)] for i in range(L)], []))
             req["android.tonemap.curveBlue"] = (
-                    sum([[i/LM1, (1+1.5*n)*i/LM1] for i in range(L)], []))
+                    sum([[i/LM1, min(1.0,(1+1.5*n)*i/LM1)] for i in range(L)], []))
             cap = cam.do_capture(req)
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(
@@ -84,7 +84,7 @@ def main():
             req["android.tonemap.curveGreen"] = curve
             req["android.tonemap.curveBlue"] = curve
             cap = cam.do_capture(req)
-            img = its.image.convert_capture_to_rgb_image(fname, w, h)
+            img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(
                     img, "%s_size=%02d.jpg" %(NAME, size))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)

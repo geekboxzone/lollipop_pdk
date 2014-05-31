@@ -24,8 +24,7 @@ def main():
 
     with its.device.ItsSession() as cam:
         req = its.objects.auto_capture_request()
-        rect = [0,0,1,1]
-        sens, exp, gains, xform, focus = cam.do_3a(rect, rect, rect)
+        sens, exp, gains, xform, focus = cam.do_3a()
         cap = cam.do_capture(req)
         img = its.image.convert_capture_to_rgb_image(cap)
         its.image.write_image(img, "%s.jpg" % (NAME))

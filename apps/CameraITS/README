@@ -41,7 +41,7 @@ shell for Android builds, from the pdk/apps/CameraITS directory run the
 following commands:
 
     cd service
-    mm
+    mma -j32
     adb install -r <YOUR_OUTPUT_PATH>/ItsService.apk
 
 using whatever path is appropriate to your output ItsService.apk file.

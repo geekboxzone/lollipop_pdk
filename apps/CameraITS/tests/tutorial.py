@@ -80,7 +80,7 @@ def main():
 
         # Can also get the Y,U,V planes separately; save these to greyscale
         # files.
-        yimg,uimg,vimg = its.image.convert_capture_to_yuv_planes(cap)
+        yimg,uimg,vimg = its.image.convert_capture_to_planes(cap)
         its.image.write_image(yimg, "%s_y_plane_1.jpg" % (NAME))
         its.image.write_image(uimg, "%s_u_plane_1.jpg" % (NAME))
         its.image.write_image(vimg, "%s_v_plane_1.jpg" % (NAME))
@@ -97,8 +97,7 @@ def main():
         #
         # If this keeps on failing, try also rebooting the device before
         # running the test.
-        rect = [0,0,1,1]
-        sens, exp, gains, xform, focus = cam.do_3a(rect, rect, rect)
+        sens, exp, gains, xform, focus = cam.do_3a()
         print "AE: sensitivity %d, exposure %dms" % (sens, exp/1000000.0)
         print "AWB: gains", gains, "transform", xform
         print "AF: distance", focus
@@ -114,8 +113,8 @@ def main():
         # denominators. The 3A routine returns simple floats instead, however,
         # so a conversion from float to rational must be performed.
         req = its.objects.manual_capture_request(sens, exp)
-        xform_rat = [{"numerator":math.floor(v*128+0.5), "denominator":128}
-                     for v in xform]
+        xform_rat = its.objects.float_to_rational(xform)
+
         req["android.colorCorrection.transform"] = xform_rat
         req["android.colorCorrection.gains"] = gains
         cap = cam.do_capture(req)
@@ -164,7 +163,7 @@ def main():
         its.image.write_image(rgbimg_mat, "%s_rgb_2_mat.jpg" % (NAME))
 
         # Compute a histogram of the luma image, in 256 buckeits.
-        yimg,_,_ = its.image.convert_capture_to_yuv_planes(cap)
+        yimg,_,_ = its.image.convert_capture_to_planes(cap)
         hist,_ = numpy.histogram(yimg*255, 256, (0,256))
 
         # Plot the histogram using matplotlib, and save as a PNG image.
@@ -173,6 +172,14 @@ def main():
         pylab.ylabel("Pixel count")
         pylab.title("Histogram of luma channel of captured image")
         matplotlib.pyplot.savefig("%s_histogram.png" % (NAME))
+
+        # Capture a frame to be returned as a JPEG. Load it as an RGB image,
+        # then save it back as a JPEG.
+        cap = cam.do_capture(req, cam.CAP_JPEG)
+        rgbimg = its.image.convert_capture_to_rgb_image(cap)
+        its.image.write_image(rgbimg, "%s_jpg.jpg" % (NAME))
+        r,g,b = its.image.convert_capture_to_planes(cap)
+        its.image.write_image(r, "%s_r.jpg" % (NAME))
 
 # This is the standard boilerplate in each test that allows the script to both
 # be executed directly and imported as a module.

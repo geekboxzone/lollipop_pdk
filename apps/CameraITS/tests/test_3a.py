@@ -21,8 +21,7 @@ def main():
     """
 
     with its.device.ItsSession() as cam:
-        rect = [0,0,1,1]
-        sens, exp, gains, xform, focus = cam.do_3a(rect, rect, rect)
+        sens, exp, gains, xform, focus = cam.do_3a()
         print "AE: sensitivity %d, exposure %dms" % (sens, exp/1000000)
         print "AWB: gains", gains, "transform", xform
         print "AF: distance", focus

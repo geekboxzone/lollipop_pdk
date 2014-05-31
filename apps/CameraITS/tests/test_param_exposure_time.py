@@ -37,7 +37,8 @@ def main():
     b_means = []
 
     with its.device.ItsSession() as cam:
-        _,sens = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        _,sens = its.target.get_target_exposure_combos(cam)["maxExposureTime"]
+
         props = cam.get_camera_properties()
         expt_range = props['android.sensor.info.exposureTimeRange']
         expt_step = (expt_range[1] - expt_range[0]) / float(NUM_STEPS-1)
