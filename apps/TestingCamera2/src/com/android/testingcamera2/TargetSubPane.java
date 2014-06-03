@@ -30,5 +30,12 @@ public abstract class TargetSubPane extends LinearLayout {
 
     public abstract void setTargetCameraPane(CameraControlPane target);
 
+    /**
+     * Set the current orientation of the UI, relative to the native device orientation
+     *
+     * @param orientation current UI orientation in degrees, one of the Surface.ROTATION_* values
+     */
+    public abstract void setUiOrientation(int orientation);
+
     public abstract Surface getOutputSurface();
 }

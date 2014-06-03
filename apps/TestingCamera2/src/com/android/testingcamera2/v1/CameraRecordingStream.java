@@ -27,6 +27,7 @@ import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.os.Environment;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 
 import java.io.File;

@@ -188,4 +188,13 @@ public class ControlPane extends LinearLayout {
         // Default empty implementation
     }
 
+    /**
+     * Called when the app's UI orientation changes.
+     *
+     * @param orientation one of the Surface.ROTATION_* constants
+     */
+    public void onOrientationChange(int orientation) {
+        // Default empty implementation
+    }
+
 }

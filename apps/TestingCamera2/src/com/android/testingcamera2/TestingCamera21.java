@@ -24,6 +24,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
+import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
@@ -56,12 +57,12 @@ public class TestingCamera21 extends Activity implements CameraControlPane.InfoD
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main3);
 
+        mCameraOps = new CameraOps2(this);
+        mPaneTracker = new PaneTracker();
+
         TLog.Logger logger;
         logger = setUpUIAndLog();
         TLog.setLogger(logger);
-
-        mCameraOps = new CameraOps2(this);
-        mPaneTracker = new PaneTracker();
     }
 
     private TLog.Logger setUpUIAndLog() {
@@ -129,6 +130,12 @@ public class TestingCamera21 extends Activity implements CameraControlPane.InfoD
         LinearLayout.LayoutParams controlScrollerLayout =
                 new LinearLayout.LayoutParams(width, height, controlListWeight.getFloat());
         mControlScroller.setLayoutParams(controlScrollerLayout);
+
+        WindowManager windowManager =  (WindowManager) getSystemService(WINDOW_SERVICE);
+        int rot = windowManager.getDefaultDisplay().getRotation();
+
+        mPaneTracker.notifyOrientationChange(windowManager.getDefaultDisplay().getRotation());
+
     }
 
     @Override

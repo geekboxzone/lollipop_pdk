@@ -85,6 +85,17 @@ public class PaneTracker {
         });
     }
 
+    /**
+     * Notify all panes that the UI orientation has changed
+     *
+     * @param orientation one of the Surface.ROTATION_* constants
+     */
+    public void notifyOrientationChange(int orientation) {
+        for (ControlPane pane: mActivePanes ) {
+            pane.onOrientationChange(orientation);
+        }
+    }
+
     public void addPaneListener(PaneSetChangedListener<?> listener) {
         mActiveListeners.add(listener);
     }

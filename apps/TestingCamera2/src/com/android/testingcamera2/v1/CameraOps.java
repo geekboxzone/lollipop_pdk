@@ -27,9 +27,11 @@ import android.hardware.camera2.CaptureRequest;
 import android.util.Size;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaCodec;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
@@ -195,8 +197,9 @@ public class CameraOps {
             Size[] previewSizes = null;
             Size sz = DEFAULT_SIZE;
             if (properties != null) {
-                previewSizes = properties.get(
-                        CameraCharacteristics.SCALER_AVAILABLE_PROCESSED_SIZES);
+                previewSizes =
+                        properties.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).
+                        getOutputSizes(previewHolder.getClass());
             }
 
             if (previewSizes != null && previewSizes.length != 0 &&
@@ -270,8 +273,8 @@ public class CameraOps {
                     mCameraManager.getCameraCharacteristics(mCamera.getId());
             Size[] jpegSizes = null;
             if (properties != null) {
-                jpegSizes = properties.get(
-                        CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
+                jpegSizes = properties.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).
+                        getOutputSizes(ImageFormat.JPEG);
             }
             int width = 640;
             int height = 480;
@@ -415,8 +418,9 @@ public class CameraOps {
 
             Size[] recordingSizes = null;
             if (properties != null) {
-                recordingSizes = properties.get(
-                        CameraCharacteristics.SCALER_AVAILABLE_PROCESSED_SIZES);
+                recordingSizes =
+                        properties.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).
+                        getOutputSizes(MediaCodec.class);
             }
 
             mEncodingBitRate = ENC_BIT_RATE_LOW;
