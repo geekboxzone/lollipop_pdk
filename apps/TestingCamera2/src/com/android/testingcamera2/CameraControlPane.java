@@ -36,6 +36,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
@@ -86,6 +87,23 @@ public class CameraControlPane extends ControlPane {
         ERROR
     }
 
+    /**
+     * These correspond to the callbacks from {@link CameraCaptureSession.StateListener}, plus
+     * {@code CONFIGURING} for before a session is returned and {@code NONE} for when there
+     * is no session created.
+     */
+    private enum SessionState {
+        NONE,
+        CONFIGURING,
+        CONFIGURED,
+        CONFIGURE_FAILED,
+        READY,
+        BUSY,
+        ACTIVE,
+        ERROR,
+        CLOSED
+    }
+
     private enum CameraCall {
         NONE,
         CONFIGURE
@@ -108,23 +126,25 @@ public class CameraControlPane extends ControlPane {
      * All controls that should be enabled when there's a valid camera ID
      * selected
      */
-    private Set<View> mBaseControls = new HashSet<View>();
+    private final Set<View> mBaseControls = new HashSet<View>();
     /**
      * All controls that should be enabled when camera is at least in the OPEN
      * state
      */
-    private Set<View> mOpenControls = new HashSet<View>();
+    private final Set<View> mOpenControls = new HashSet<View>();
     /**
      * All controls that should be enabled when camera is at least in the IDLE
      * state
      */
-    private Set<View> mConfiguredControls = new HashSet<View>();
+    private final Set<View> mConfiguredControls = new HashSet<View>();
 
     private String[] mCameraIds;
     private String mCurrentCameraId;
 
     private CameraState mCameraState;
     private CameraDevice mCurrentCamera;
+    private CameraCaptureSession mCurrentCaptureSession;
+    private SessionState mSessionState = SessionState.NONE;
     private CameraCall mActiveCameraCall;
 
     private List<Surface> mConfiguredSurfaces;
@@ -241,9 +261,9 @@ public class CameraControlPane extends ControlPane {
      * @return true if capture sent successfully
      */
     public boolean capture(CaptureRequest request) {
-        if (mCurrentCamera != null) {
+        if (mCurrentCaptureSession != null) {
             try {
-                mCurrentCamera.capture(request, null, null);
+                mCurrentCaptureSession.capture(request, null, null);
                 return true;
             } catch (CameraAccessException e) {
                 TLog.e("Unable to capture for camera %s.", e, mCurrentCameraId);
@@ -253,9 +273,9 @@ public class CameraControlPane extends ControlPane {
     }
 
     public boolean repeat(CaptureRequest request) {
-        if (mCurrentCamera != null) {
+        if (mCurrentCaptureSession != null) {
             try {
-                mCurrentCamera.setRepeatingRequest(request, null, null);
+                mCurrentCaptureSession.setRepeatingRequest(request, null, null);
                 return true;
             } catch (CameraAccessException e) {
                 TLog.e("Unable to set repeating request for camera %s.", e, mCurrentCameraId);
@@ -303,7 +323,7 @@ public class CameraControlPane extends ControlPane {
 
     private void initializeCameras(TestingCamera21 tc) {
         mCameraOps = tc.getCameraOps();
-        mInfoDisplayer = (InfoDisplayer) tc;
+        mInfoDisplayer = tc;
 
         updateCameraList();
     }
@@ -324,7 +344,7 @@ public class CameraControlPane extends ControlPane {
         }
     }
 
-    private CompoundButton.OnCheckedChangeListener mOpenButtonListener =
+    private final CompoundButton.OnCheckedChangeListener mOpenButtonListener =
             new CompoundButton.OnCheckedChangeListener() {
                 @Override
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -340,19 +360,19 @@ public class CameraControlPane extends ControlPane {
                 }
             };
 
-    private OnClickListener mInfoButtonListener = new OnClickListener() {
+    private final OnClickListener mInfoButtonListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
             mInfoDisplayer.showCameraInfo(mCurrentCameraId);
         }
     };
 
-    private OnClickListener mStopButtonListener = new OnClickListener() {
+    private final OnClickListener mStopButtonListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
-            if (mCurrentCamera != null) {
+            if (mCurrentCaptureSession != null) {
                 try {
-                    mCurrentCamera.stopRepeating();
+                    mCurrentCaptureSession.stopRepeating();
                 } catch (CameraAccessException e) {
                     TLog.e("Unable to stop repeating request for camera %s.", e, mCurrentCameraId);
                 }
@@ -360,12 +380,12 @@ public class CameraControlPane extends ControlPane {
         }
     };
 
-    private OnClickListener mFlushButtonListener = new OnClickListener() {
+    private final OnClickListener mFlushButtonListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
-            if (mCurrentCamera != null) {
+            if (mCurrentCaptureSession != null) {
                 try {
-                    mCurrentCamera.flush();
+                    mCurrentCaptureSession.abortCaptures();
                 } catch (CameraAccessException e) {
                     TLog.e("Unable to flush camera %s.", e, mCurrentCameraId);
                 }
@@ -373,7 +393,7 @@ public class CameraControlPane extends ControlPane {
         }
     };
 
-    private OnClickListener mConfigureButtonListener = new OnClickListener() {
+    private final OnClickListener mConfigureButtonListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
             List<Surface> targetSurfaces = new ArrayList<Surface>();
@@ -390,9 +410,10 @@ public class CameraControlPane extends ControlPane {
                         targetSurfaces.size());
                 mActiveCameraCall = CameraCall.CONFIGURE;
                 if (targetSurfaces.size() > 0) {
-                    mCurrentCamera.configureOutputs(targetSurfaces);
-                } else {
-                    mCurrentCamera.configureOutputs(null);
+                    mCurrentCamera.createCaptureSession(targetSurfaces, mSessionListener, /*handler*/null);
+                } else if (mCurrentCaptureSession != null) {
+                    mCurrentCaptureSession.close();
+                    mCurrentCaptureSession = null;
                 }
                 mConfiguredSurfaces = targetSurfaces;
                 mConfiguredTargetPanes = targetPanes;
@@ -409,20 +430,79 @@ public class CameraControlPane extends ControlPane {
         }
     };
 
-    private CameraDevice.StateListener mCameraListener = new CameraDevice.StateListener() {
+    private final CameraCaptureSession.StateListener mSessionListener =
+            new CameraCaptureSession.StateListener() {
+
         @Override
+        public void onConfigured(CameraCaptureSession session) {
+            mCurrentCaptureSession = session;
+
+            setSessionState(SessionState.CONFIGURED);
+        }
+
+        @Override
+        public void onConfigureFailed(CameraCaptureSession session) {
+            mActiveCameraCall = CameraCall.NONE;
+            TLog.e("Configuration failed for camera %s.", mCurrentCamera.getId());
+
+            setSessionState(SessionState.CONFIGURE_FAILED);
+        }
+
+        @Override
+        public void onReady(CameraCaptureSession session) {
+            setSessionState(SessionState.READY);
+        }
+
+        /**
+         * This method is called when the session starts actively processing capture requests.
+         *
+         * <p>If capture requests are submitted prior to {@link #onConfigured} being called,
+         * then the session will start processing those requests immediately after the callback,
+         * and this method will be immediately called after {@link #onConfigured}.
+         *
+         * <p>If the session runs out of capture requests to process and calls {@link #onReady},
+         * then this callback will be invoked again once new requests are submitted for capture.</p>
+         */
+        @Override
+        public void onActive(CameraCaptureSession session) {
+            setSessionState(SessionState.ACTIVE);
+        }
+
+        /**
+         * This method is called when the session is closed.
+         *
+         * <p>A session is closed when a new session is created by the parent camera device,
+         * or when the parent camera device is closed (either by the user closing the device,
+         * or due to a camera device disconnection or fatal error).</p>
+         *
+         * <p>Once a session is closed, all methods on it will throw an IllegalStateException, and
+         * any repeating requests or bursts are stopped (as if {@link #stopRepeating()} was called).
+         * However, any in-progress capture requests submitted to the session will be completed
+         * as normal.</p>
+         */
+        @Override
+        public void onClosed(CameraCaptureSession session) {
+            setSessionState(SessionState.CLOSED);
+        }
+    };
+
+    private final CameraDevice.StateListener mCameraListener = new CameraDevice.StateListener() {
+        @Override
+        @Deprecated
         public void onIdle(CameraDevice camera) {
-            setCameraState(CameraState.IDLE);
+            //setCameraState(CameraState.IDLE);
         }
 
         @Override
+        @Deprecated
         public void onActive(CameraDevice camera) {
-            setCameraState(CameraState.ACTIVE);
+            //setCameraState(CameraState.ACTIVE);
         }
 
         @Override
+        @Deprecated
         public void onBusy(CameraDevice camera) {
-            setCameraState(CameraState.BUSY);
+            //setCameraState(CameraState.BUSY);
         }
 
         @Override
@@ -447,8 +527,9 @@ public class CameraControlPane extends ControlPane {
         }
 
         @Override
+        @Deprecated
         public void onUnconfigured(CameraDevice camera) {
-            setCameraState(CameraState.UNCONFIGURED);
+            //setCameraState(CameraState.UNCONFIGURED);
         }
 
     };
@@ -476,9 +557,53 @@ public class CameraControlPane extends ControlPane {
         }
     }
 
+    private void setSessionState(SessionState newState) {
+        mSessionState = newState;
+        mStatusText.setText("S." + mSessionState.toString());
+
+        switch (mSessionState) {
+            case CONFIGURE_FAILED:
+                mActiveCameraCall = CameraCall.NONE;
+                // fall-through
+            case CLOSED:
+            case ERROR:
+                enableBaseControls(true);
+                enableOpenControls(false);
+                enableConfiguredControls(false);
+                mConfiguredTargetPanes = null;
+                break;
+            case NONE:
+                enableBaseControls(true);
+                enableOpenControls(true);
+                enableConfiguredControls(false);
+                mConfiguredTargetPanes = null;
+                break;
+            case BUSY:
+                enableBaseControls(true);
+                enableOpenControls(false);
+                enableConfiguredControls(false);
+                break;
+            case CONFIGURED:
+                if (mActiveCameraCall != CameraCall.CONFIGURE) {
+                    throw new AssertionError();
+                }
+                mPaneTracker.notifyOtherPanes(this, PaneEvent.CAMERA_CONFIGURED);
+                mActiveCameraCall = CameraCall.NONE;
+                // fall-through
+            case READY:
+            case ACTIVE:
+                enableBaseControls(true);
+                enableOpenControls(true);
+                enableConfiguredControls(true);
+                break;
+            default:
+                throw new AssertionError("Unhandled case " + mSessionState);
+        }
+    }
+
     private void setCameraState(CameraState newState) {
         mCameraState = newState;
-        mStatusText.setText(mCameraState.toString());
+        mStatusText.setText("C." + mCameraState.toString());
         switch (mCameraState) {
             case UNAVAILABLE:
                 enableBaseControls(false);
@@ -495,31 +620,10 @@ public class CameraControlPane extends ControlPane {
                 mConfiguredTargetPanes = null;
                 break;
             case OPENED:
-            case UNCONFIGURED:
                 enableBaseControls(true);
                 enableOpenControls(true);
                 enableConfiguredControls(false);
                 mConfiguredTargetPanes = null;
-                if (mActiveCameraCall == CameraCall.CONFIGURE) {
-                    mPaneTracker.notifyOtherPanes(this, PaneEvent.CAMERA_CONFIGURED);
-                    mActiveCameraCall = CameraCall.NONE;
-                }
-                break;
-            case BUSY:
-                enableBaseControls(true);
-                enableOpenControls(false);
-                enableConfiguredControls(false);
-                break;
-            case IDLE:
-                if (mActiveCameraCall == CameraCall.CONFIGURE) {
-                    mPaneTracker.notifyOtherPanes(this, PaneEvent.CAMERA_CONFIGURED);
-                    mActiveCameraCall = CameraCall.NONE;
-                }
-                // fallthrough
-            case ACTIVE:
-                enableBaseControls(true);
-                enableOpenControls(true);
-                enableConfiguredControls(true);
                 break;
         }
     }
@@ -558,7 +662,7 @@ public class CameraControlPane extends ControlPane {
         }
     };
 
-    private OnItemSelectedListener mCameraSpinnerListener = new OnItemSelectedListener() {
+    private final OnItemSelectedListener mCameraSpinnerListener = new OnItemSelectedListener() {
         @Override
         public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
             String newCameraId = mCameraIds[pos];

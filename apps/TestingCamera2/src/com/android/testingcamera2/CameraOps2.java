@@ -33,12 +33,12 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
 
     private final CameraManager mCameraManager;
 
-    private Set<CameraDevice> mOpenCameras = new HashSet<CameraDevice>();
+    private final Set<CameraDevice> mOpenCameras = new HashSet<CameraDevice>();
 
     public CameraOps2(Context context) {
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
         if (mCameraManager == null) {
-            throw new RuntimeException("Can't connect to camera manager!");
+            throw new AssertionError("Can't connect to camera manager!");
         }
         try {
             String[] cameraIds = mCameraManager.getCameraIdList();
@@ -50,7 +50,7 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
             TLog.e("Unable to get camera list: %s", e);
         }
 
-        mCameraManager.addAvailabilityListener(this, null);
+        mCameraManager.addAvailabilityListener(this, /*handler*/null);
     }
 
     /**
@@ -66,7 +66,7 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
     public String[] getCamerasAndListen(CameraManager.AvailabilityListener listener)
             throws CameraAccessException {
 
-        mCameraManager.addAvailabilityListener(listener, null);
+        mCameraManager.addAvailabilityListener(listener, /*handler*/null);
 
         return mCameraManager.getCameraIdList();
     }
@@ -130,18 +130,21 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
         }
 
         @Override
+        @Deprecated
         public void onIdle(CameraDevice camera) {
             TLog.i("Camera %s now idle", camera.getId());
             mClientListener.onIdle(camera);
         }
 
         @Override
+        @Deprecated
         public void onActive(CameraDevice camera) {
             TLog.i("Camera %s now active", camera.getId());
             mClientListener.onActive(camera);
         }
 
         @Override
+        @Deprecated
         public void onBusy(CameraDevice camera) {
             TLog.i("Camera %s now busy", camera.getId());
             mClientListener.onBusy(camera);
@@ -174,6 +177,7 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
         }
 
         @Override
+        @Deprecated
         public void onUnconfigured(CameraDevice camera) {
             TLog.i("Camera %s now unconfigured", camera.getId());
             mClientListener.onUnconfigured(camera);
