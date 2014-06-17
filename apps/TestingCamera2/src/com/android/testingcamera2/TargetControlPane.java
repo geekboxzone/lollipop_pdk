@@ -277,6 +277,8 @@ public class TargetControlPane extends ControlPane {
         TargetSubPane newPane = null;
         switch (type) {
             case IMAGE_READER:
+                newPane = new ImageReaderSubPane(getContext(), null);
+                break;
             case MEDIA_CODEC:
             case MEDIA_RECORDER:
             case RENDERSCRIPT:

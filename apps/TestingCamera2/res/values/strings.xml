@@ -62,6 +62,12 @@
 
     <string name="target_subpane_texture_view_size_prompt">Size</string>
     <string name="target_subpane_surface_view_size_prompt">Size</string>
+    <string name="target_subpane_image_reader_format_prompt">Format</string>
+    <string name="target_subpane_image_reader_size_prompt">Size</string>
+    <string name="target_subpane_image_reader_count_prompt">Max buffers</string>
+    <string name="target_subpane_image_reader_prev_button">&lt;&lt;&lt;</string>
+    <string name="target_subpane_image_reader_next_button">&gt;&gt;&gt;</string>
+    <string name="target_subpane_image_reader_save_button">Save</string>
 
     <string name="request_pane_title">Request</string>
     <string name="request_pane_capture_button">Capture</string>

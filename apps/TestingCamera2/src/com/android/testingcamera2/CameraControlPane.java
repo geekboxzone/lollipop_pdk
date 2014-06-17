@@ -18,6 +18,7 @@ package com.android.testingcamera2;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -37,10 +38,13 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCaptureSession.CaptureListener;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -67,6 +71,8 @@ public class CameraControlPane extends ControlPane {
     private static final String CAMERA_ID = "camera_id";
 
     // End XML attributes
+
+    private static final int MAX_CACHED_RESULTS = 100;
 
     private static int mCameraPaneIdCounter = 0;
 
@@ -146,6 +152,7 @@ public class CameraControlPane extends ControlPane {
     private CameraCaptureSession mCurrentCaptureSession;
     private SessionState mSessionState = SessionState.NONE;
     private CameraCall mActiveCameraCall;
+    private LinkedList<TotalCaptureResult> mRecentResults = new LinkedList<>();
 
     private List<Surface> mConfiguredSurfaces;
     private List<TargetControlPane> mConfiguredTargetPanes;
@@ -243,15 +250,19 @@ public class CameraControlPane extends ControlPane {
     }
 
     public CaptureRequest.Builder getRequestBuilder(int template) {
+        CaptureRequest.Builder request = null;
         if (mCurrentCamera != null) {
             try {
-                return mCurrentCamera.createCaptureRequest(template);
+                request = mCurrentCamera.createCaptureRequest(template);
+                // Workaround for b/15748139
+                request.set(CaptureRequest.STATISTICS_LENS_SHADING_MAP_MODE,
+                        CaptureRequest.STATISTICS_LENS_SHADING_MAP_MODE_ON);
             } catch (CameraAccessException e) {
                 TLog.e("Unable to build request for camera %s with template %d.", e,
                         mCurrentCameraId, template);
             }
         }
-        return null;
+        return request;
     }
 
     /**
@@ -263,7 +274,7 @@ public class CameraControlPane extends ControlPane {
     public boolean capture(CaptureRequest request) {
         if (mCurrentCaptureSession != null) {
             try {
-                mCurrentCaptureSession.capture(request, null, null);
+                mCurrentCaptureSession.capture(request, mResultListener, null);
                 return true;
             } catch (CameraAccessException e) {
                 TLog.e("Unable to capture for camera %s.", e, mCurrentCameraId);
@@ -275,7 +286,7 @@ public class CameraControlPane extends ControlPane {
     public boolean repeat(CaptureRequest request) {
         if (mCurrentCaptureSession != null) {
             try {
-                mCurrentCaptureSession.setRepeatingRequest(request, null, null);
+                mCurrentCaptureSession.setRepeatingRequest(request, mResultListener, null);
                 return true;
             } catch (CameraAccessException e) {
                 TLog.e("Unable to set repeating request for camera %s.", e, mCurrentCameraId);
@@ -283,6 +294,27 @@ public class CameraControlPane extends ControlPane {
         }
         return false;
     }
+
+    public TotalCaptureResult getResultAt(long timestamp) {
+        for (TotalCaptureResult result : mRecentResults) {
+            long resultTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP);
+            if (resultTimestamp == timestamp) return result;
+            if (resultTimestamp > timestamp) return null;
+        }
+        return null;
+    }
+
+    private CaptureListener mResultListener = new CaptureListener() {
+        public void onCaptureCompleted(
+                CameraCaptureSession session,
+                CaptureRequest request,
+                TotalCaptureResult result) {
+            mRecentResults.add(result);
+            if (mRecentResults.size() > MAX_CACHED_RESULTS) {
+                mRecentResults.remove();
+            }
+        }
+    };
 
     private void setUpUI(Context context) {
         String paneName =
@@ -676,5 +708,4 @@ public class CameraControlPane extends ControlPane {
             switchToCamera(null);
         }
     };
-
 }
