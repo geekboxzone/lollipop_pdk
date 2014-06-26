@@ -20,17 +20,12 @@ import sys
 import time
 import os
 import os.path
-import functools
-import errno
-import signal
 
 # Change this to True, to have the test break at the first failure.
 stop_at_first_failure = False
 
 def main():
     """Test different combinations of output formats.
-
-    Test is UNIX-only due to use of Python signal module.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
@@ -66,44 +61,36 @@ def main():
     burst_lens = [1, # B0
                   3] # B1
 
-    # There are 2x10x2=40 different combinations. Run through them all, with
-    # each test controlled by a 30s timeout; if it doesn't complete in 30s,
-    # then the test for that combination is considered a failure. For each test
-    # run, re-open the ITS session to the device, which restarts the ITS
-    # service process; this ensures a somewhat-clean initial state for each
-    # combo's test.
+    # There are 2x10x2=40 different combinations. Run through them all.
     n = 0
-    props = None
-    for r,req in enumerate(reqs):
-        for f,fmt_combo in enumerate(fmt_combos):
-            for b,burst_len in enumerate(burst_lens):
-                try:
-                    with Timeout(seconds=30), its.device.ItsSession() as cam:
-                        if props is None:
-                            props = cam.get_camera_properties()
+    with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        for r,req in enumerate(reqs):
+            for f,fmt_combo in enumerate(fmt_combos):
+                for b,burst_len in enumerate(burst_lens):
+                    try:
                         caps = cam.do_capture([req]*burst_len, fmt_combo)
+                        successes.append((n,r,f,b))
+                        print "==> Success[%02d]: R%d F%d B%d" % (n,r,f,b)
 
-                    print "==> Success[%02d]: R%d F%d B%d" % (n,r,f,b)
-                    successes.append((n,r,f,b))
+                        # Dump the captures out to jpegs.
+                        if not isinstance(caps, list):
+                            caps = [caps]
+                        elif isinstance(caps[0], list):
+                            caps = sum(caps, [])
+                        for c,cap in enumerate(caps):
+                            img = its.image.convert_capture_to_rgb_image(cap,
+                                    props=props)
+                            its.image.write_image(img,
+                                    "%s_n%02d_r%d_f%d_b%d_c%d.jpg"%(NAME,n,r,f,b,c))
 
-                    # Dump the captures out to jpegs.
-                    if not isinstance(caps, list):
-                        caps = [caps]
-                    elif isinstance(caps[0], list):
-                        caps = sum(caps, [])
-                    for c,cap in enumerate(caps):
-                        img = its.image.convert_capture_to_rgb_image(cap,
-                                props=props)
-                        its.image.write_image(img,
-                                "%s_n%02d_r%d_f%d_b%d_c%d.jpg"%(NAME,n,r,f,b,c))
-
-                except Exception as e:
-                    print e
-                    print "==> Failure[%02d]: R%d F%d B%d" % (n,r,f,b)
-                    failures.append((n,r,f,b))
-                    if stop_at_first_failure:
-                        sys.exit(0)
-                n += 1
+                    except Exception as e:
+                        print e
+                        print "==> Failure[%02d]: R%d F%d B%d" % (n,r,f,b)
+                        failures.append((n,r,f,b))
+                        if stop_at_first_failure:
+                            sys.exit(0)
+                    n += 1
 
     num_fail = len(failures)
     num_success = len(successes)
@@ -119,21 +106,6 @@ def main():
     if num_not_run > 0:
         print "\nNumber of tests not run: %d / %d" % (num_not_run, num_total)
     print ""
-
-# A class to encapsulate timeout funcitonality in a way that can be used in
-# a "with" block. UNIX-only since it uses signals. If the timeout elapses,
-# then an exception is raised.
-class Timeout:
-    def __init__(self, seconds):
-        self.seconds = seconds
-        self.error_message = "Timeout"
-    def handle_timeout(self, signum, frame):
-        raise its.error.Error(self.error_message)
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.alarm(self.seconds)
-    def __exit__(self, type, value, traceback):
-        signal.alarm(0)
 
 if __name__ == '__main__':
     main()

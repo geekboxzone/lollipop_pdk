@@ -76,6 +76,7 @@ class ItsSession(object):
     def __init__(self):
         reboot_device_on_argv()
         # TODO: Figure out why "--user 0" is needed, and fix the problem
+        _run('%s logcat -c' % (self.ADB))
         _run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
         _run(('%s shell am startservice --user 0 -t text/plain '
               '-a %s') % (self.ADB, self.INTENT_START))
@@ -92,15 +93,14 @@ class ItsSession(object):
         logcat = proc.stdout
         while True:
             line = logcat.readline().strip()
-            if line.find('Waiting for client to connect to socket'):
+            if line.find('Waiting for client to connect to socket') >= 0:
                 break
         proc.kill()
 
     def __del__(self):
         if hasattr(self, 'sock') and self.sock:
             self.sock.close()
-        # TODO: Figure out why uncommenting this here causes socket errors.
-        #_run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
+        _run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
 
     def __enter__(self):
         return self
