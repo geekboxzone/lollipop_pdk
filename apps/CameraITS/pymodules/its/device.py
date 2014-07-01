@@ -128,6 +128,47 @@ class ItsSession(object):
             buf = numpy.frombuffer(buf, dtype=numpy.uint8)
         return jobj, buf
 
+    def start_sensor_events(self):
+        """Start collecting sensor events on the device.
+
+        See get_sensor_events for more info.
+
+        Returns:
+            Nothing.
+        """
+        cmd = {}
+        cmd["cmdName"] = "startSensorEvents"
+        self.sock.send(json.dumps(cmd) + "\n")
+
+    def get_sensor_events(self):
+        """Get a trace of all sensor events on the device.
+
+        The trace starts when the start_sensor_events function is called. If
+        the test runs for a long time after this call, then the device's
+        internal memory can fill up. Calling get_sensor_events gets all events
+        from the device, and then stops the device from collecting events and
+        clears the internal buffer; to start again, the start_sensor_events
+        call must be used again.
+
+        Events from the accelerometer, compass, and gyro are returned; each
+        has a timestamp and x,y,z values.
+
+        Note that sensor events are only produced if the device isn't in its
+        standby mode (i.e.) if the screen is on.
+
+        Returns:
+            A Python dictionary with three keys ("accel", "mag", "gyro") each
+            of which maps to a list of objects containing "time","x","y","z"
+            keys.
+        """
+        cmd = {}
+        cmd["cmdName"] = "getSensorEvents"
+        self.sock.send(json.dumps(cmd) + "\n")
+        data,_ = self.__read_response_from_socket()
+        if data['tag'] != 'sensorEvents':
+            raise its.error.Error('Invalid command response')
+        return data['objValue']
+
     def get_camera_properties(self):
         """Get the camera properties object for the device.
 

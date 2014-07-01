@@ -30,6 +30,10 @@ import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.DngCreator;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.media.Image;
 import android.media.ImageReader;
 import android.net.Uri;
@@ -66,6 +70,7 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -73,7 +78,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ItsService extends Service {
+public class ItsService extends Service implements SensorEventListener {
     public static final String TAG = ItsService.class.getSimpleName();
 
     // Timeouts, in seconds.
@@ -134,6 +139,22 @@ public class ItsService extends Service {
     private volatile boolean mConvergedAF = false;
     private volatile boolean mConvergedAWB = false;
 
+    class MySensorEvent {
+        public Sensor sensor;
+        public int accuracy;
+        public long timestamp;
+        public float values[];
+    };
+
+    // For capturing motion sensor traces.
+    private SensorManager mSensorManager = null;
+    private Sensor mAccelSensor = null;
+    private Sensor mMagSensor = null;
+    private Sensor mGyroSensor = null;
+    private volatile LinkedList<MySensorEvent> mEvents = null;
+    private volatile Object mEventLock = new Object();
+    private volatile boolean mEventsEnabled = false;
+
     private CountDownLatch mCaptureCallbackLatch;
 
     public interface CaptureListener {
@@ -183,6 +204,15 @@ public class ItsService extends Service {
             } catch (BlockingOpenException e) {
                 throw new ItsException("Failed to open camera (after blocking)", e);
             }
+
+            mEvents = new LinkedList<MySensorEvent>();
+            mSensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
+            mAccelSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            mMagSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+            mGyroSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            mSensorManager.registerListener(this, mAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
+            mSensorManager.registerListener(this, mMagSensor, SensorManager.SENSOR_DELAY_FASTEST);
+            mSensorManager.registerListener(this, mGyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
 
             // Create threads to receive images and save them.
             for (int i = 0; i < MAX_NUM_OUTPUT_SURFACES; i++) {
@@ -354,14 +384,15 @@ public class ItsService extends Service {
                 JSONObject cmdObj = new JSONObject(cmd);
                 if ("getCameraProperties".equals(cmdObj.getString("cmdName"))) {
                     doGetProps();
-                }
-                else if ("do3A".equals(cmdObj.getString("cmdName"))) {
+                } else if ("startSensorEvents".equals(cmdObj.getString("cmdName"))) {
+                    doStartSensorEvents();
+                } else if ("getSensorEvents".equals(cmdObj.getString("cmdName"))) {
+                    doGetSensorEvents();
+                } else if ("do3A".equals(cmdObj.getString("cmdName"))) {
                     do3A(cmdObj);
-                }
-                else if ("doCapture".equals(cmdObj.getString("cmdName"))) {
+                } else if ("doCapture".equals(cmdObj.getString("cmdName"))) {
                     doCapture(cmdObj);
-                }
-                else {
+                } else {
                     throw new ItsException("Unknown command: " + cmd);
                 }
             } catch (org.json.JSONException e) {
@@ -413,6 +444,36 @@ public class ItsService extends Service {
         public void sendResponseCaptureBuffer(String tag, ByteBuffer bbuf)
                 throws ItsException {
             sendResponse(tag, null, null, bbuf);
+        }
+
+        public void sendResponse(LinkedList<MySensorEvent> events)
+                throws ItsException {
+            try {
+                JSONArray accels = new JSONArray();
+                JSONArray mags = new JSONArray();
+                JSONArray gyros = new JSONArray();
+                for (MySensorEvent event : events) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("time", event.timestamp);
+                    obj.put("x", event.values[0]);
+                    obj.put("y", event.values[1]);
+                    obj.put("z", event.values[2]);
+                    if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                        accels.put(obj);
+                    } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                        mags.put(obj);
+                    } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                        gyros.put(obj);
+                    }
+                }
+                JSONObject obj = new JSONObject();
+                obj.put("accel", accels);
+                obj.put("mag", mags);
+                obj.put("gyro", gyros);
+                sendResponse("sensorEvents", null, obj, null);
+            } catch (org.json.JSONException e) {
+                throw new ItsException("JSON error: ", e);
+            }
         }
 
         public void sendResponse(CameraCharacteristics props)
@@ -488,6 +549,20 @@ public class ItsService extends Service {
                 i.close();
             }
         };
+    }
+
+    private void doStartSensorEvents() throws ItsException {
+        synchronized(mEventLock) {
+            mEventsEnabled = true;
+        }
+    }
+
+    private void doGetSensorEvents() throws ItsException {
+        synchronized(mEventLock) {
+            mSocketRunnableObj.sendResponse(mEvents);
+            mEvents.clear();
+            mEventsEnabled = false;
+        }
     }
 
     private void doGetProps() throws ItsException {
@@ -785,6 +860,25 @@ public class ItsService extends Service {
         } catch (android.hardware.camera2.CameraAccessException e) {
             throw new ItsException("Access error: ", e);
         }
+    }
+
+    @Override
+    public final void onSensorChanged(SensorEvent event) {
+        synchronized(mEventLock) {
+            if (mEventsEnabled) {
+                MySensorEvent ev2 = new MySensorEvent();
+                ev2.sensor = event.sensor;
+                ev2.accuracy = event.accuracy;
+                ev2.timestamp = event.timestamp;
+                ev2.values = new float[event.values.length];
+                System.arraycopy(event.values, 0, ev2.values, 0, event.values.length);
+                mEvents.add(ev2);
+            }
+        }
+    }
+
+    @Override
+    public final void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
     private final CaptureListener mCaptureListener = new CaptureListener() {
