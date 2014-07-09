@@ -16,6 +16,7 @@ import its.image
 import its.device
 import its.objects
 import its.error
+import its.target
 import sys
 import time
 import os
@@ -29,42 +30,45 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    successes = []
-    failures = []
-
-    # Two different requests: auto, and manual.
-    req_aut = its.objects.auto_capture_request()
-    req_man = its.objects.manual_capture_request(100,10*1000*1000)
-    reqs = [req_aut, # R0
-            req_man] # R1
-
-    # 10 different combos of output formats; some are single surfaces, and
-    # some are multiple surfaces.
-    fmt_yuv_prev = {"format":"yuv", "width":640, "height":480}
-    fmt_yuv_full = {"format":"yuv"}
-    fmt_jpg_prev = {"format":"jpeg","width":640, "height":480}
-    fmt_jpg_full = {"format":"jpeg"}
-    fmt_raw_full = {"format":"raw"}
-    fmt_combos =[
-            [fmt_yuv_prev],                             # F0
-            [fmt_yuv_full],                             # F1
-            [fmt_jpg_prev],                             # F2
-            [fmt_jpg_full],                             # F3
-            [fmt_raw_full],                             # F4
-            [fmt_yuv_prev, fmt_jpg_prev],               # F5
-            [fmt_yuv_prev, fmt_jpg_full],               # F6
-            [fmt_yuv_prev, fmt_raw_full],               # F7
-            [fmt_yuv_prev, fmt_jpg_prev, fmt_raw_full], # F8
-            [fmt_yuv_prev, fmt_jpg_full, fmt_raw_full]] # F9
-
-    # Two different burst lenghts: single frame, and 3 frames.
-    burst_lens = [1, # B0
-                  3] # B1
-
-    # There are 2x10x2=40 different combinations. Run through them all.
-    n = 0
     with its.device.ItsSession() as cam:
+
         props = cam.get_camera_properties()
+
+        successes = []
+        failures = []
+
+        # Two different requests: auto, and manual.
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        req_aut = its.objects.auto_capture_request()
+        req_man = its.objects.manual_capture_request(s, e)
+        reqs = [req_aut, # R0
+                req_man] # R1
+
+        # 10 different combos of output formats; some are single surfaces, and
+        # some are multiple surfaces.
+        fmt_yuv_prev = {"format":"yuv", "width":640, "height":480}
+        fmt_yuv_full = {"format":"yuv"}
+        fmt_jpg_prev = {"format":"jpeg","width":640, "height":480}
+        fmt_jpg_full = {"format":"jpeg"}
+        fmt_raw_full = {"format":"raw"}
+        fmt_combos =[
+                [fmt_yuv_prev],                             # F0
+                [fmt_yuv_full],                             # F1
+                [fmt_jpg_prev],                             # F2
+                [fmt_jpg_full],                             # F3
+                [fmt_raw_full],                             # F4
+                [fmt_yuv_prev, fmt_jpg_prev],               # F5
+                [fmt_yuv_prev, fmt_jpg_full],               # F6
+                [fmt_yuv_prev, fmt_raw_full],               # F7
+                [fmt_yuv_prev, fmt_jpg_prev, fmt_raw_full], # F8
+                [fmt_yuv_prev, fmt_jpg_full, fmt_raw_full]] # F9
+
+        # Two different burst lenghts: single frame, and 3 frames.
+        burst_lens = [1, # B0
+                      3] # B1
+
+        # There are 2x10x2=40 different combinations. Run through them all.
+        n = 0
         for r,req in enumerate(reqs):
             for f,fmt_combo in enumerate(fmt_combos):
                 for b,burst_len in enumerate(burst_lens):
@@ -92,20 +96,24 @@ def main():
                             sys.exit(0)
                     n += 1
 
-    num_fail = len(failures)
-    num_success = len(successes)
-    num_total = len(reqs)*len(fmt_combos)*len(burst_lens)
-    num_not_run = num_total - num_success - num_fail
+        num_fail = len(failures)
+        num_success = len(successes)
+        num_total = len(reqs)*len(fmt_combos)*len(burst_lens)
+        num_not_run = num_total - num_success - num_fail
 
-    print "\nFailures (%d / %d):" % (num_fail, num_total)
-    for (n,r,f,b) in failures:
-        print "  %02d: R%d F%d B%d" % (n,r,f,b)
-    print "\nSuccesses (%d / %d):" % (num_success, num_total)
-    for (n,r,f,b) in successes:
-        print "  %02d: R%d F%d B%d" % (n,r,f,b)
-    if num_not_run > 0:
-        print "\nNumber of tests not run: %d / %d" % (num_not_run, num_total)
-    print ""
+        print "\nFailures (%d / %d):" % (num_fail, num_total)
+        for (n,r,f,b) in failures:
+            print "  %02d: R%d F%d B%d" % (n,r,f,b)
+        print "\nSuccesses (%d / %d):" % (num_success, num_total)
+        for (n,r,f,b) in successes:
+            print "  %02d: R%d F%d B%d" % (n,r,f,b)
+        if num_not_run > 0:
+            print "\nNumber of tests not run: %d / %d" % (num_not_run, num_total)
+        print ""
+
+        # The test passes if all the combinations successfully capture.
+        assert(num_fail == 0)
+        assert(num_success == num_total)
 
 if __name__ == '__main__':
     main()

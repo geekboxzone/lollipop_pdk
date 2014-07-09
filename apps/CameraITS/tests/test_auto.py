@@ -29,6 +29,8 @@ def main():
         img = its.image.convert_capture_to_rgb_image(cap)
         its.image.write_image(img, "%s.jpg" % (NAME))
 
+    # No pass/fail test; test is assumed to have succeeded if it completes.
+
 if __name__ == '__main__':
     main()
 

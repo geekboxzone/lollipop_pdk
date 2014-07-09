@@ -31,27 +31,29 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    r_means = []
-    g_means = []
-    b_means = []
-
     with its.device.ItsSession() as cam:
         e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
         e = e / 2.0
 
+        r_means = []
+        g_means = []
+        b_means = []
+
         reqs = [
             its.objects.manual_capture_request(s,  e,   True),
             its.objects.manual_capture_request(s,  e,   True),
-            its.objects.manual_capture_request(s*4,e,   True),
-            its.objects.manual_capture_request(s*4,e,   True),
+            its.objects.manual_capture_request(s*2,e,   True),
+            its.objects.manual_capture_request(s*2,e,   True),
             its.objects.manual_capture_request(s,  e,   True),
             its.objects.manual_capture_request(s,  e,   True),
-            its.objects.manual_capture_request(s,  e*4, True),
+            its.objects.manual_capture_request(s,  e*2, True),
             its.objects.manual_capture_request(s,  e,   True),
-            its.objects.manual_capture_request(s*4,e,   True),
+            its.objects.manual_capture_request(s*2,e,   True),
             its.objects.manual_capture_request(s,  e,   True),
-            its.objects.manual_capture_request(s,  e*4, True),
+            its.objects.manual_capture_request(s,  e*2, True),
             its.objects.manual_capture_request(s,  e,   True),
+            its.objects.manual_capture_request(s,  e*2, True),
+            its.objects.manual_capture_request(s,  e*2, True),
             ]
 
         caps = cam.do_capture(reqs)
@@ -64,13 +66,19 @@ def main():
             g_means.append(rgb_means[1])
             b_means.append(rgb_means[2])
 
-    # Draw a plot.
-    idxs = range(len(r_means))
-    pylab.plot(idxs, r_means, 'r')
-    pylab.plot(idxs, g_means, 'g')
-    pylab.plot(idxs, b_means, 'b')
-    pylab.ylim([0,1])
-    matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+        # Draw a plot.
+        idxs = range(len(r_means))
+        pylab.plot(idxs, r_means, 'r')
+        pylab.plot(idxs, g_means, 'g')
+        pylab.plot(idxs, b_means, 'b')
+        pylab.ylim([0,1])
+        matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+
+        g_avg = sum(g_means) / len(g_means)
+        g_ratios = [g / g_avg for g in g_means]
+        g_hilo = [g>1.0 for g in g_ratios]
+        assert(g_hilo == [False, False, True, True, False, False, True,
+                          False, True, False, True, False, True, True])
 
 if __name__ == '__main__':
     main()

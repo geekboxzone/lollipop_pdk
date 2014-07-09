@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import os.path
 import matplotlib
@@ -25,12 +26,21 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    req = its.objects.auto_capture_request()
-
-    flash_modes_reported = []
-    flash_states_reported = []
+    MIN_BRIGHTNESS_DELTA = 0.1
 
     with its.device.ItsSession() as cam:
+
+        flash_modes_reported = []
+        flash_states_reported = []
+        g_means = []
+
+        # Manually set the exposure to be a little on the dark side, so that
+        # it should be obvious whether the flash fired or not, and use a
+        # linear tonemap.
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        e /= 4
+        req = its.objects.manual_capture_request(s, e, True)
+
         for f in [0,1,2]:
             req["android.flash.mode"] = f
             cap = cam.do_capture(req)
@@ -38,14 +48,18 @@ def main():
             flash_states_reported.append(cap["metadata"]["android.flash.state"])
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_mode=%d.jpg" % (NAME, f))
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            rgb = its.image.compute_image_means(tile)
+            g_means.append(rgb[1])
 
-    assert(flash_modes_reported == [0,1,2])
+        assert(flash_modes_reported == [0,1,2])
+        assert(flash_states_reported[0] not in [3,4])
+        assert(flash_states_reported[1] in [3,4])
+        assert(flash_states_reported[2] in [3,4])
 
-    # TODO: Add check on flash_states_reported values.
-
-    # TODO: Add an image check on the brightness of the captured shots, as well
-    # as the exposure values in the capture result, to test that flash was
-    # fired as expected (i.e.) on the shots it was expected to be fired for.
+        print "G brightnesses:", g_means
+        assert(g_means[1] > g_means[0] + MIN_BRIGHTNESS_DELTA)
+        assert(g_means[2] > g_means[0] + MIN_BRIGHTNESS_DELTA)
 
 if __name__ == '__main__':
     main()
