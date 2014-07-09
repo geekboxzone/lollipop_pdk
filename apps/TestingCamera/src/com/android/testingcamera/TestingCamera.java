@@ -1119,6 +1119,7 @@ public class TestingCamera extends Activity
     private void updateCamcorderProfile(int cameraId) {
         // Have to query all of these individually,
         final int PROFILES[] = new int[] {
+            CamcorderProfile.QUALITY_2160P,
             CamcorderProfile.QUALITY_1080P,
             CamcorderProfile.QUALITY_480P,
             CamcorderProfile.QUALITY_720P,
@@ -1127,6 +1128,7 @@ public class TestingCamera extends Activity
             CamcorderProfile.QUALITY_LOW,
             CamcorderProfile.QUALITY_QCIF,
             CamcorderProfile.QUALITY_QVGA,
+            CamcorderProfile.QUALITY_TIME_LAPSE_2160P,
             CamcorderProfile.QUALITY_TIME_LAPSE_1080P,
             CamcorderProfile.QUALITY_TIME_LAPSE_480P,
             CamcorderProfile.QUALITY_TIME_LAPSE_720P,
@@ -1138,6 +1140,7 @@ public class TestingCamera extends Activity
         };
 
         final String PROFILE_NAMES[] = new String[] {
+            "2160P",
             "1080P",
             "480P",
             "720P",
@@ -1146,6 +1149,7 @@ public class TestingCamera extends Activity
             "LOW",
             "QCIF",
             "QVGA",
+            "TIME_LAPSE_2160P",
             "TIME_LAPSE_1080P",
             "TIME_LAPSE_480P",
             "TIME_LAPSE_720P",
