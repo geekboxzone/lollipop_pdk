@@ -15,18 +15,35 @@
 # limitations under the License.
 
 # The tests exercised in this file all assert/exit on failure, and terminate
-# cleanly on success. The device is rebooted for each test, to ensure that
-# a problem in one test doesn't propagate into subsequent tests.
+# cleanly on success.
 
-rm -rf out
-mkdir -p out
-cd out
+# Optionally, the device can be rebooted for each test, to ensure that
+# a problem in one test doesn't propagate into subsequent tests; use this
+# when debugging test failures, but not when running the test suite (since
+# all tests should pass even when run back-to-back).
+#REBOOT=reboot
 
 echo ""
 echo "--------------------------------------------------------------------"
-echo "Getting target exposure value of scene"
+echo "Set up camera for scene 1:"
+echo "* Camera on tripod, in either portrait or landscape orientation"
+echo "* Scene filled (or mostly filled) by grey card"
+echo "* Illuminated by simple light source, for example a desk lamp"
+echo "* Uniformity of lighting and target positioning need not be precise"
+echo ""
+echo "Use any camera app to be able to see preview while setting up the"
+echo "camera, grey card, and light source; make sure that the camera app"
+echo "is killed before proceeding."
+echo ""
+echo "Press ENTER when the camera set up is complete ..."
 echo "--------------------------------------------------------------------"
-python ../config.py reboot
+read DUMMY
+
+rm -rf out1
+mkdir -p out1
+cd out1
+
+python ../config.py $REBOOT
 
 testcount=0
 failcount=0
@@ -69,7 +86,7 @@ do
     echo "--------------------------------------------------------------------"
     echo "Running test: $T"
     echo "--------------------------------------------------------------------"
-    python ../"$T" reboot
+    python ../"$T" $REBOOT
     code=$?
     if [ $code -ne 0 ]; then
         let failcount=failcount+1
