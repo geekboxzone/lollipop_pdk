@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import os
 import sys
 import numpy
@@ -42,6 +43,9 @@ def main():
 
     with its.device.ItsSession() as cam:
 
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        e /= 2
+
         # Test 1: that the tonemap curves have the expected effect. Take two
         # shots, with n in [0,1], where each has a linear tonemap, with the
         # n=1 shot having a steeper gradient. The gradient for each R,G,B
@@ -50,7 +54,7 @@ def main():
         rgb_means = []
 
         for n in [0,1]:
-            req = its.objects.manual_capture_request(100,50*1000*1000)
+            req = its.objects.manual_capture_request(s,e)
             req["android.tonemap.mode"] = 0
             req["android.tonemap.curveRed"] = (
                     sum([[i/LM1, min(1.0,(1+0.5*n)*i/LM1)] for i in range(L)], []))
@@ -78,7 +82,7 @@ def main():
         for size in [32,64]:
             m = float(size-1)
             curve = sum([[i/m, i/m] for i in range(size)], [])
-            req = its.objects.manual_capture_request(100,50*1000*1000)
+            req = its.objects.manual_capture_request(s,e)
             req["android.tonemap.mode"] = 0
             req["android.tonemap.curveRed"] = curve
             req["android.tonemap.curveGreen"] = curve

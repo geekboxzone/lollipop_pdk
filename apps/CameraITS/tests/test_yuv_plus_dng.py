@@ -36,6 +36,9 @@ def main():
         with open("%s.dng"%(NAME), "wb") as f:
             f.write(cap_dng["data"])
 
+        # No specific pass/fail check; test is assumed to have succeeded if
+        # it completes.
+
 if __name__ == '__main__':
     main()
 

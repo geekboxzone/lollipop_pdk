@@ -15,26 +15,41 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import os.path
+import math
 
 def main():
     """Test capturing a single frame as both RAW and YUV outputs.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    THRESHOLD_MAX_RMS_DIFF = 0.01
+
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
 
-        cam.do_3a()
+        # Use a manual request with a linear tonemap so that the YUV and RAW
+        # should look the same (once converted by the its.image module).
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        req = its.objects.manual_capture_request(s, e, True)
 
-        req = its.objects.auto_capture_request()
         cap_raw, cap_yuv = cam.do_capture(req, cam.CAP_RAW_YUV)
 
         img = its.image.convert_capture_to_rgb_image(cap_yuv)
         its.image.write_image(img, "%s_yuv.jpg" % (NAME))
+        tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+        rgb0 = its.image.compute_image_means(tile)
 
         img = its.image.convert_capture_to_rgb_image(cap_raw, props=props)
         its.image.write_image(img, "%s_raw.jpg" % (NAME), True)
+        tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+        rgb1 = its.image.compute_image_means(tile)
+
+        rms_diff = math.sqrt(
+                sum([pow(rgb0[i] - rgb1[i], 2.0) for i in range(3)]) / 3.0)
+        print "RMS difference:", rms_diff
+        assert(rms_diff < THRESHOLD_MAX_RMS_DIFF)
 
 if __name__ == '__main__':
     main()

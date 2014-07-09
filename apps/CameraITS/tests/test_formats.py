@@ -15,26 +15,42 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import os.path
 import Image
+import math
 
 def main():
     """Test that the reported sizes and formats for image capture work.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    # TODO: Look into why some of the RMS diffs are higher in this test.
+    THRESHOLD_MAX_RMS_DIFF = 0.1
+
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+
+        # Use a manual request with a linear tonemap so that the YUV and JPEG
+        # should look the same (once converted by the its.image module).
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        req = its.objects.manual_capture_request(s, e, True)
+
+        rgbs = []
+
         for size in its.objects.get_available_output_sizes("yuv", props):
-            req = its.objects.manual_capture_request(100,10*1000*1000)
             out_surface = {"width":size[0], "height":size[1], "format":"yuv"}
             cap = cam.do_capture(req, out_surface)
             assert(cap["format"] == "yuv")
             assert(cap["width"] == size[0])
             assert(cap["height"] == size[1])
             print "Captured YUV %dx%d" % (cap["width"], cap["height"])
+            img = its.image.convert_capture_to_rgb_image(cap)
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            rgb = its.image.compute_image_means(tile)
+            rgbs.append(rgb)
+
         for size in its.objects.get_available_output_sizes("jpg", props):
-            req = its.objects.manual_capture_request(100,10*1000*1000)
             out_surface = {"width":size[0], "height":size[1], "format":"jpg"}
             cap = cam.do_capture(req, out_surface)
             assert(cap["format"] == "jpeg")
@@ -45,6 +61,18 @@ def main():
             assert(img.shape[1] == size[0])
             assert(img.shape[2] == 3)
             print "Captured JPEG %dx%d" % (cap["width"], cap["height"])
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            rgb = its.image.compute_image_means(tile)
+            rgbs.append(rgb)
+
+        max_diff = 0
+        rgb0 = rgbs[0]
+        for rgb1 in rgbs[1:]:
+            rms_diff = math.sqrt(
+                    sum([pow(rgb0[i] - rgb1[i], 2.0) for i in range(3)]) / 3.0)
+            max_diff = max(max_diff, rms_diff)
+        print "Max RMS difference:", max_diff
+        assert(rms_diff < THRESHOLD_MAX_RMS_DIFF)
 
 if __name__ == '__main__':
     main()

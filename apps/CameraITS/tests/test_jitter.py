@@ -25,6 +25,11 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    # Pass/fail thresholds
+    MIN_AVG_FRAME_DELTA = 30 # at least 30ms delta between frames
+    MAX_VAR_FRAME_DELTA = 0.01 # variance of frame deltas
+    MAX_FRAME_DELTA_JITTER = 0.3 # max ms gap from the average frame delta
+
     with its.device.ItsSession() as cam:
         # ISO 100, 1ms manual exposure, VGA resolution YUV frames.
         req = its.objects.manual_capture_request(100, 1*1000*1000)
@@ -38,13 +43,21 @@ def main():
         deltas_ms = [d/1000000.0 for d in deltas]
         avg = sum(deltas_ms) / len(deltas_ms)
         var = sum([d*d for d in deltas_ms]) / len(deltas_ms) - avg * avg
+        range0 = min(deltas_ms) - avg
+        range1 = max(deltas_ms) - avg
         print "Average:", avg
         print "Variance:", var
-        print "Jitter range:", min(deltas_ms) - avg, "to", max(deltas_ms) - avg
+        print "Jitter range:", range0, "to", range1
 
         # Draw a plot.
         pylab.plot(range(len(deltas_ms)), deltas_ms)
         matplotlib.pyplot.savefig("%s_deltas.png" % (NAME))
+
+        # Test for pass/fail.
+        assert(avg > MIN_AVG_FRAME_DELTA)
+        assert(var < MAX_VAR_FRAME_DELTA)
+        assert(abs(range0) < MAX_FRAME_DELTA_JITTER)
+        assert(abs(range1) < MAX_FRAME_DELTA_JITTER)
 
 if __name__ == '__main__':
     main()

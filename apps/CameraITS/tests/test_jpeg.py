@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import os.path
 import Image
 import shutil
@@ -26,13 +27,15 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    THRESHOLD_MAX_RMS_DIFF = 0.1
+    THRESHOLD_MAX_RMS_DIFF = 0.01
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
 
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        req = its.objects.manual_capture_request(s, e, True)
+
         # YUV
-        req = its.objects.manual_capture_request(100,100*1000*1000)
         size = its.objects.get_available_output_sizes("yuv", props)[0]
         out_surface = {"width":size[0], "height":size[1], "format":"yuv"}
         cap = cam.do_capture(req, out_surface)
@@ -42,7 +45,6 @@ def main():
         rgb0 = its.image.compute_image_means(tile)
 
         # JPEG
-        req = its.objects.manual_capture_request(100,100*1000*1000)
         size = its.objects.get_available_output_sizes("jpg", props)[0]
         out_surface = {"width":size[0], "height":size[1], "format":"jpg"}
         cap = cam.do_capture(req, out_surface)

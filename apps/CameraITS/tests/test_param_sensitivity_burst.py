@@ -35,7 +35,7 @@ def main():
         for i,cap in enumerate(caps):
             s_req = sensitivities[i]
             s_res = cap["metadata"]["android.sensor.sensitivity"]
-            print s_req, s_res
+            assert(s_req == s_res)
 
 if __name__ == '__main__':
     main()

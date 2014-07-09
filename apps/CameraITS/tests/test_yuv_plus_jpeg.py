@@ -15,14 +15,16 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import os.path
+import math
 
 def main():
     """Test capturing a single frame as both YUV and JPEG outputs.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    req = its.objects.auto_capture_request()
+    THRESHOLD_MAX_RMS_DIFF = 0.01
 
     # Hard-code a preview (VGA) size for the YUV image.
     # TODO: Replace this with code to select sizes from what's available.
@@ -30,14 +32,27 @@ def main():
     fmt_jpeg = {"format":"jpeg"}
 
     with its.device.ItsSession() as cam:
-        cam.do_3a();
+        # Use a manual request with a linear tonemap so that the YUV and JPEG
+        # should look the same (once converted by the its.image module).
+        e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        req = its.objects.manual_capture_request(s, e, True)
+
         cap_yuv, cap_jpeg = cam.do_capture(req, [fmt_yuv, fmt_jpeg])
 
         img = its.image.convert_capture_to_rgb_image(cap_yuv)
         its.image.write_image(img, "%s_yuv.jpg" % (NAME))
+        tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+        rgb0 = its.image.compute_image_means(tile)
 
         img = its.image.convert_capture_to_rgb_image(cap_jpeg)
         its.image.write_image(img, "%s_jpeg.jpg" % (NAME))
+        tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+        rgb1 = its.image.compute_image_means(tile)
+
+        rms_diff = math.sqrt(
+                sum([pow(rgb0[i] - rgb1[i], 2.0) for i in range(3)]) / 3.0)
+        print "RMS difference:", rms_diff
+        assert(rms_diff < THRESHOLD_MAX_RMS_DIFF)
 
 if __name__ == '__main__':
     main()

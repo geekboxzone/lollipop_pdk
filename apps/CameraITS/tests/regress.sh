@@ -38,26 +38,28 @@ for T in \
          test_capture_result.py \
          test_exposure.py \
          test_formats.py \
+         test_jitter.py \
          test_jpeg.py \
          test_param_color_correction.py \
          test_param_exposure_time.py \
          test_param_noise_reduction.py \
          test_param_sensitivity.py \
+         test_param_sensitivity_burst.py \
          test_param_tonemap_mode.py \
+         test_yuv_plus_dng.py \
+         test_yuv_plus_jpeg.py \
+         test_yuv_plus_raw.py \
          \
          test_auto.py \
          test_crop_region.py \
-         test_jitter.py \
+         test_format_combos.py \
          test_latching.py \
          test_linearity.py \
          test_long_burst.py \
          test_param_edge_mode.py \
          test_param_flash_mode.py \
          test_test_patterns.py \
-         test_yuv_plus_jpeg.py \
-         test_yuv_plus_raw.py \
 
-         #test_format_combos.py \
          #test_blc_lsc.py \
          #test_dng_tags.py \
 
