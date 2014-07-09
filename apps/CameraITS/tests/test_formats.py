@@ -17,7 +17,6 @@ import its.device
 import its.objects
 import os.path
 import Image
-import copy
 
 def main():
     """Test that the reported sizes and formats for image capture work.
@@ -26,26 +25,24 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
-        for size in props['android.scaler.availableProcessedSizes']:
+        for size in its.objects.get_available_output_sizes("yuv", props):
             req = its.objects.manual_capture_request(100,10*1000*1000)
-            out_surface = copy.deepcopy(size)
-            out_surface["format"] = "yuv"
+            out_surface = {"width":size[0], "height":size[1], "format":"yuv"}
             cap = cam.do_capture(req, out_surface)
             assert(cap["format"] == "yuv")
-            assert(cap["width"] == size["width"])
-            assert(cap["height"] == size["height"])
+            assert(cap["width"] == size[0])
+            assert(cap["height"] == size[1])
             print "Captured YUV %dx%d" % (cap["width"], cap["height"])
-        for size in props['android.scaler.availableJpegSizes']:
+        for size in its.objects.get_available_output_sizes("jpg", props):
             req = its.objects.manual_capture_request(100,10*1000*1000)
-            out_surface = copy.deepcopy(size)
-            out_surface["format"] = "jpg"
+            out_surface = {"width":size[0], "height":size[1], "format":"jpg"}
             cap = cam.do_capture(req, out_surface)
             assert(cap["format"] == "jpeg")
-            assert(cap["width"] == size["width"])
-            assert(cap["height"] == size["height"])
+            assert(cap["width"] == size[0])
+            assert(cap["height"] == size[1])
             img = its.image.decompress_jpeg_to_rgb_image(cap["data"])
-            assert(img.shape[0] == size["height"])
-            assert(img.shape[1] == size["width"])
+            assert(img.shape[0] == size[1])
+            assert(img.shape[1] == size[0])
             assert(img.shape[2] == 3)
             print "Captured JPEG %dx%d" % (cap["width"], cap["height"])
 

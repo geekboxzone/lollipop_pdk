@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.device
+import its.objects
 import pprint
 
 def main():
@@ -26,8 +27,12 @@ def main():
         # Test that a handful of required keys are present.
         assert(props.has_key('android.sensor.info.sensitivityRange'))
         assert(props.has_key('android.sensor.orientation'))
-        assert(props.has_key('android.scaler.availableProcessedSizes'))
+        assert(props.has_key('android.scaler.availableStreamConfigurations'))
         assert(props.has_key('android.lens.facing'))
+
+        print "JPG sizes:", its.objects.get_available_output_sizes("jpg", props)
+        print "RAW sizes:", its.objects.get_available_output_sizes("raw", props)
+        print "YUV sizes:", its.objects.get_available_output_sizes("yuv", props)
 
 if __name__ == '__main__':
     main()

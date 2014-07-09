@@ -20,7 +20,6 @@ import Image
 import shutil
 import numpy
 import math
-import copy
 
 def main():
     """Test that converted YUV images and device JPEG images look the same.
@@ -34,9 +33,8 @@ def main():
 
         # YUV
         req = its.objects.manual_capture_request(100,100*1000*1000)
-        size = props['android.scaler.availableProcessedSizes'][0]
-        out_surface = copy.deepcopy(size)
-        out_surface["format"] = "yuv"
+        size = its.objects.get_available_output_sizes("yuv", props)[0]
+        out_surface = {"width":size[0], "height":size[1], "format":"yuv"}
         cap = cam.do_capture(req, out_surface)
         img = its.image.convert_capture_to_rgb_image(cap)
         its.image.write_image(img, "%s_fmt=yuv.jpg" % (NAME))
@@ -45,9 +43,8 @@ def main():
 
         # JPEG
         req = its.objects.manual_capture_request(100,100*1000*1000)
-        size = props['android.scaler.availableJpegSizes'][0]
-        out_surface = copy.deepcopy(size)
-        out_surface["format"] = "jpg"
+        size = its.objects.get_available_output_sizes("jpg", props)[0]
+        out_surface = {"width":size[0], "height":size[1], "format":"jpg"}
         cap = cam.do_capture(req, out_surface)
         img = its.image.decompress_jpeg_to_rgb_image(cap["data"])
         its.image.write_image(img, "%s_fmt=jpg.jpg" % (NAME))

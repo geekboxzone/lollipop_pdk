@@ -121,6 +121,24 @@ def auto_capture_request():
         "android.tonemap.mode": 1,
         }
 
+def get_available_output_sizes(fmt, props):
+    """Return a sorted list of available output sizes for a given format.
+
+    Args:
+        fmt: the output format, as a string in ["jpg", "yuv", "raw"].
+        props: the object returned from its.device.get_camera_properties().
+
+    Returns:
+        A sorted list of (w,h) tuples (sorted large-to-small).
+    """
+    fmt_codes = {"raw":0x20, "yuv":0x23, "jpg":0x21, "jpeg":0x21}
+    configs = props['android.scaler.availableStreamConfigurations']
+    fmt_configs = [cfg for cfg in configs if cfg['format'] == fmt_codes[fmt]]
+    out_configs = [cfg for cfg in fmt_configs if cfg['input'] == False]
+    out_sizes = [(cfg['width'],cfg['height']) for cfg in out_configs]
+    out_sizes.sort(reverse=True)
+    return out_sizes
+
 class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
     """
