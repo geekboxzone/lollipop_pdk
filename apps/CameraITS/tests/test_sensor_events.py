@@ -13,24 +13,24 @@
 # limitations under the License.
 
 import its.device
-import pprint
 import time
 
 def main():
     """Basic test to query and print out sensor events.
 
     Test will only work if the screen is on (i.e.) the device isn't in standby.
+    Pass if some of each event are received.
     """
 
     with its.device.ItsSession() as cam:
-
         cam.start_sensor_events()
-
-        print "Sleeping for 3s; move the camera to generate some events"
-        time.sleep(3)
-
+        time.sleep(1)
         events = cam.get_sensor_events()
-        pprint.pprint(events)
+        print "Events over 1s: %d gyro, %d accel, %d mag"%(
+                len(events["gyro"]), len(events["accel"]), len(events["mag"]))
+        assert(len(events["gyro"]) > 0)
+        assert(len(events["accel"]) > 0)
+        assert(len(events["mag"]) > 0)
 
 if __name__ == '__main__':
     main()

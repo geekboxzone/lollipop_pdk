@@ -68,6 +68,7 @@ for T in \
          test_param_sensitivity.py \
          test_param_sensitivity_burst.py \
          test_param_tonemap_mode.py \
+         test_sensor_events.py \
          test_yuv_plus_dng.py \
          test_yuv_plus_jpeg.py \
          test_yuv_plus_raw.py \
