@@ -35,7 +35,7 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    NUM_STEPS = 5
+    RESIDUAL_THRESHOLD = 0.00005
 
     # TODO: Query the allowable tonemap curve sizes; here, it's hardcoded to
     # a length=64 list of tuples. The max allowed length should be inside the
@@ -49,13 +49,15 @@ def main():
             sum([[i/LM1, math.pow(i/LM1, 2.2)] for i in xrange(L)], []))
 
     with its.device.ItsSession() as cam:
-        expt,_ = its.target.get_target_exposure_combos(cam)["midSensitivity"]
+        e,s = its.target.get_target_exposure_combos(cam)["midSensitivity"]
+        s /= 2
         props = cam.get_camera_properties()
         sens_range = props['android.sensor.info.sensitivityRange']
-        sens_step = (sens_range[1] - sens_range[0]) / float(NUM_STEPS-1)
-        sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]
+        sensitivities = [s*1.0/3.0, s*2.0/3.0, s, s*4.0/3.0, s*5.0/3.0]
+        sensitivities = [s for s in sensitivities
+                if s > sens_range[0] and s < sens_range[1]]
 
-        req = its.objects.manual_capture_request(0, expt)
+        req = its.objects.manual_capture_request(0, e)
         req["android.blackLevel.lock"] = True
         req["android.tonemap.mode"] = 0
         req["android.tonemap.curveRed"] = gamma_lut.tolist()
@@ -82,9 +84,14 @@ def main():
         pylab.plot(sensitivities, r_means, 'r')
         pylab.plot(sensitivities, g_means, 'g')
         pylab.plot(sensitivities, b_means, 'b')
+        pylab.ylim([0,1])
+        matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
 
-    pylab.ylim([0,1])
-    matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+        # Check that each plot is actually linear.
+        for means in [r_means, g_means, b_means]:
+            line,residuals,_,_,_  = numpy.polyfit(range(5),means,1,full=True)
+            print "Line: m=%f, b=%f, resid=%f"%(line[0], line[1], residuals[0])
+            assert(residuals[0] < RESIDUAL_THRESHOLD)
 
 if __name__ == '__main__':
     main()

@@ -60,6 +60,7 @@ for T in \
          test_jitter.py \
          test_jpeg.py \
          test_latching.py \
+         test_linearity.py \
          test_param_color_correction.py \
          test_param_exposure_time.py \
          test_param_flash_mode.py \
@@ -70,8 +71,6 @@ for T in \
          test_yuv_plus_dng.py \
          test_yuv_plus_jpeg.py \
          test_yuv_plus_raw.py \
-         \
-         test_linearity.py \
 
 do
     let testcount=testcount+1
