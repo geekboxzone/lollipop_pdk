@@ -23,6 +23,7 @@ import numpy
 import math
 import unittest
 import cStringIO
+import scipy.stats
 
 DEFAULT_YUV_TO_RGB_CCM = numpy.matrix([
                                 [1.000,  0.000,  1.402],
@@ -193,6 +194,7 @@ def convert_raw_to_rgb_image(r_plane, gr_plane, gb_plane, b_plane,
         RGB float-3 image array, with pixel values in [0.0, 1.0]
     """
     # Values required for the RAW to RGB conversion.
+    assert(props is not None)
     white_level = float(props['android.sensor.info.whiteLevel'])
     black_levels = props['android.sensor.blackLevelPattern']
     gains = cap_res['android.colorCorrection.gains']
@@ -478,6 +480,173 @@ def downscale_image(img, f):
         chs.append(ch.reshape(h*w/(f*f)))
     img = numpy.vstack(chs).T.reshape(h/f,w/f,chans)
     return img
+
+def __measure_color_checker_patch(img, xc,yc, patch_size):
+    r = patch_size/2
+    tile = img[yc-r:yc+r+1:, xc-r:xc+r+1:, ::]
+    means = tile.mean(1).mean(0)
+    return means
+
+def get_color_checker_chart_patches(img, debug_fname_prefix=None):
+    """Return the center coords of each patch in a color checker chart.
+
+    Assumptions:
+    * Chart is vertical or horizontal w.r.t. camera, but not diagonal.
+    * Chart is (roughly) planar-parallel to the camera.
+    * Chart is centered in frame (roughly).
+    * Around/behind chart is white/grey background.
+    * The only black pixels in the image are from the chart.
+    * Chart is 100% visible and contained within image.
+    * No other objects within image.
+    * Image is well-exposed.
+    * Standard color checker chart with standard-sized black borders.
+
+    The values returned are in the coordinate system of the chart; that is,
+    the "origin" patch is the brown patch that is in the chart's top-left
+    corner when it is in the normal upright/horizontal orientation. (The chart
+    may be any of the four main orientations in the image.)
+
+    The chart is 6x4 patches in the normal upright orientation. The return
+    values of this function are the center coordinate of the top-left patch,
+    and the displacement vectors to the next patches to the right and below
+    the top-left patch. From these pieces of data, the center coordinates of
+    any of the patches can be computed.
+
+    Args:
+        img: Input image, as a numpy array with pixels in [0,1].
+        debug_fname_prefix: If not None, the (string) name of a file prefix to
+            use to save a number of debug images for visulaizing the output of
+            this function; can be used to see if the patches are being found
+            successfully.
+
+    Returns:
+        Three tuples:
+        (1) The integer (x,y) coords of the center of the chart's patch (0,0).
+        (2) The float (dx,dy) displacement to the chart's (0,1) patch, which
+            is the pink patch to the right of the top-left brown patch.
+        (3) The float (dx,dt) displacement to the chart's (1,0) patch, which
+            is the orange patch below the top-left brown patch.
+    """
+
+    # Shrink the original image.
+    DOWNSCALE_FACTOR = 4
+    img_small = downscale_image(img, DOWNSCALE_FACTOR)
+
+    # Make a threshold image, which is 1.0 where the image is black,
+    # and 0.0 elsewhere.
+    BLACK_PIXEL_THRESH = 0.2
+    mask_img = scipy.stats.threshold(
+                img_small.max(2), BLACK_PIXEL_THRESH, 1.1, 0.0)
+    mask_img = 1.0 - scipy.stats.threshold(mask_img, -0.1, 0.1, 1.0)
+
+    if debug_fname_prefix is not None:
+        h,w = mask_img.shape
+        write_image(img, debug_fname_prefix+"_0.jpg")
+        write_image(mask_img.repeat(3).reshape(h,w,3),
+                debug_fname_prefix+"_1.jpg")
+
+    # Mask image flattened to a single row or column (by averaging).
+    # Also apply a threshold to these arrays.
+    FLAT_PIXEL_THRESH = 0.05
+    flat_row = mask_img.mean(0)
+    flat_col = mask_img.mean(1)
+    flat_row = [0 if v < FLAT_PIXEL_THRESH else 1 for v in flat_row]
+    flat_col = [0 if v < FLAT_PIXEL_THRESH else 1 for v in flat_col]
+
+    # Start and end of the non-zero region of the flattened row/column.
+    flat_row_nonzero = [i for i in range(len(flat_row)) if flat_row[i]>0]
+    flat_col_nonzero = [i for i in range(len(flat_col)) if flat_col[i]>0]
+    flat_row_min, flat_row_max = min(flat_row_nonzero), max(flat_row_nonzero)
+    flat_col_min, flat_col_max = min(flat_col_nonzero), max(flat_col_nonzero)
+
+    # Orientation of chart, and number of grid cells horz. and vertically.
+    orient = "h" if flat_row_max-flat_row_min>flat_col_max-flat_col_min else "v"
+    xgrids = 6 if orient=="h" else 4
+    ygrids = 6 if orient=="v" else 4
+
+    # Get better bounds on the patches region, lopping off some of the excess
+    # black border.
+    HRZ_BORDER_PAD_FRAC = 0.0138
+    VERT_BORDER_PAD_FRAC = 0.0395
+    xpad = HRZ_BORDER_PAD_FRAC if orient=="h" else VERT_BORDER_PAD_FRAC
+    ypad = HRZ_BORDER_PAD_FRAC if orient=="v" else VERT_BORDER_PAD_FRAC
+    xchart = flat_row_min + (flat_row_max - flat_row_min) * xpad
+    ychart = flat_col_min + (flat_col_max - flat_col_min) * ypad
+    wchart = (flat_row_max - flat_row_min) * (1 - 2*xpad)
+    hchart = (flat_col_max - flat_col_min) * (1 - 2*ypad)
+
+    # Get the colors of the 4 corner patches, in clockwise order, by measuring
+    # the average value of a small patch at each of the 4 patch centers.
+    colors = []
+    centers = []
+    for (x,y) in [(0,0), (xgrids-1,0), (xgrids-1,ygrids-1), (0,ygrids-1)]:
+        xc = xchart + (x + 0.5)*wchart/xgrids
+        yc = ychart + (y + 0.5)*hchart/ygrids
+        xc = int(xc * DOWNSCALE_FACTOR + 0.5)
+        yc = int(yc * DOWNSCALE_FACTOR + 0.5)
+        centers.append((xc,yc))
+        chan_means = __measure_color_checker_patch(img, xc,yc, 32)
+        colors.append(sum(chan_means) / len(chan_means))
+
+    # The brightest corner is the white patch, the darkest is the black patch.
+    # The black patch should be counter-clockwise from the white patch.
+    white_patch_index = None
+    for i in range(4):
+        if colors[i] == max(colors) and \
+                colors[(i-1+4)%4] == min(colors):
+            white_patch_index = i%4
+    assert(white_patch_index is not None)
+
+    # Return the coords of the origin (top-left when the chart is in the normal
+    # upright orientation) patch's center, and the vector displacement to the
+    # center of the second patch on the first row of the chart (when in the
+    # normal upright orienation).
+    origin_index = (white_patch_index+1)%4
+    prev_index = (origin_index-1+4)%4
+    next_index = (origin_index+1)%4
+    origin_center = centers[origin_index]
+    prev_center = centers[prev_index]
+    next_center = centers[next_index]
+    vec_across = tuple([(next_center[i]-origin_center[i])/5.0 for i in [0,1]])
+    vec_down = tuple([(prev_center[i]-origin_center[i])/3.0 for i in [0,1]])
+
+    # Sanity check: test that the R,G,B,black,white patches are correct.
+    patch_info = [("r",2,2), ("g",2,1), ("b",2,0), ("w",3,0), ("k",3,5)]
+    for i in range(len(patch_info)):
+        color,yi,xi = patch_info[i]
+        xc = int(origin_center[0] + vec_across[0]*xi + vec_down[0]*yi)
+        yc = int(origin_center[1] + vec_across[1]*xi + vec_down[1]*yi)
+        means = __measure_color_checker_patch(img, xc,yc, 64)
+        if color == "r":
+            high_chans = [0]
+            low_chans = [1,2]
+        elif color == "g":
+            high_chans = [1]
+            low_chans = [0,2]
+        elif color == "b":
+            high_chans = [2]
+            low_chans = [0,1]
+        elif color == "w":
+            high_chans = [0,1,2]
+            low_chans = []
+        elif color == "k":
+            high_chans = []
+            low_chans = [0,1,2]
+        else:
+            assert(False)
+
+        # If the debug info is requested, then don't assert that the patches
+        # are matched, to allow the caller to see the output.
+        if debug_fname_prefix is not None:
+            img[int(yc),int(xc)] = 1.0
+        else:
+            assert(min([means[i] for i in high_chans]+[1]) > \
+                   max([means[i] for i in low_chans]+[0]))
+
+    if debug_fname_prefix is not None:
+        write_image(img, debug_fname_prefix+"_2.jpg")
+
+    return origin_center, vec_across, vec_down
 
 class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
