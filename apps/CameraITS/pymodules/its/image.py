@@ -112,29 +112,68 @@ def convert_capture_to_planes(cap, props=None):
                 rgb[1::3].reshape(h,w,1),
                 rgb[2::3].reshape(h,w,1))
     elif cap["format"] == "raw":
-
-        # TODO: Take crop region into account in the CFA logic.
-        cfa_pat = props['android.sensor.info.colorFilterArrangement']
-
         white_level = float(props['android.sensor.info.whiteLevel'])
-
         img = numpy.ndarray(shape=(h*w,), dtype='<u2',
                             buffer=cap["data"][0:w*h*2])
         img = img.astype(numpy.float32).reshape(h,w) / white_level
-        img0 = img[::2].reshape(w*h/2)[::2].reshape(h/2,w/2,1)
-        img1 = img[::2].reshape(w*h/2)[1::2].reshape(h/2,w/2,1)
-        img2 = img[1::2].reshape(w*h/2)[::2].reshape(h/2,w/2,1)
-        img3 = img[1::2].reshape(w*h/2)[1::2].reshape(h/2,w/2,1)
-        if cfa_pat == 0:
-            return (img0,img1,img2,img3)
-        elif cfa_pat == 1:
-            return (img1,img0,img3,img2)
-        elif cfa_pat == 2:
-            return (img2,img3,img0,img1)
-        else:
-            return (img3,img2,img1,img0)
+        imgs = [img[::2].reshape(w*h/2)[::2].reshape(h/2,w/2,1),
+                img[::2].reshape(w*h/2)[1::2].reshape(h/2,w/2,1),
+                img[1::2].reshape(w*h/2)[::2].reshape(h/2,w/2,1),
+                img[1::2].reshape(w*h/2)[1::2].reshape(h/2,w/2,1)]
+        idxs = get_canonical_cfa_order(props)
+        return [imgs[i] for i in idxs]
     else:
         raise its.error.Error('Invalid format %s' % (cap["format"]))
+
+def get_canonical_cfa_order(props):
+    """Returns a mapping from the Bayer 2x2 top-left grid in the CFA to
+    the standard order R,Gr,Gb,B.
+
+    Args:
+        props: Camera properties object.
+
+    Returns:
+        List of 4 integers, corresponding to the positions in the 2x2 top-
+            left Bayer grid of R,Gr,Gb,B, where the 2x2 grid is labeled as
+            0,1,2,3 in row major order.
+    """
+    # TODO: Take sensor crop region into account in the CFA logic.
+    cfa_pat = props['android.sensor.info.colorFilterArrangement']
+    if cfa_pat == 0:
+        # RGGB
+        return [0,1,2,3]
+    elif cfa_pat == 1:
+        # GRBG
+        return [1,0,3,2]
+    elif cfa_pat == 2:
+        # GBRG
+        return [2,3,0,1]
+    elif cfa_pat == 3:
+        # BGGR
+        return [3,2,1,0]
+    else:
+        raise its.error.Error("Not supported")
+
+def get_gains_in_canonical_order(props, gains):
+    """Reorders the gains tuple to the canonical R,Gr,Gb,B order.
+
+    Args:
+        props: Camera properties object.
+        gains: List of 4 values, in R,G_even,G_odd,B order.
+
+    Returns:
+        List of gains values, in R,Gr,Gb,B order.
+    """
+    # TODO: Take sensor crop region into account in the CFA logic.
+    cfa_pat = props['android.sensor.info.colorFilterArrangement']
+    if cfa_pat in [0,1]:
+        # RGGB or GRBG, so G_even is Gr
+        return gains
+    elif cfa_pat in [2,3]:
+        # GBRG or BGGR, so G_even is Gb
+        return [gains[0], gains[2], gains[1], gains[3]]
+    else:
+        raise its.error.Error("Not supported")
 
 def convert_raw_to_rgb_image(r_plane, gr_plane, gb_plane, b_plane,
                              props, cap_res):
@@ -158,6 +197,12 @@ def convert_raw_to_rgb_image(r_plane, gr_plane, gb_plane, b_plane,
     black_levels = props['android.sensor.blackLevelPattern']
     gains = cap_res['android.colorCorrection.gains']
     ccm = cap_res['android.colorCorrection.transform']
+
+    # Reorder black levels and gains to R,Gr,Gb,B, to match the order
+    # of the planes.
+    idxs = get_canonical_cfa_order(props)
+    black_levels = [black_levels[i] for i in idxs]
+    gains = get_gains_in_canonical_order(props, gains)
 
     # Convert CCM from rational to float, as numpy arrays.
     ccm = numpy.array(its.objects.rational_to_float(ccm)).reshape(3,3)

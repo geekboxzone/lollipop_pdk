@@ -24,7 +24,7 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    THRESHOLD_MAX_RMS_DIFF = 0.01
+    THRESHOLD_MAX_RMS_DIFF = 0.02
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
