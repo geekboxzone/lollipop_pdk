@@ -25,6 +25,7 @@ import android.view.Surface;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.Spinner;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -74,7 +75,9 @@ public class RequestControlPane extends ControlPane {
 
     private Spinner mCameraSpinner;
     private Spinner mTemplateSpinner;
-    private Spinner mOutputSpinner;
+    private ListView mOutputListView;
+
+    private CheckableListAdapter mOutputAdapter;
 
     /**
      * Constructor for tooling only
@@ -154,7 +157,11 @@ public class RequestControlPane extends ControlPane {
 
         mCameraSpinner = (Spinner) findViewById(R.id.request_pane_camera_spinner);
         mTemplateSpinner = (Spinner) findViewById(R.id.request_pane_template_spinner);
-        mOutputSpinner = (Spinner) findViewById(R.id.request_pane_output_spinner);
+        mOutputListView = (ListView) findViewById(R.id.request_pane_output_listview);
+
+        mOutputAdapter = new CheckableListAdapter(context, R.layout.checkable_list_item,
+                new ArrayList<CheckableListAdapter.CheckableItem>());
+        mOutputListView.setAdapter(mOutputAdapter);
 
         String[] templateNames = new String[TemplateType.values().length];
         for (int i = 0; i < templateNames.length; i++) {
@@ -224,17 +231,22 @@ public class RequestControlPane extends ControlPane {
             return null;
         }
 
-        TargetControlPane target = mTargetPanes.get(mOutputSpinner.getSelectedItemPosition());
-        Surface targetSurface = target.getTargetSurfaceForCameraPane(camera.getPaneName());
-        if (targetSurface == null) {
-            TLog.e("Target not configured for camera");
-            return null;
-        }
 
         TemplateType template = TemplateType.valueOf((String) mTemplateSpinner.getSelectedItem());
         CaptureRequest.Builder builder = camera.getRequestBuilder(template.getTemplateValue());
         // TODO: Add setting overrides
-        builder.addTarget(targetSurface);
+
+        List<Integer> targetPostions = mOutputAdapter.getCheckedPositions();
+        for (int i : targetPostions) {
+            TargetControlPane target = mTargetPanes.get(i);
+            Surface targetSurface = target.getTargetSurfaceForCameraPane(camera.getPaneName());
+            if (targetSurface == null) {
+                TLog.e("Target not configured for camera");
+                return null;
+            }
+            builder.addTarget(targetSurface);
+        }
+
         CaptureRequest request = builder.build();
         return request;
     }
@@ -270,8 +282,8 @@ public class RequestControlPane extends ControlPane {
             for (int i = 0; i < outputSpinnerItems.length; i++) {
                 outputSpinnerItems[i] = mTargetPanes.get(i).getPaneName();
             }
-            mOutputSpinner.setAdapter(new ArrayAdapter<String>(getContext(), R.layout.spinner_item,
-                    outputSpinnerItems));
+
+            mOutputAdapter.updateItems(outputSpinnerItems);
 
         }
     }

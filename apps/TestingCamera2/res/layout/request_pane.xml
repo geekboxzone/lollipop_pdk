@@ -37,11 +37,12 @@
             android:layout_weight="1"
             android:prompt="@string/request_pane_template_prompt" />
     </LinearLayout>
-    <Spinner
-            android:id="@+id/request_pane_output_spinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:prompt="@string/request_pane_output_prompt" />
+
+    <!-- FIXME: Should not have a ListView in a scrollable view, need to rethink layout -->
+    <ListView android:id="@+id/request_pane_output_listview"
+        android:layout_width="match_parent"
+        android:layout_height="100dp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
