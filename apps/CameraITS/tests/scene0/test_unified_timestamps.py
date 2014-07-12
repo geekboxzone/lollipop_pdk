@@ -24,16 +24,18 @@ def main():
 
     with its.device.ItsSession() as cam:
 
-        # TODO: Get camera props and skip test if capability not claimed.
+        # TODO: Skip test if capability not claimed.
+        props = cam.get_camera_properties()
 
         # Get the timestamp of a captured image.
-        req = its.objects.auto_capture_request()
-        cap = cam.do_capture(req)
+        req, fmt = its.objects.get_fastest_manual_capture_settings(props)
+        cap = cam.do_capture(req, fmt)
         ts_image0 = cap['metadata']['android.sensor.timestamp']
 
         # Get the timestamps of motion events.
+        print "Reading sensor measurements"
         cam.start_sensor_events()
-        time.sleep(1)
+        time.sleep(0.5)
         events = cam.get_sensor_events()
         assert(len(events["gyro"]) > 0)
         assert(len(events["accel"]) > 0)
@@ -46,8 +48,7 @@ def main():
         ts_mag1 = events["mag"][-1]["time"]
 
         # Get the timestamp of another iamge.
-        req = its.objects.auto_capture_request()
-        cap = cam.do_capture(req)
+        cap = cam.do_capture(req, fmt)
         ts_image1 = cap['metadata']['android.sensor.timestamp']
 
         print "Image timestamps:", ts_image0, ts_image1

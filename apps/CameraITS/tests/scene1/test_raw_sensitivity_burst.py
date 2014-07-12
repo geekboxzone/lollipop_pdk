@@ -23,6 +23,8 @@ import matplotlib.pyplot
 
 def main():
     """Capture a set of raw images with increasing gains and measure the noise.
+
+    Capture raw-only, in a burst.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
@@ -39,14 +41,19 @@ def main():
         s_ae,e_ae,_,_,_  = cam.do_3a()
         s_e_prod = s_ae * e_ae
 
-        variances = []
+        reqs = []
+        settings = []
         for s in range(sens_min, sens_max, 1000):
-
             e = int(s_e_prod / float(s))
             req = its.objects.manual_capture_request(s, e)
+            reqs.append(req)
+            settings.append((s,e))
 
-            # TODO: Capture using raw-only, once it works reliably.
-            cap,_ = cam.do_capture(req, cam.CAP_RAW_YUV)
+        caps = cam.do_capture(reqs, cam.CAP_RAW)
+
+        variances = []
+        for i,cap in enumerate(caps):
+            (s,e) = settings[i]
 
             # Measure the variance. Each shot should be noisier than the
             # previous shot (as the gain is increasing).

@@ -139,6 +139,25 @@ def get_available_output_sizes(fmt, props):
     out_sizes.sort(reverse=True)
     return out_sizes
 
+def get_fastest_manual_capture_settings(props):
+    """Return a capture request and format spec for the fastest capture.
+
+    Args:
+        props: the object returned from its.device.get_camera_properties().
+
+    Returns:
+        Two values, the first is a capture request, and the second is an output
+        format specification, for the fastest possible (legal) capture that
+        can be performed on this device.
+    """
+    fmt = "yuv"
+    size = get_available_output_sizes(fmt, props)[-1]
+    out_spec = {"format":fmt, "width":size[0], "height":size[1]}
+    s = min(props['android.sensor.info.sensitivityRange'])
+    e = min(props['android.sensor.info.exposureTimeRange'])
+    req = manual_capture_request(s,e)
+    return req, out_spec
+
 class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
     """

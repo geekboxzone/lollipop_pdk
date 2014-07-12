@@ -31,10 +31,8 @@ def main():
     MAX_FRAME_DELTA_JITTER = 0.3 # max ms gap from the average frame delta
 
     with its.device.ItsSession() as cam:
-        # ISO 100, 1ms manual exposure, VGA resolution YUV frames.
-        req = its.objects.manual_capture_request(100, 1*1000*1000)
-        fmt =  {"format":"yuv", "width":640, "height":480}
-
+        props = cam.get_camera_properties()
+        req, fmt = its.objects.get_fastest_manual_capture_settings(props)
         caps = cam.do_capture([req]*50, [fmt])
 
         # Print out the millisecond delta between the start of each exposure
