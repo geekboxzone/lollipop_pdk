@@ -26,32 +26,22 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # Pass/fail threshold.
-    THRESHOLD_MIN_DIFF = 0.02
-
-    NUM_STEPS = 5
-
-    exp_times = None
+    exp_times = []
     r_means = []
     g_means = []
     b_means = []
 
     with its.device.ItsSession() as cam:
-        _,sens = its.target.get_target_exposure_combos(cam)["maxExposureTime"]
-
-        props = cam.get_camera_properties()
-        expt_range = props['android.sensor.info.exposureTimeRange']
-        expt_step = (expt_range[1] - expt_range[0]) / float(NUM_STEPS-1)
-        exp_times = [expt_range[0] + i * expt_step for i in range(NUM_STEPS)]
-
-        for e in exp_times:
-            req = its.objects.manual_capture_request(sens, e)
+        e,s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
+        for e_mult in [0.8, 0.9, 1.0, 1.1, 1.2]:
+            req = its.objects.manual_capture_request(s, e * e_mult, True)
             cap = cam.do_capture(req)
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(
                     img, "%s_time=%03dms.jpg" % (NAME, e))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             rgb_means = its.image.compute_image_means(tile)
+            exp_times.append(e * e_mult)
             r_means.append(rgb_means[0])
             g_means.append(rgb_means[1])
             b_means.append(rgb_means[2])
@@ -66,7 +56,7 @@ def main():
     # Test for pass/fail: check that each shot is brighter than the previous.
     for means in [r_means, g_means, b_means]:
         for i in range(len(means)-1):
-            assert(means[i+1] - means[i] > THRESHOLD_MIN_DIFF)
+            assert(means[i+1] > means[i])
 
 if __name__ == '__main__':
     main()
