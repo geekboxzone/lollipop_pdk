@@ -40,6 +40,8 @@ def main():
 
             e = int(s_e_prod / float(s))
             req = its.objects.manual_capture_request(s, e)
+
+            # TODO: Capture using raw-only, once it works reliably.
             cap,_ = cam.do_capture(req, cam.CAP_RAW_YUV)
 
             # Measure the variance. Each shot should be noisier than the
@@ -55,6 +57,8 @@ def main():
 
         pylab.plot(range(len(variances)), variances)
         matplotlib.pyplot.savefig("%s_variances.png" % (NAME))
+
+        # TODO: Add pass/fail check for test_raw_sensitivity.
 
 if __name__ == '__main__':
     main()

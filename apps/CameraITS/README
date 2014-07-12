@@ -174,24 +174,35 @@ for example:
 
     mkdir out
     cd out
-    python ../tests/test_linearity.py
+    python ../tests/scene1/test_linearity.py
 
 Any test can be specified to reboot the camera prior to capturing any shots, by
 adding a "reboot" or "reboot=N" command line argument, where N is the number of
 seconds to wait after rebooting the device before sending any commands; the
 default is 30 seconds.
 
-    python tests/test_linearity.py reboot
-    python tests/test_linearity.py reboot=20
+    python tests/scene1/test_linearity.py reboot
+    python tests/scene1/test_linearity.py reboot=20
 
 It's possible that a test could leave the camera in a bad state, in particular
 if there are any bugs in the HAL or the camera framework. Rebooting the device
 can be used to get it into a known clean state again.
 
+Each test assumes some sort of target or scene. There are multiple scene<N>
+folders under the tests directory, and each contains a README file which
+describes the scene for the scripts in that folder.
+
+The tools/run_scene_tests.sh script can be executed from inside one of the
+tests/scene<N> folders, and it will simply run each test script in that folder
+in turn, reporting whether it passed or failed. The scene should be setup as
+described in the README before running this script.
+
+    ../../tools/run_scene_tests.sh
+
 3.4. Target exposure
 --------------------
 
-The tests/config.py script is a wrapper for the its.target module, which is
+The tools/config.py script is a wrapper for the its.target module, which is
 used to set an exposure level based on the scene that the camera is imaging.
 The purpose of this is to be able to have tests which use hard-coded manual
 exposure controls, while at the same time ensuring that the captured images
@@ -201,8 +212,8 @@ If no argument is provided, the script will use the camera to measure the
 scene to determine the exposure level. An argument can be provided to hard-
 code the exposure level.
 
-    python tests/config.py
-    python tests/config.py 16531519962
+    python tools/config.py
+    python tools/config.py 16531519962
 
 This creates a file named its.target.cfg in the current directory, storing the
 target exposure level. Tests that use the its.target module will be reusing
