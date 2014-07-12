@@ -44,6 +44,7 @@ def main():
         reqs = [req_aut, # R0
                 req_man] # R1
 
+        # TODO: Select sizes from available set.
         # 10 different combos of output formats; some are single surfaces, and
         # some are multiple surfaces.
         fmt_yuv_prev = {"format":"yuv", "width":640, "height":480}
