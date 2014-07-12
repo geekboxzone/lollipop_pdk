@@ -114,6 +114,7 @@ The Python modules are under the pymodules directory, in the "its" package.
 * its.target: functions to set and measure the exposure level to use for
   manual shots in tests, to ensure that the images are exposed well for the
   target scene
+* its.dng: functions to work with DNG metadata
 
 All of these module have associated unit tests; to run the unit tests, execute
 the modules (rather than importing them).
@@ -137,8 +138,8 @@ The Python capture request object(s) can contain key/value entries corresponding
 to any of the Java CaptureRequest object fields.
 
 The output surface's width, height, and format can also be specified. Currently
-supported formats are "jpg" and "yuv", where "yuv" is YUV420 fully planar. The
-default output surface is a full sensor YUV420 frame.
+supported formats are "jpg", "raw", "dng",  and "yuv", where "yuv" is YUV420
+fully planar. The default output surface is a full sensor YUV420 frame.
 
 The metadata that is returned along with the captured images is also in JSON
 format, serialized from the CaptureRequest and CaptureResult objects that were
@@ -195,8 +196,10 @@ describes the scene for the scripts in that folder.
 The tools/run_scene_tests.sh script can be executed from inside one of the
 tests/scene<N> folders, and it will simply run each test script in that folder
 in turn, reporting whether it passed or failed. The scene should be setup as
-described in the README before running this script.
+described in the README before running this script. It will create a sub-dir
+named "out" where the files created by the various tests will end up..
 
+    cd tests/scene1/
     ../../tools/run_scene_tests.sh
 
 3.4. Target exposure
@@ -225,7 +228,7 @@ this value, if they are run from the same directory.
 The pydoc tool can generate HTML docs for the ITS Python modules, using the
 following command (run after PYTHONPATH has been set up as described above):
 
-    pydoc -w its its.device its.image its.error its.objects
+    pydoc -w its its.device its.image its.error its.objects its.dng its.target
 
 There is a tutorial script in the tests folder (named tutorial.py). It
 illustrates a number of the its.image and its.device primitives, and shows
