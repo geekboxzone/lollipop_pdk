@@ -202,6 +202,10 @@ named "out" where the files created by the various tests will end up..
     cd tests/scene1/
     ../../tools/run_scene_tests.sh
 
+The tests/inprog directory contains a mix of unfinished, in-progress, and
+incomplete tests. These may or may not be useful in testing a HAL impl.,
+and as these tests are copmleted they will be moved into the scene<N> folders.
+
 3.4. Target exposure
 --------------------
 
