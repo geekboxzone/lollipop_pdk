@@ -66,7 +66,8 @@ def main():
                     props[cm_str[i]])).reshape(3,3)
             fm_ref = numpy.array(its.objects.rational_to_float(
                     props[fm_str[i]])).reshape(3,3)
-            asn_ref = numpy.array(cap['android.sensor.neutralColorPoint'])
+            asn_ref = numpy.array(its.objects.rational_to_float(
+                    cap['metadata']['android.sensor.neutralColorPoint']))
             print "Reported ColorMatrix:\n", cm_ref
             print "Reported ForwardMatrix:\n", fm_ref
             print "Reported AsShotNeutral:\n", asn_ref
