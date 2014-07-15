@@ -24,6 +24,7 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.BlackLevelPattern;
 import android.hardware.camera2.params.ColorSpaceTransform;
 import android.hardware.camera2.params.Face;
 import android.hardware.camera2.params.LensShadingMap;
@@ -252,6 +253,19 @@ public class ItsSerializer {
     }
 
     @SuppressWarnings("unchecked")
+    private static Object serializeBlackLevelPattern(BlackLevelPattern pat)
+            throws org.json.JSONException {
+        int patVals[] = new int[4];
+        pat.copyTo(patVals, 0);
+        JSONArray patObj = new JSONArray();
+        patObj.put(patVals[0]);
+        patObj.put(patVals[1]);
+        patObj.put(patVals[2]);
+        patObj.put(patVals[3]);
+        return patObj;
+    }
+
+    @SuppressWarnings("unchecked")
     private static Object serializeLocation(Location loc)
             throws org.json.JSONException {
         return loc.toString();
@@ -348,6 +362,9 @@ public class ItsSerializer {
             } else if (keyType == RggbChannelVector.class) {
                 return new MetadataEntry(keyName,
                         serializeRggbChannelVector((RggbChannelVector)keyValue));
+            } else if (keyType == BlackLevelPattern.class) {
+                return new MetadataEntry(keyName,
+                        serializeBlackLevelPattern((BlackLevelPattern)keyValue));
             } else if (keyType == TonemapCurve.class) {
                 return new MetadataEntry(keyName,
                         serializeTonemapCurve((TonemapCurve)keyValue));
@@ -460,6 +477,13 @@ public class ItsSerializer {
                 for (int i = 0; i < arrayLen; i++) {
                     jsonArray.put(serializeRggbChannelVector(
                             (RggbChannelVector)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == BlackLevelPattern.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeBlackLevelPattern(
+                            (BlackLevelPattern)Array.get(keyValue,i)));
                 }
                 return new MetadataEntry(keyName, jsonArray);
             } else if (elmtType == Point.class) {
