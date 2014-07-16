@@ -42,6 +42,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Vibrator;
 import android.util.Log;
 import android.util.Rational;
 import android.util.Size;
@@ -103,6 +104,7 @@ public class ItsService extends Service implements SensorEventListener {
     public static final String TRIGGER_KEY = "triggers";
     public static final String TRIGGER_AE_KEY = "ae";
     public static final String TRIGGER_AF_KEY = "af";
+    public static final String VIB_PATTERN_KEY = "pattern";
 
     private CameraManager mCameraManager = null;
     private HandlerThread mCameraThread = null;
@@ -111,6 +113,8 @@ public class ItsService extends Service implements SensorEventListener {
     private CameraDevice mCamera = null;
     private ImageReader[] mCaptureReaders = null;
     private CameraCharacteristics mCameraCharacteristics = null;
+
+    private Vibrator mVibrator = null;
 
     private HandlerThread mSaveThreads[] = new HandlerThread[MAX_NUM_OUTPUT_SURFACES];
     private Handler mSaveHandlers[] = new Handler[MAX_NUM_OUTPUT_SURFACES];
@@ -205,6 +209,7 @@ public class ItsService extends Service implements SensorEventListener {
                 throw new ItsException("Failed to open camera (after blocking)", e);
             }
 
+            // Register for motion events.
             mEvents = new LinkedList<MySensorEvent>();
             mSensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
             mAccelSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -213,6 +218,9 @@ public class ItsService extends Service implements SensorEventListener {
             mSensorManager.registerListener(this, mAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
             mSensorManager.registerListener(this, mMagSensor, SensorManager.SENSOR_DELAY_FASTEST);
             mSensorManager.registerListener(this, mGyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+
+            // Get a handle to the system vibrator.
+            mVibrator = (Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
 
             // Create threads to receive images and save them.
             for (int i = 0; i < MAX_NUM_OUTPUT_SURFACES; i++) {
@@ -392,6 +400,8 @@ public class ItsService extends Service implements SensorEventListener {
                     do3A(cmdObj);
                 } else if ("doCapture".equals(cmdObj.getString("cmdName"))) {
                     doCapture(cmdObj);
+                } else if ("doVibrate".equals(cmdObj.getString("cmdName"))) {
+                    doVibrate(cmdObj);
                 } else {
                     throw new ItsException("Unknown command: " + cmd);
                 }
@@ -727,6 +737,24 @@ public class ItsService extends Service implements SensorEventListener {
             throw new ItsException("JSON error: ", e);
         } finally {
             mSocketRunnableObj.sendResponse("3aDone", "");
+        }
+    }
+
+    private void doVibrate(JSONObject params) throws ItsException {
+        try {
+            if (mVibrator == null) {
+                throw new ItsException("Unable to start vibrator");
+            }
+            JSONArray patternArray = params.getJSONArray(VIB_PATTERN_KEY);
+            int len = patternArray.length();
+            long pattern[] = new long[len];
+            for (int i = 0; i < len; i++) {
+                pattern[i] = patternArray.getLong(i);
+            }
+            Log.i(TAG, String.format("Starting vibrator, pattern length %d",len));
+            mVibrator.vibrate(pattern, -1);
+        } catch (org.json.JSONException e) {
+            throw new ItsException("JSON error: ", e);
         }
     }
 

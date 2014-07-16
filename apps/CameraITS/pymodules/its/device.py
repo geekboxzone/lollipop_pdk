@@ -128,6 +128,26 @@ class ItsSession(object):
             buf = numpy.frombuffer(buf, dtype=numpy.uint8)
         return jobj, buf
 
+    def do_vibrate(self, pattern):
+        """Cause the device to vibrate to a specific pattern.
+
+        Args:
+            pattern: Durations (ms) for which to turn on or off the vibrator.
+                The first value indicates the number of milliseconds to wait
+                before turning the vibrator on. The next value indicates the
+                number of milliseconds for which to keep the vibrator on
+                before turning it off. Subsequent values alternate between
+                durations in milliseconds to turn the vibrator off or to turn
+                the vibrator on.
+
+        Returns:
+            Nothing.
+        """
+        cmd = {}
+        cmd["cmdName"] = "doVibrate"
+        cmd["pattern"] = pattern
+        self.sock.send(json.dumps(cmd) + "\n")
+
     def start_sensor_events(self):
         """Start collecting sensor events on the device.
 

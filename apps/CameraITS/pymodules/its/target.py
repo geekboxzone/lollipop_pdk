@@ -243,12 +243,12 @@ def get_target_exposure_combos(its_session=None):
         e6_sens = exposure / e6_expt
 
     return {
-        "minExposureTime" : (e1_expt, e1_sens),
-        "maxExposureTime" : (e2_expt, e2_sens),
-        "minSensitivity" : (e3_expt, e3_sens),
-        "maxSensitivity" : (e4_expt, e4_sens),
-        "midExposureTime" : (e5_expt, e5_sens),
-        "midSensitivity" : (e6_expt, e6_sens)
+        "minExposureTime" : (int(e1_expt), int(e1_sens)),
+        "maxExposureTime" : (int(e2_expt), int(e2_sens)),
+        "minSensitivity" : (int(e3_expt), int(e3_sens)),
+        "maxSensitivity" : (int(e4_expt), int(e4_sens)),
+        "midExposureTime" : (int(e5_expt), int(e5_sens)),
+        "midSensitivity" : (int(e6_expt), int(e6_sens))
         }
 
 class __UnitTest(unittest.TestCase):
