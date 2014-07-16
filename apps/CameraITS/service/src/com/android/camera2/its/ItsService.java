@@ -590,8 +590,7 @@ public class ItsService extends Service implements SensorEventListener {
             // Get the converged values for each "A", and package into JSON result for caller.
 
             // 3A happens on full-res frames.
-            Size sizes[] = mCameraCharacteristics.get(
-                    CameraCharacteristics.SCALER_AVAILABLE_JPEG_SIZES);
+            Size sizes[] = ItsUtils.getYuvOutputSizes(mCameraCharacteristics);
             int widths[] = new int[1];
             int heights[] = new int[1];
             int formats[] = new int[1];
@@ -1024,24 +1023,31 @@ public class ItsService extends Service implements SensorEventListener {
                             ));
                 }
 
-                if (mConvergedAWB && result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null
-                        && result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
-                    mSocketRunnableObj.sendResponse("awbResult", String.format(
-                            "%f %f %f %f %f %f %f %f %f %f %f %f %f",
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS).getRed(),
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS).getGreenEven(),
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS).getGreenOdd(),
-                            result.get(CaptureResult.COLOR_CORRECTION_GAINS).getBlue(),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(0,0)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(0,1)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(0,2)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(1,0)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(1,1)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(1,2)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,0)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,1)),
-                            r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,2))
-                            ));
+                if (mConvergedAWB) {
+                    if (result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null
+                            && result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
+                        mSocketRunnableObj.sendResponse("awbResult", String.format(
+                                "%f %f %f %f %f %f %f %f %f %f %f %f %f",
+                                result.get(CaptureResult.COLOR_CORRECTION_GAINS).getRed(),
+                                result.get(CaptureResult.COLOR_CORRECTION_GAINS).getGreenEven(),
+                                result.get(CaptureResult.COLOR_CORRECTION_GAINS).getGreenOdd(),
+                                result.get(CaptureResult.COLOR_CORRECTION_GAINS).getBlue(),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(0,0)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(0,1)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(0,2)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(1,0)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(1,1)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(1,2)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,0)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,1)),
+                                r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,2))
+                                ));
+                    } else {
+                        Log.i(TAG, String.format(
+                                "AWB converged but NULL color correction values, gains:%b, ccm:%b",
+                                result.get(CaptureResult.COLOR_CORRECTION_GAINS) == null,
+                                result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) == null));
+                    }
                 }
 
                 if (mIssuedRequest3A) {
