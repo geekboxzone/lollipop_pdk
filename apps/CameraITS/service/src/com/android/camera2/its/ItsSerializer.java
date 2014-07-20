@@ -27,6 +27,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.BlackLevelPattern;
 import android.hardware.camera2.params.ColorSpaceTransform;
 import android.hardware.camera2.params.Face;
+import android.hardware.camera2.params.HighSpeedVideoConfiguration;
 import android.hardware.camera2.params.LensShadingMap;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.RggbChannelVector;
@@ -146,6 +147,18 @@ public class ItsSerializer {
         durObj.put("height", dur.getHeight());
         durObj.put("duration", dur.getDuration());
         return durObj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object serializeHighSpeedVideoConfiguration(
+            HighSpeedVideoConfiguration cfg)
+            throws org.json.JSONException {
+        JSONObject cfgObj = new JSONObject();
+        cfgObj.put("width", cfg.getWidth());
+        cfgObj.put("height", cfg.getHeight());
+        cfgObj.put("fpsMin", cfg.getFpsMin());
+        cfgObj.put("fpsMax", cfg.getFpsMax());
+        return cfgObj;
     }
 
     @SuppressWarnings("unchecked")
@@ -374,6 +387,10 @@ public class ItsSerializer {
             } else if (keyType == LensShadingMap.class) {
                 return new MetadataEntry(keyName,
                         serializeLensShadingMap((LensShadingMap)keyValue));
+            } else if (keyType == HighSpeedVideoConfiguration.class) {
+                return new MetadataEntry(keyName,
+                        serializeHighSpeedVideoConfiguration(
+                                (HighSpeedVideoConfiguration)keyValue));
             } else if (keyType instanceof ParameterizedType &&
                     ((ParameterizedType)keyType).getRawType() == Pair.class) {
                 return new MetadataEntry(keyName, serializePair((Pair)keyValue));
@@ -484,6 +501,13 @@ public class ItsSerializer {
                 for (int i = 0; i < arrayLen; i++) {
                     jsonArray.put(serializeBlackLevelPattern(
                             (BlackLevelPattern)Array.get(keyValue,i)));
+                }
+                return new MetadataEntry(keyName, jsonArray);
+            } else if (elmtType == HighSpeedVideoConfiguration.class) {
+                JSONArray jsonArray = new JSONArray();
+                for (int i = 0; i < arrayLen; i++) {
+                    jsonArray.put(serializeHighSpeedVideoConfiguration(
+                            (HighSpeedVideoConfiguration)Array.get(keyValue,i)));
                 }
                 return new MetadataEntry(keyName, jsonArray);
             } else if (elmtType == Point.class) {
