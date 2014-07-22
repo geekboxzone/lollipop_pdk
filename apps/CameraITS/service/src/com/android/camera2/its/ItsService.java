@@ -565,6 +565,7 @@ public class ItsService extends Service implements SensorEventListener {
         synchronized(mEventLock) {
             mEventsEnabled = true;
         }
+        mSocketRunnableObj.sendResponse("sensorEventsStarted", "");
     }
 
     private void doGetSensorEvents() throws ItsException {
@@ -753,6 +754,7 @@ public class ItsService extends Service implements SensorEventListener {
             }
             Log.i(TAG, String.format("Starting vibrator, pattern length %d",len));
             mVibrator.vibrate(pattern, -1);
+            mSocketRunnableObj.sendResponse("vibrationStarted", "");
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error: ", e);
         }
