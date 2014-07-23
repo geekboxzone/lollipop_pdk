@@ -454,16 +454,27 @@ public class CameraRecordingStream {
         releaseMediaRecorder();
         mMediaRecorder = new MediaRecorder();
         try {
-            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-            mMediaRecorder.setOutputFile(outputFileName);
-            mMediaRecorder.setVideoEncodingBitRate(mEncBitRate);
-            mMediaRecorder.setVideoFrameRate(FRAME_RATE);
-            mMediaRecorder.setVideoSize(mStreamSize.getWidth(), mStreamSize.getHeight());
-            mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            mMediaRecorder.setOrientationHint(mOrientation);
+            if (mOutputFormat == MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4) {
+                mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+                mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+                mMediaRecorder.setOutputFile(outputFileName);
+                mMediaRecorder.setVideoEncodingBitRate(mEncBitRate);
+                mMediaRecorder.setVideoFrameRate(FRAME_RATE);
+                mMediaRecorder.setVideoSize(mStreamSize.getWidth(), mStreamSize.getHeight());
+                mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+                mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                mMediaRecorder.setOrientationHint(mOrientation);
+            } else {
+                // TODO audio support
+                mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+                mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.WEBM);
+                mMediaRecorder.setOutputFile(outputFileName);
+                mMediaRecorder.setVideoEncodingBitRate(mEncBitRate);
+                mMediaRecorder.setVideoFrameRate(FRAME_RATE);
+                mMediaRecorder.setVideoSize(mStreamSize.getWidth(), mStreamSize.getHeight());
+                mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.VP8);
+            }
             mMediaRecorder.prepare();
             mRecordingSurface = mMediaRecorder.getSurface();
         } catch (IllegalStateException e) {

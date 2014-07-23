@@ -574,11 +574,6 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         @Override
         public void onClick(View v) {
             if (mRecordingToggle.isChecked()) {
-                if (getOutputFormat() == MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM
-                        && !mUseMediaCodec) {
-                    Log.e(TAG, "webm format currently unsupported on MediaRecorder path");
-                    return;
-                }
                 try {
                     Log.i(TAG, "start recording, useMediaCodec = " + mUseMediaCodec);
                     RadioGroup fmt = RadioFmt();
