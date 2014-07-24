@@ -72,8 +72,14 @@ def main():
             print "Reported ForwardMatrix:\n", fm_ref
             print "Reported AsShotNeutral:\n", asn_ref
 
+            # The color matrix may be scaled (between the reported and
+            # expected values).
+            cm_scale = cm.mean(1).mean(0) / cm_ref.mean(1).mean(0)
+            print "ColorMatrix scale factor:", cm_scale
+
             # Compute the deltas between reported and expected.
-            print "Deltas in ColorMatrix:\n", cm - cm_ref
+            print "Ratios in ColorMatrix:\n", cm / cm_ref
+            print "Deltas in ColorMatrix (after normalizing):\n", cm/cm_scale - cm_ref
             print "Deltas in ForwardMatrix:\n", fm - fm_ref
             print "Deltas in AsShotNeutral:\n", asn - asn_ref
 
