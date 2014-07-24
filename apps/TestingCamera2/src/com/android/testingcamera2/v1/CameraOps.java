@@ -24,6 +24,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureRequest.Builder;
 import android.util.Size;
 import android.media.Image;
 import android.media.ImageReader;
@@ -38,6 +39,7 @@ import android.view.SurfaceHolder;
 import com.android.ex.camera2.blocking.BlockingCameraManager;
 import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
 import com.android.ex.camera2.blocking.BlockingStateListener;
+import com.android.testingcamera2.v1.CameraOps.Listener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,7 +51,12 @@ import java.util.List;
  */
 public class CameraOps {
 
+    public static interface Listener {
+        void onCameraOpened(String cameraId, CameraCharacteristics characteristics);
+    }
+
     private static final String TAG = "CameraOps";
+    private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     private final HandlerThread mOpsThread;
     private final Handler mOpsHandler;
@@ -91,6 +98,8 @@ public class CameraOps {
     private int mStatus = STATUS_UNINITIALIZED;
 
     CameraRecordingStream mRecordingStream;
+    private final Listener mListener;
+    private final Handler mListenerHandler;
 
     private void checkOk() {
         if (mStatus < STATUS_OK) {
@@ -98,7 +107,7 @@ public class CameraOps {
         }
     }
 
-    private CameraOps(Context ctx) throws ApiFailureException {
+    private CameraOps(Context ctx, Listener listener, Handler handler) throws ApiFailureException {
         mCameraManager = (CameraManager) ctx.getSystemService(Context.CAMERA_SERVICE);
         if (mCameraManager == null) {
             throw new ApiFailureException("Can't connect to camera manager!");
@@ -111,10 +120,14 @@ public class CameraOps {
 
         mRecordingStream = new CameraRecordingStream();
         mStatus = STATUS_OK;
+
+        mListener = listener;
+        mListenerHandler = handler;
     }
 
-    static public CameraOps create(Context ctx) throws ApiFailureException {
-        return new CameraOps(ctx);
+    static public CameraOps create(Context ctx, Listener listener, Handler handler)
+            throws ApiFailureException {
+        return new CameraOps(ctx, listener, handler);
     }
 
     public String[] getDevices() throws ApiFailureException{
@@ -158,18 +171,32 @@ public class CameraOps {
 
     private void minimalOpenCamera() throws ApiFailureException {
         if (mCamera == null) {
+            final String[] devices;
+            final CameraCharacteristics characteristics;
+
             try {
-                String[] devices = mCameraManager.getCameraIdList();
+                devices = mCameraManager.getCameraIdList();
                 if (devices == null || devices.length == 0) {
                     throw new ApiFailureException("no devices");
                 }
                 mCamera = mBlockingCameraManager.openCamera(devices[0],
                         mDeviceListener, mOpsHandler);
                 mCameraCharacteristics = mCameraManager.getCameraCharacteristics(mCamera.getId());
+                characteristics = mCameraCharacteristics;
             } catch (CameraAccessException e) {
                 throw new ApiFailureException("open failure", e);
             } catch (BlockingOpenException e) {
                 throw new ApiFailureException("open async failure", e);
+            }
+
+            // Dispatch listener event
+            if (mListener != null && mListenerHandler != null) {
+                mListenerHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mListener.onCameraOpened(devices[0], characteristics);
+                    }
+                });
             }
         }
 
@@ -216,17 +243,79 @@ public class CameraOps {
 
 
     /**
-     * Update current preview with manual control inputs.
+     * Update current preview with user-specified control inputs.
      */
-    public void updatePreview(CameraControls manualCtrl) {
-        updateCaptureRequest(mPreviewRequestBuilder, manualCtrl);
+    public void updatePreview(CameraControls controls) {
+        if (VERBOSE) {
+            Log.v(TAG, "updatePreview - begin");
+        }
+
+        updateCaptureRequest(mPreviewRequestBuilder, controls);
 
         try {
+            // Insert a one-time request if any triggers were set into the request
+            if (hasTriggers(mPreviewRequestBuilder)) {
+                mCamera.capture(mPreviewRequestBuilder.build(), /*listener*/null, /*handler*/null);
+                removeTriggers(mPreviewRequestBuilder);
+
+                if (VERBOSE) {
+                    Log.v(TAG, "updatePreview - submitted extra one-shot capture with triggers");
+                }
+            } else {
+                if (VERBOSE) {
+                    Log.v(TAG, "updatePreview - no triggers, regular repeating request");
+                }
+            }
+
             // TODO: add capture result listener
-            mCamera.setRepeatingRequest(mPreviewRequestBuilder.build(), null, null);
+            mCamera.setRepeatingRequest(mPreviewRequestBuilder.build(),
+                    /*listener*/null, /*handler*/null);
         } catch (CameraAccessException e) {
             Log.e(TAG, "Update camera preview failed");
         }
+
+        if (VERBOSE) {
+            Log.v(TAG, "updatePreview - end");
+        }
+    }
+
+    private static boolean hasTriggers(Builder requestBuilder) {
+        if (requestBuilder == null) {
+            return false;
+        }
+
+        Integer afTrigger = requestBuilder.get(CaptureRequest.CONTROL_AF_TRIGGER);
+        Integer aePrecaptureTrigger = requestBuilder.get(
+                CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER);
+
+        if (VERBOSE) {
+            Log.v(TAG, String.format("hasTriggers - afTrigger = %s, aePreCaptureTrigger = %s",
+                    afTrigger, aePrecaptureTrigger));
+        }
+
+
+        if (afTrigger != null && afTrigger != CaptureRequest.CONTROL_AF_TRIGGER_IDLE) {
+            return true;
+        }
+
+
+        if (aePrecaptureTrigger != null
+                && aePrecaptureTrigger != CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void removeTriggers(Builder requestBuilder) {
+        if (requestBuilder == null) {
+            return;
+        }
+
+        requestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                CaptureRequest.CONTROL_AF_TRIGGER_IDLE);
+        requestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
     }
 
     /**
@@ -450,23 +539,64 @@ public class CameraOps {
         }
     }
 
-    private void updateCaptureRequest(CaptureRequest.Builder builder, CameraControls cameraControl) {
+    private void updateCaptureRequest(CaptureRequest.Builder builder,
+            CameraControls cameraControl) {
         if (cameraControl != null) {
             // Update the manual control metadata for capture request
-            // Disable 3A routines.
-            if (cameraControl.isManualControlEnabled()) {
-                Log.e(TAG, "update request: " + cameraControl.getSensitivity());
-                builder.set(CaptureRequest.CONTROL_MODE,
-                        CameraMetadata.CONTROL_MODE_OFF);
-                builder.set(CaptureRequest.SENSOR_SENSITIVITY,
-                        cameraControl.getSensitivity());
-                builder.set(CaptureRequest.SENSOR_FRAME_DURATION,
-                        cameraControl.getFrameDuration());
-                builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME,
-                        cameraControl.getExposure());
-            } else {
-                builder.set(CaptureRequest.CONTROL_MODE,
-                        CameraMetadata.CONTROL_MODE_AUTO);
+            // may disable 3A routines.
+            updateCaptureRequest(builder, cameraControl.getManualControls());
+            // Update the AF control metadata for capture request (if manual is not used)
+            updateCaptureRequest(builder, cameraControl.getAfControls());
+        }
+    }
+
+    private void updateCaptureRequest(CaptureRequest.Builder builder,
+            CameraManualControls manualControls) {
+        if (manualControls == null) {
+            return;
+        }
+
+        if (manualControls.isManualControlEnabled()) {
+            Log.e(TAG, "update request: " + manualControls.getSensitivity());
+            builder.set(CaptureRequest.CONTROL_MODE,
+                    CameraMetadata.CONTROL_MODE_OFF);
+            builder.set(CaptureRequest.SENSOR_SENSITIVITY,
+                    manualControls.getSensitivity());
+            builder.set(CaptureRequest.SENSOR_FRAME_DURATION,
+                    manualControls.getFrameDuration());
+            builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME,
+                    manualControls.getExposure());
+
+            if (VERBOSE) {
+                Log.v(TAG, "updateCaptureRequest - manual - control.mode = OFF");
+            }
+        } else {
+            builder.set(CaptureRequest.CONTROL_MODE,
+                    CameraMetadata.CONTROL_MODE_AUTO);
+
+            if (VERBOSE) {
+                Log.v(TAG, "updateCaptureRequest - manual - control.mode = AUTO");
+            }
+        }
+    }
+
+    private void updateCaptureRequest(CaptureRequest.Builder builder,
+            CameraAutoFocusControls cameraAfControl) {
+        if (cameraAfControl == null) {
+            return;
+        }
+
+        if (cameraAfControl.isAfControlEnabled()) {
+            builder.set(CaptureRequest.CONTROL_AF_MODE, cameraAfControl.getAfMode());
+
+            Integer afTrigger = cameraAfControl.consumePendingTrigger();
+
+            if (afTrigger != null) {
+                builder.set(CaptureRequest.CONTROL_AF_TRIGGER, afTrigger);
+            }
+
+            if (VERBOSE) {
+                Log.v(TAG, "updateCaptureRequest - AF - set trigger to " + afTrigger);
             }
         }
     }

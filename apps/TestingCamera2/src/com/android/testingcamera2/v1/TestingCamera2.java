@@ -40,6 +40,9 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CheckBox;
@@ -47,11 +50,14 @@ import android.widget.ImageView;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.android.testingcamera2.R;
@@ -73,7 +79,6 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     private static final int ORIENTATION_UNINITIALIZED = -1;
 
     private int mLastOrientation = ORIENTATION_UNINITIALIZED;
-    private int mLastSensorOrientation;
     private OrientationEventListener mOrientationEventListener;
     private SurfaceView mPreviewView;
     private ImageView mStillView;
@@ -82,6 +87,8 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
     private Button mInfoButton;
     private Button mFlushButton;
+    private ToggleButton mFocusLockToggle;
+    private Spinner mFocusModeSpinner;
     private CheckBox mUseMediaCodecCheckBox;
 
     private SeekBar mSensitivityBar;
@@ -97,6 +104,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
     private CameraControls mCameraControl = null;
     private final Set<View> mManualControls = new HashSet<View>();
+    private final Set<View> mAutoControls = new HashSet<View>();
+
+
 
     Handler mMainHandler;
     boolean mUseMediaCodec;
@@ -119,6 +129,12 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         mInfoButton.setOnClickListener(mInfoButtonListener);
         mFlushButton  = (Button) findViewById(R.id.flush_button);
         mFlushButton.setOnClickListener(mFlushButtonListener);
+
+        mFocusLockToggle = (ToggleButton) findViewById(R.id.focus_button);
+        mFocusLockToggle.setOnClickListener(mFocusLockToggleListener);
+        mFocusModeSpinner = (Spinner) findViewById(R.id.focus_mode_spinner);
+        mAutoControls.add(mFocusLockToggle);
+
         mRecordingToggle = (ToggleButton) findViewById(R.id.start_recording);
         mRecordingToggle.setOnClickListener(mRecordingToggleListener);
         mUseMediaCodecCheckBox = (CheckBox) findViewById(R.id.use_media_codec);
@@ -155,7 +171,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         mMainHandler = new Handler();
 
         try {
-            mCameraOps = CameraOps.create(this);
+            mCameraOps = CameraOps.create(this, mCameraOpsListener, mMainHandler);
         } catch(ApiFailureException e) {
             logException("Cannot create camera ops!",e);
         }
@@ -321,10 +337,9 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         }
     };
 
-    private Button.OnClickListener mFlushButtonListener = new Button.OnClickListener() {
+    private final Button.OnClickListener mFlushButtonListener = new Button.OnClickListener() {
         @Override
         public void onClick(View v) {
-            final Handler uiHandler = new Handler();
             AsyncTask.execute(new Runnable() {
                 @Override
                 public void run() {
@@ -344,6 +359,10 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
     private void enableManualControls(boolean enabled) {
         for (View v : mManualControls) {
             v.setEnabled(enabled);
+        }
+
+        for (View v : mAutoControls) {
+            v.setEnabled(!enabled);
         }
     }
 
@@ -427,12 +446,12 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         Log.e(TAG, msg + Log.getStackTraceString(e));
     }
 
-    private RadioGroup RadioFmt() {
+    private RadioGroup getRadioFmt() {
       return (RadioGroup)findViewById(R.id.radio_fmt);
     }
 
     private int getOutputFormat() {
-        RadioGroup fmt = RadioFmt();
+        RadioGroup fmt = getRadioFmt();
         switch (fmt.getCheckedRadioButtonId()) {
             case R.id.radio_mp4:
                 return MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4;
@@ -465,7 +484,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                   float progressFactor = progress / (float)mSeekBarMax;
                   int curSensitivity = (int) (min + (max - min) * progressFactor);
                   curSensitivity = (curSensitivity / STEP_SIZE ) * STEP_SIZE;
-                  mCameraControl.setSensitivity(curSensitivity);
+                  mCameraControl.getManualControls().setSensitivity(curSensitivity);
                   // Update the sensitivity info
                   StringBuffer info = new StringBuffer("Sensitivity(ISO):");
                   info.append("" + curSensitivity);
@@ -502,7 +521,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                   long max = exposureRange.getUpper();
                   float progressFactor = progress / (float)mSeekBarMax;
                   long curExposureTime = (long) (min + (max - min) * progressFactor);
-                  mCameraControl.setExposure(curExposureTime);
+                  mCameraControl.getManualControls().setExposure(curExposureTime);
                   // Update the sensitivity info
                   StringBuffer info = new StringBuffer("Exposure Time:");
                   info.append("" + curExposureTime / 1000000.0 + "ms");
@@ -536,7 +555,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                   long max = frameDurationMax;
                   float progressFactor = progress / (float)mSeekBarMax;
                   long curFrameDuration = (long) (min + (max - min) * progressFactor);
-                  mCameraControl.setFrameDuration(curFrameDuration);
+                  mCameraControl.getManualControls().setFrameDuration(curFrameDuration);
                   // Update the sensitivity info
                   StringBuffer info = new StringBuffer("Frame Duration:");
                   info.append("" + curFrameDuration / 1000000.0 + "ms");
@@ -563,7 +582,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             } else {
                 enableManual = false;
             }
-            mCameraControl.enableManualControl(enableManual);
+            mCameraControl.getManualControls().setManualControlEnabled(enableManual);
             enableManualControls(enableManual);
             mCameraOps.updatePreview(mCameraControl);
         }
@@ -576,7 +595,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             if (mRecordingToggle.isChecked()) {
                 try {
                     Log.i(TAG, "start recording, useMediaCodec = " + mUseMediaCodec);
-                    RadioGroup fmt = RadioFmt();
+                    RadioGroup fmt = getRadioFmt();
                     fmt.setActivated(false);
                     mCameraOps.startRecording(
                             /* applicationContext */ TestingCamera2.this,
@@ -588,10 +607,38 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             } else {
                 try {
                     mCameraOps.stopRecording(TestingCamera2.this);
-                    RadioFmt().setActivated(true);
+                    getRadioFmt().setActivated(true);
                 } catch (ApiFailureException e) {
                     logException("Failed to stop recording", e);
                 }
+            }
+        }
+    };
+
+    private final View.OnClickListener mFocusLockToggleListener =
+            new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (VERBOSE) {
+                Log.v(TAG, "focus_lock#onClick - start");
+            }
+
+            CameraAutoFocusControls afControls = mCameraControl.getAfControls();
+
+            if (mFocusLockToggle.isChecked()) {
+                Log.i(TAG, "lock focus");
+
+                afControls.setPendingTriggerStart();
+            } else {
+                Log.i(TAG, "unlock focus");
+
+                afControls.setPendingTriggerCancel();
+            }
+
+            mCameraOps.updatePreview(mCameraControl);
+
+            if (VERBOSE) {
+                Log.v(TAG, "focus_lock#onClick - end");
             }
         }
     };
@@ -601,6 +648,59 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         @Override
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
             mUseMediaCodec = isChecked;
+        }
+    };
+
+    private final CameraOps.Listener mCameraOpsListener = new CameraOps.Listener() {
+        @Override
+        public void onCameraOpened(String cameraId, CameraCharacteristics characteristics) {
+            /*
+             * Populate dynamic per-camera settings
+             */
+
+            // Map available AF Modes -> AF mode spinner dropdown list of strings
+            int[] availableAfModes =
+                    characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
+
+            String[] allAfModes = getResources().getStringArray(R.array.focus_mode_spinner_arrays);
+
+            final List<String> afModeList = new ArrayList<>();
+            final int[] afModePositions = new int[availableAfModes.length];
+
+            int i = 0;
+            for (int mode : availableAfModes) {
+                afModeList.add(allAfModes[mode]);
+                afModePositions[i++] = mode;
+            }
+
+            ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(TestingCamera2.this,
+                    android.R.layout.simple_spinner_item, afModeList);
+            dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            mFocusModeSpinner.setAdapter(dataAdapter);
+
+            /*
+             * Change the AF mode and update preview when AF spinner's selected item changes
+             */
+            mFocusModeSpinner.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position,
+                        long id) {
+                    int afMode = afModePositions[position];
+
+                    Log.i(TAG, "Change auto-focus mode to " + afModeList.get(position)
+                            + " " + afMode);
+
+                    mCameraControl.getAfControls().setAfMode(afMode);
+
+                    mCameraOps.updatePreview(mCameraControl);
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                    // Do nothing
+                }
+            });
         }
     };
 }
