@@ -77,6 +77,19 @@ Note that the Anaconda python executable's directory must be at the front of
 your PATH environment variable, assuming that you are using this Python
 distribution. The Anaconda installer may set this up for you automatically.
 
+Some tests require OpenCV to be installed.
+
+(For Ubuntu users)
+
+    sudo apt-get install python2.7-opencv
+
+(For Anaconda users)
+
+    conda install opencv
+
+To verify that OpenCV is installed properly, the "cv2" package should be
+available to be imported from inside the Python interpreter.
+
 Once your Python installation is ready, set up the test environment.
 
 2.2.1. Linux + Mac OS X
