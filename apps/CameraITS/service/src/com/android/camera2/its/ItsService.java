@@ -660,6 +660,7 @@ public class ItsService extends Service implements SensorEventListener {
             }
 
             // By default, AE and AF both get triggered, but the user can optionally override this.
+            // Also, AF won't get triggered if the lens is fixed-focus.
             boolean doAE = true;
             boolean doAF = true;
             if (params.has(TRIGGER_KEY)) {
@@ -670,6 +671,14 @@ public class ItsService extends Service implements SensorEventListener {
                 if (triggers.has(TRIGGER_AF_KEY)) {
                     doAF = triggers.getBoolean(TRIGGER_AF_KEY);
                 }
+            }
+            if (doAF && mCameraCharacteristics.get(
+                            CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) == 0) {
+                // Send a dummy result back for the code that is waiting for this message to see
+                // that AF has converged.
+                Log.i(TAG, "Ignoring request for AF on fixed-focus camera");
+                mSocketRunnableObj.sendResponse("afResult", "0.0");
+                doAF = false;
             }
 
             mInterlock3A.open();
