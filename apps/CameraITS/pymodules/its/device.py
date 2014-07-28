@@ -75,11 +75,16 @@ class ItsSession(object):
 
     def __init__(self):
         reboot_device_on_argv()
+        # Get the camera ID to open as an argument.
+        camera_id = 0
+        for s in sys.argv[1:]:
+            if s[:7] == "camera=" and len(s) > 7:
+                camera_id = int(s[7:])
         # TODO: Figure out why "--user 0" is needed, and fix the problem
         _run('%s logcat -c' % (self.ADB))
         _run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
         _run(('%s shell am startservice --user 0 -t text/plain '
-              '-a %s') % (self.ADB, self.INTENT_START))
+              '-a %s -d "%d"') % (self.ADB, self.INTENT_START, camera_id))
         self._wait_until_socket_ready()
         _run('%s forward tcp:%d tcp:%d' % (self.ADB,self.PORT,self.PORT))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

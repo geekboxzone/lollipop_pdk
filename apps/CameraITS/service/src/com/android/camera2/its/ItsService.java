@@ -174,6 +174,10 @@ public class ItsService extends Service implements SensorEventListener {
 
     @Override
     public void onCreate() {
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
         try {
             // Get handle to camera manager.
             mCameraManager = (CameraManager) this.getSystemService(Context.CAMERA_SERVICE);
@@ -194,15 +198,23 @@ public class ItsService extends Service implements SensorEventListener {
                 throw new ItsException("Failed to get device ID list", e);
             }
 
+            // Args are a string, which is just the camera ID to open.
+            int cameraId = 0;
+            String args = intent.getDataString();
+            if (args != null) {
+                Log.i(TAG, String.format("Received intent args: %s", args));
+                cameraId = Integer.parseInt(args);
+            }
+            Log.i(TAG, String.format("Opening camera %d", cameraId));
+
             mCameraThread = new HandlerThread("ItsCameraThread");
             try {
                 mCameraThread.start();
                 Handler cameraHandler = new Handler(mCameraThread.getLooper());
-
-                // TODO: Add support for specifying which device to open.
-                mCamera = mBlockingCameraManager.openCamera(devices[0], mCameraListener,
-                        cameraHandler);
-                mCameraCharacteristics = mCameraManager.getCameraCharacteristics(devices[0]);
+                mCamera = mBlockingCameraManager.openCamera(devices[cameraId],
+                        mCameraListener, cameraHandler);
+                mCameraCharacteristics = mCameraManager.getCameraCharacteristics(
+                        devices[cameraId]);
             } catch (CameraAccessException e) {
                 throw new ItsException("Failed to open camera", e);
             } catch (BlockingOpenException e) {
@@ -241,6 +253,7 @@ public class ItsService extends Service implements SensorEventListener {
         } catch (ItsException e) {
             Log.e(TAG, "Service failed to start: ", e);
         }
+        return START_STICKY;
     }
 
     @Override
@@ -265,11 +278,6 @@ public class ItsService extends Service implements SensorEventListener {
         } catch (ItsException e) {
             Log.e(TAG, "Script failed: ", e);
         }
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
     }
 
     class SocketWriteRunnable implements Runnable {

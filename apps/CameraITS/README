@@ -206,6 +206,13 @@ Each test assumes some sort of target or scene. There are multiple scene<N>
 folders under the tests directory, and each contains a README file which
 describes the scene for the scripts in that folder.
 
+By default, camera device id=0 is opened when the script connects to the unit,
+however this can be specified by adding a "camera=1" or similar argument to
+the script command line. On a typical device, camera=0 is the main (rear)
+camera, and camera=1 is the front-facing camera.
+
+    python tests/scene1/test_linearity.py camera=1
+
 The tools/run_scene_tests.sh script can be executed from inside one of the
 tests/scene<N> folders, and it will simply run each test script in that folder
 in turn, reporting whether it passed or failed. The scene should be setup as
