@@ -148,7 +148,7 @@ def get_fastest_manual_capture_settings(props):
     Returns:
         Two values, the first is a capture request, and the second is an output
         format specification, for the fastest possible (legal) capture that
-        can be performed on this device.
+        can be performed on this device (with the smallest output size).
     """
     fmt = "yuv"
     size = get_available_output_sizes(fmt, props)[-1]
@@ -162,8 +162,6 @@ class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
     """
 
-    # TODO: Add more unit tests.
-
     def test_int_to_rational(self):
         """Unit test for int_to_rational.
         """
@@ -172,6 +170,19 @@ class __UnitTest(unittest.TestCase):
         self.assertEqual(int_to_rational([1,2]),
                          [{"numerator":1,"denominator":1},
                           {"numerator":2,"denominator":1}])
+
+    def test_float_to_rational(self):
+        """Unit test for float_to_rational.
+        """
+        self.assertEqual(float_to_rational(0.5001, 64),
+                        {"numerator":32, "denominator":64})
+
+    def test_rational_to_float(self):
+        """Unit test for rational_to_float.
+        """
+        self.assertTrue(
+                abs(rational_to_float({"numerator":32,"denominator":64})-0.5)
+                < 0.0001)
 
 if __name__ == '__main__':
     unittest.main()

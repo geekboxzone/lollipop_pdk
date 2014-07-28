@@ -26,9 +26,7 @@ def main():
 
     THRESHOLD_MAX_RMS_DIFF = 0.01
 
-    # Hard-code a preview (VGA) size for the YUV image.
-    # TODO: Replace this with code to select sizes from what's available.
-    fmt_yuv =  {"format":"yuv", "width":640, "height":480}
+    fmt_yuv =  {"format":"yuv"}
     fmt_jpeg = {"format":"jpeg"}
 
     with its.device.ItsSession() as cam:

@@ -21,9 +21,6 @@ class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
     """
 
-    # TODO: Write some unit tests.
-    None
-
 if __name__ == '__main__':
     unittest.main()
 

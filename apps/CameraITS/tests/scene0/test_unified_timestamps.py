@@ -23,8 +23,6 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
-
-        # TODO: Skip test if capability not claimed.
         props = cam.get_camera_properties()
 
         # Get the timestamp of a captured image.

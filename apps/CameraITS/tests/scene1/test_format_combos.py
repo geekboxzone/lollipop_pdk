@@ -44,12 +44,13 @@ def main():
         reqs = [req_aut, # R0
                 req_man] # R1
 
-        # TODO: Select sizes from available set.
         # 10 different combos of output formats; some are single surfaces, and
         # some are multiple surfaces.
-        fmt_yuv_prev = {"format":"yuv", "width":640, "height":480}
+        wyuv,hyuv = its.objects.get_available_output_sizes("yuv", props)[-1]
+        wjpg,hjpg = its.objects.get_available_output_sizes("jpg", props)[-1]
+        fmt_yuv_prev = {"format":"yuv", "width":wyuv, "height":hyuv}
         fmt_yuv_full = {"format":"yuv"}
-        fmt_jpg_prev = {"format":"jpeg","width":640, "height":480}
+        fmt_jpg_prev = {"format":"jpeg","width":wjpg, "height":hjpg}
         fmt_jpg_full = {"format":"jpeg"}
         fmt_raw_full = {"format":"raw"}
         fmt_combos =[

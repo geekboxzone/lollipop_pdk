@@ -35,9 +35,8 @@ def main():
     THRESHOLD_RATIO_MIN_DIFF = 0.1
     THRESHOLD_DIFF_MAX_DIFF = 0.05
 
-    # TODO: Query the allowable tonemap curve sizes; here, it's hardcoded to
-    # a length=64 list of tuples. The max allowed length should be inside the
-    # camera properties object.
+    # The HAL3.2 spec requires that curves up to 64 control points in length
+    # must be supported.
     L = 32
     LM1 = float(L-1)
 
