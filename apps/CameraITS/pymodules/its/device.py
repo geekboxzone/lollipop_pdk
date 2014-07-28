@@ -84,7 +84,7 @@ class ItsSession(object):
         _run('%s logcat -c' % (self.ADB))
         _run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
         _run(('%s shell am startservice --user 0 -t text/plain '
-              '-a %s -d "%d"') % (self.ADB, self.INTENT_START, camera_id))
+              '-a %s -d %d') % (self.ADB, self.INTENT_START, camera_id))
         self._wait_until_socket_ready()
         _run('%s forward tcp:%d tcp:%d' % (self.ADB,self.PORT,self.PORT))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
