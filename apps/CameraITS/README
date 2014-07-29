@@ -217,10 +217,12 @@ The tools/run_scene_tests.sh script can be executed from inside one of the
 tests/scene<N> folders, and it will simply run each test script in that folder
 in turn, reporting whether it passed or failed. The scene should be setup as
 described in the README before running this script. It will create a sub-dir
-named "out" where the files created by the various tests will end up..
+named "out" where the files created by the various tests will end up. This
+script can take the same "reboot" and "camera" args as the test scripts.
 
     cd tests/scene1/
     ../../tools/run_scene_tests.sh
+    ../../tools/run_scene_tests.sh reboot=30 camera=1
 
 The tests/inprog directory contains a mix of unfinished, in-progress, and
 incomplete tests. These may or may not be useful in testing a HAL impl.,

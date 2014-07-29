@@ -26,8 +26,8 @@ def main():
         python config.py        - Measure the target exposure, and cache it.
         python config.py EXP    - Hard-code (and cache) the target exposure.
 
-    The "reboot" argument may also be provided, just as with all the test
-    scripts.
+    The "reboot" or "reboot=<N>" and "camera=<N>" arguments may also be
+    provided, just as with all the test scripts.
 
     If no exposure value is provided, the camera will be used to measure
     the scene and set a level that will result in the luma (with linear
@@ -39,17 +39,18 @@ def main():
     capture a shot reliably).
     """
 
-    # Command line args, ignoring any "reboot..." args.
-    non_reboot_argv = [s for s in sys.argv if s[:6] != "reboot"]
+    # Command line args, ignoring any args that will be passed down to the
+    # ItsSession constructor (which include "reboot=..." and "camera=...").
+    args = [s for s in sys.argv if s[:6] not in ["reboot", "camera"]]
 
-    if len(non_reboot_argv) == 1:
+    if len(args) == 1:
         with its.device.ItsSession() as cam:
             # Automatically measure target exposure.
             its.target.clear_cached_target_exposure()
             its.target.get_target_exposure(cam)
-    elif len(non_reboot_argv) == 2:
+    elif len(args) == 2:
         # Hard-code the target exposure.
-        exposure = float(non_reboot_argv[1])
+        exposure = float(args[1])
         its.target.set_hardcoded_exposure(exposure)
     else:
         print "Usage: python %s [EXPOSURE]"

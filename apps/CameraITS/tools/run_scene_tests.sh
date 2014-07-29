@@ -19,13 +19,6 @@
 # cleanly on success.
 
 # -----------------------------------------------------------------------------
-# Optionally, the device can be rebooted for each test, to ensure that
-# a problem in one test doesn't propagate into subsequent tests; use this
-# when debugging test failures, but not when running the test suite (since
-# all tests should pass even when run back-to-back).
-#REBOOT=reboot
-
-# -----------------------------------------------------------------------------
 # This script should be run from inside a tests/scene<N> directory.
 
 if [ ! -f ../../tools/config.py ]
@@ -34,11 +27,45 @@ then
     exit
 fi
 
+# By default, run the tests on the main/rear camera.
+CAMERA=0
+
+for i in "$@"
+do
+    case $i in
+        camera=*)
+        # Run the tests on the specified camera ID.
+        CAMERA="${i#*=}"
+        shift
+        ;;
+
+        reboot)
+        # Reboot the device prior to running each test, to ensure that a
+        # problem in one test doesn't propagate into subsequent tests; use this
+        # when debugging test failures, but not when running the test suite
+        # (since all tests should pass even when run back-to-back).
+        REBOOT=reboot
+        ;;
+
+        reboot=*)
+        # Reboot and wait the given duration.
+        REBOOT="reboot=${i#*=}"
+        shift
+        ;;
+
+        *)
+        # Unknown option.
+        ;;
+    esac
+done
+
 rm -rf out
 mkdir -p out
 
+echo Running tests with args: $REBOOT camera=$CAMERA
+
 cd out
-python ../../../tools/config.py $REBOOT
+python ../../../tools/config.py $REBOOT camera=$CAMERA
 cd ..
 
 testcount=0
@@ -52,7 +79,7 @@ do
     echo "--------------------------------------------------------------------"
     echo "Running test: $T"
     echo "--------------------------------------------------------------------"
-    python ../"$T" $REBOOT
+    python ../"$T" $REBOOT camera=$CAMERA
     code=$?
     if [ $code -ne 0 ]; then
         let failcount=failcount+1
