@@ -52,6 +52,10 @@ def main():
             print "HAL reported ccm:\n", numpy.array(ccm).reshape(3,3)
             print "HAL reported cal:\n", numpy.array(cal).reshape(3,3)
 
+            # Dump the image.
+            img = its.image.convert_capture_to_rgb_image(cap)
+            its.image.write_image(img, "%s_%s.jpg" % (NAME, illum_str[i]))
+
             # Compute the matrices that are expected under this illuminant from
             # the HAL-reported WB gains, CCM, and calibration matrix.
             cm, fm = its.dng.compute_cm_fm(dng_illum[i], gains, ccm, cal)
