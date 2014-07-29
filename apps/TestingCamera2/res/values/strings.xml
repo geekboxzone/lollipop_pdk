@@ -87,6 +87,9 @@
     <string name="v1_app_name">TestingCam2</string>
     <string name="info_button_label">JPEG!</string>
     <string name="flush_button_label">Flush device</string>
+    <string name="focus_lock_button_label">Focus Lock</string>
+    <string name="focus_unlock_button_label">Focus Unlock</string>
+    <string name="focus_mode_spinner_prompt">AF Mode</string>
     <string name="recording_on_label">Recording On</string>
     <string name="recording_off_label">Recording Off</string>
     <string name="use_media_codec_label">Use MediaCodec</string>
@@ -99,4 +102,14 @@
     <string name="manual_ctrl_prompt">Manual Control</string>
     <string name="radio_mp4">mp4</string>
     <string name="radio_webm">webm</string>
+
+    <string-array name="focus_mode_spinner_arrays">
+      <!-- must be in same order as CONTROL_AF_MODE_* enums -->
+        <item>OFF</item>
+        <item>AUTO</item>
+        <item>MACRO</item>
+        <item>CONTINUOUS_VIDEO</item>
+        <item>CONTINUOUS_PICTURE</item>
+        <item>EDOF</item>
+    </string-array>
 </resources>

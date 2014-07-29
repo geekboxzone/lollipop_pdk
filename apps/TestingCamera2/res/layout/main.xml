@@ -78,6 +78,16 @@
             android:layout_height="wrap_content"
             />
 
+        <ToggleButton
+            android:id="@+id/focus_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:textColorLink="@android:color/holo_red_light"
+            android:textOn="@string/focus_unlock_button_label"
+            android:textOff="@string/focus_lock_button_label" />
+
         <View
             android:id="@+id/horizontal_rule_1"
             android:layout_width="fill_parent"
@@ -85,6 +95,14 @@
             android:layout_marginBottom="@dimen/horiz_rule_btm_margin"
             android:layout_marginTop="@dimen/horiz_rule_top_margin"
             android:background="@color/horiz_rule_color" />
+
+        <Spinner
+            android:id="@+id/focus_mode_spinner"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:spinnerMode="dropdown"
+            android:prompt="@string/focus_mode_spinner_prompt"
+            />
 
         <CheckBox
             android:id="@+id/use_media_codec"

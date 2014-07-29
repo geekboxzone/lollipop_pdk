@@ -20,43 +20,17 @@ package com.android.testingcamera2.v1;
  * A camera control class wraps the control parameters.
  */
 public class CameraControls {
-    private int mSensitivity = 100;
-    private long mExposure = 10000000L; //10ms
-    private long mFrameDuration = 50000000L; // 50ms
-    private boolean mManualControlEnabled = false;
+    private final CameraManualControls manualControls = new CameraManualControls();
+    private final CameraAutoFocusControls afControls = new CameraAutoFocusControls();
 
     public CameraControls() {
     }
 
-    public synchronized void setSensitivity(int sensitivity) {
-        mSensitivity = sensitivity;
+    public CameraManualControls getManualControls() {
+        return manualControls;
     }
 
-    public synchronized void setExposure(long exposure) {
-        mExposure = exposure;
-    }
-
-    public synchronized void setFrameDuration(long frameDuration) {
-        mFrameDuration = frameDuration;
-    }
-
-    public synchronized void enableManualControl(boolean enable) {
-        mManualControlEnabled = enable;
-    }
-
-    public synchronized boolean isManualControlEnabled() {
-        return mManualControlEnabled;
-    }
-
-    public synchronized int getSensitivity() {
-        return mSensitivity;
-    }
-
-    public synchronized long getExposure() {
-        return mExposure;
-    }
-
-    public synchronized long getFrameDuration() {
-        return mFrameDuration;
+    public CameraAutoFocusControls getAfControls() {
+        return afControls;
     }
 }
