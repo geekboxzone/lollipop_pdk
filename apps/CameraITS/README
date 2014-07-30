@@ -246,7 +246,13 @@ code the exposure level.
 
 This creates a file named its.target.cfg in the current directory, storing the
 target exposure level. Tests that use the its.target module will be reusing
-this value, if they are run from the same directory.
+this value, if they are run from the same directory and if they contain the
+"target" command line argument:
+
+    python tests/scene1/test_linearity.py target
+
+If the "target" argument isn't present, then the script won't use any cached
+its.target.cfg values that may be present in the current directory.
 
 3.5. Docs
 ---------

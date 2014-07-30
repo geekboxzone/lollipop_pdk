@@ -27,7 +27,9 @@ def main():
         python config.py EXP    - Hard-code (and cache) the target exposure.
 
     The "reboot" or "reboot=<N>" and "camera=<N>" arguments may also be
-    provided, just as with all the test scripts.
+    provided, just as with all the test scripts. The "target" argument is
+    may also be provided but it has no effect on this script since the cached
+    exposure value is cleared regardless..
 
     If no exposure value is provided, the camera will be used to measure
     the scene and set a level that will result in the luma (with linear
@@ -40,8 +42,8 @@ def main():
     """
 
     # Command line args, ignoring any args that will be passed down to the
-    # ItsSession constructor (which include "reboot=..." and "camera=...").
-    args = [s for s in sys.argv if s[:6] not in ["reboot", "camera"]]
+    # ItsSession constructor.
+    args = [s for s in sys.argv if s[:6] not in ["reboot", "camera", "target"]]
 
     if len(args) == 1:
         with its.device.ItsSession() as cam:

@@ -139,8 +139,9 @@ def set_hardcoded_exposure(exposure):
 def get_target_exposure(its_session=None):
     """Get the target exposure to use.
 
-    If there is a cached value, return it. If there is no cached value, then
-    measure a new value from the scene, cache it, then return it.
+    If there is a cached value and if the "target" command line parameter is
+    present, then return the cached value. Otherwise, measure a new value from
+    the scene, cache it, then return it.
 
     Args:
         its_session: Optional, holding an open device session.
@@ -148,7 +149,10 @@ def get_target_exposure(its_session=None):
     Returns:
         The target exposure value.
     """
-    cached_exposure = __get_cached_target_exposure()
+    cached_exposure = None
+    for s in sys.argv[1:]:
+        if s == "target":
+            cached_exposure = __get_cached_target_exposure()
     if cached_exposure is not None:
         print "Using cached target exposure"
         return cached_exposure
