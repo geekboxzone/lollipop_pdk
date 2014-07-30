@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import os.path
 import matplotlib
@@ -23,8 +24,8 @@ import matplotlib.pyplot
 def main():
     """Test that the android.noiseReduction.mode param is applied when set.
 
-    Capture images with the camera dimly lit. Uses a long exposure
-    and a high analog gain to ensure the captured image is noisy.
+    Capture images with the camera dimly lit. Uses a high analog gain to
+    ensure the captured image is noisy.
 
     Captures three images, for NR off, "fast", and "high quality".
     Also captures an image with low gain and NR off, and uses the variance
@@ -33,14 +34,6 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     THRESHOLD_MIN_VARIANCE_RATIO = 0.7
-
-    req = {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.sensor.frameDuration": 0
-        }
 
     # List of variances for Y,U,V.
     variances = [[],[],[]]
@@ -51,11 +44,11 @@ def main():
     nr_modes_reported = []
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
         # NR mode 0 with low gain
+        e, s = its.target.get_target_exposure_combos(cam)["minSensitivity"]
+        req = its.objects.manual_capture_request(s, e)
         req["android.noiseReduction.mode"] = 0
-        # TODO: Stop using hard-coded exposure values.
-        req["android.sensor.sensitivity"] = 100
-        req["android.sensor.exposureTime"] = 20*1000*1000
         cap = cam.do_capture(req)
         its.image.write_image(
                 its.image.convert_capture_to_rgb_image(cap),
@@ -65,12 +58,13 @@ def main():
             img = planes[j]
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             ref_variance.append(its.image.compute_image_variances(tile)[0])
+        print "Ref variances:", ref_variance
 
         for i in range(3):
             # NR modes 0, 1, 2 with high gain
+            e, s = its.target.get_target_exposure_combos(cam)["maxSensitivity"]
+            req = its.objects.manual_capture_request(s, e)
             req["android.noiseReduction.mode"] = i
-            req["android.sensor.sensitivity"] = 100*16
-            req["android.sensor.exposureTime"] = (20*1000*1000/16)
             cap = cam.do_capture(req)
             nr_modes_reported.append(
                     cap["metadata"]["android.noiseReduction.mode"])
@@ -83,6 +77,7 @@ def main():
                 tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
                 variance = its.image.compute_image_variances(tile)[0]
                 variances[j].append(variance / ref_variance[j])
+        print "Variances with NR mode [0,1,2]:", variances
 
     # Draw a plot.
     for j in range(3):
