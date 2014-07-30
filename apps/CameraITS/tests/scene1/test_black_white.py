@@ -41,6 +41,8 @@ def main():
 
         # Take a shot with very low ISO and exposure time. Expect it to
         # be black.
+        print "Black shot: sens = %d, exp time = %.4fms" % (
+                sens_range[0], expt_range[0]/1000000.0)
         req = its.objects.manual_capture_request(sens_range[0], expt_range[0])
         cap = cam.do_capture(req)
         img = its.image.convert_capture_to_rgb_image(cap)
@@ -54,6 +56,8 @@ def main():
 
         # Take a shot with very high ISO and exposure time. Expect it to
         # be white.
+        print "White shot: sens = %d, exp time = %.2fms" % (
+                sens_range[1], expt_range[1]/1000000.0)
         req = its.objects.manual_capture_request(sens_range[1], expt_range[1])
         cap = cam.do_capture(req)
         img = its.image.convert_capture_to_rgb_image(cap)
