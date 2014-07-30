@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import os.path
 import matplotlib
@@ -33,49 +34,35 @@ def main():
 
     THRESHOLD_MAX_DIFF = 0.1
 
-    # Capture requests:
-    # 1. With unit gains, and identity transform.
-    # 2. With a higher red gain, and identity transform.
-    # 3. With unit gains, and a transform that boosts blue.
-
-    linear_tonemap = sum([[i/31.0,i/31.0] for i in range(32)], [])
-
-    # Baseline request
-    # TODO: Stop using hard-coded exposure values.
-    req = {
-        "android.control.mode": 0,
-        "android.control.aeMode": 0,
-        "android.control.awbMode": 0,
-        "android.control.afMode": 0,
-        "android.colorCorrection.mode": 0,
-        "android.sensor.frameDuration": 0,
-        "android.sensor.sensitivity": 200,
-        "android.sensor.exposureTime": 100*1000*1000,
-        "android.tonemap.mode": 0,
-        "android.tonemap.curveRed": linear_tonemap,
-        "android.tonemap.curveGreen": linear_tonemap,
-        "android.tonemap.curveBlue": linear_tonemap
-        }
-
-    # Transforms:
-    # 1. Identity
-    # 2. Identity
-    # 3. Boost blue
-    transforms = [its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,1]),
-                  its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,1]),
-                  its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,2])]
-
-    # Gains:
-    # 1. Unit
-    # 2. Boost red
-    # 3. Unit
-    gains = [[1,1,1,1], [2,1,1,1], [1,1,1,1]]
-
-    r_means = []
-    g_means = []
-    b_means = []
-
     with its.device.ItsSession() as cam:
+
+        # Baseline request
+        e, s = its.target.get_target_exposure_combos(cam)["midSensitivity"]
+        req = its.objects.manual_capture_request(s, e, True)
+        req["android.colorCorrection.mode"] = 0
+
+        # Transforms:
+        # 1. Identity
+        # 2. Identity
+        # 3. Boost blue
+        transforms = [its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,1]),
+                      its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,1]),
+                      its.objects.int_to_rational([1,0,0, 0,1,0, 0,0,2])]
+
+        # Gains:
+        # 1. Unit
+        # 2. Boost red
+        # 3. Unit
+        gains = [[1,1,1,1], [2,1,1,1], [1,1,1,1]]
+
+        r_means = []
+        g_means = []
+        b_means = []
+
+        # Capture requests:
+        # 1. With unit gains, and identity transform.
+        # 2. With a higher red gain, and identity transform.
+        # 3. With unit gains, and a transform that boosts blue.
         for i in range(len(transforms)):
             req["android.colorCorrection.transform"] = transforms[i]
             req["android.colorCorrection.gains"] = gains[i]
@@ -90,23 +77,23 @@ def main():
             ratios = [rgb_means[0] / rgb_means[1], rgb_means[2] / rgb_means[1]]
             print "Means = ", rgb_means, "   Ratios =", ratios
 
-    # Draw a plot.
-    domain = range(len(transforms))
-    pylab.plot(domain, r_means, 'r')
-    pylab.plot(domain, g_means, 'g')
-    pylab.plot(domain, b_means, 'b')
-    pylab.ylim([0,1])
-    matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
+        # Draw a plot.
+        domain = range(len(transforms))
+        pylab.plot(domain, r_means, 'r')
+        pylab.plot(domain, g_means, 'g')
+        pylab.plot(domain, b_means, 'b')
+        pylab.ylim([0,1])
+        matplotlib.pyplot.savefig("%s_plot_means.png" % (NAME))
 
-    # Expect G0 == G1 == G2, R0 == 0.5*R1 == R2, B0 == B1 == 0.5*B2
-    # Also need to ensure that the imasge is not clamped to white/black.
-    assert(all(g_means[i] > 0.2 and g_means[i] < 0.8 for i in xrange(3)))
-    assert(abs(g_means[1] - g_means[0]) < THRESHOLD_MAX_DIFF)
-    assert(abs(g_means[2] - g_means[1]) < THRESHOLD_MAX_DIFF)
-    assert(abs(r_means[2] - r_means[0]) < THRESHOLD_MAX_DIFF)
-    assert(abs(r_means[1] - 2.0 * r_means[0]) < THRESHOLD_MAX_DIFF)
-    assert(abs(b_means[1] - b_means[0]) < THRESHOLD_MAX_DIFF)
-    assert(abs(b_means[2] - 2.0 * b_means[0]) < THRESHOLD_MAX_DIFF)
+        # Expect G0 == G1 == G2, R0 == 0.5*R1 == R2, B0 == B1 == 0.5*B2
+        # Also need to ensure that the imasge is not clamped to white/black.
+        assert(all(g_means[i] > 0.2 and g_means[i] < 0.8 for i in xrange(3)))
+        assert(abs(g_means[1] - g_means[0]) < THRESHOLD_MAX_DIFF)
+        assert(abs(g_means[2] - g_means[1]) < THRESHOLD_MAX_DIFF)
+        assert(abs(r_means[2] - r_means[0]) < THRESHOLD_MAX_DIFF)
+        assert(abs(r_means[1] - 2.0 * r_means[0]) < THRESHOLD_MAX_DIFF)
+        assert(abs(b_means[1] - b_means[0]) < THRESHOLD_MAX_DIFF)
+        assert(abs(b_means[2] - 2.0 * b_means[0]) < THRESHOLD_MAX_DIFF)
 
 if __name__ == '__main__':
     main()
