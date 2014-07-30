@@ -41,6 +41,7 @@ def main():
     linear_tonemap = sum([[i/31.0,i/31.0] for i in range(32)], [])
 
     # Baseline request
+    # TODO: Stop using hard-coded exposure values.
     req = {
         "android.control.mode": 0,
         "android.control.aeMode": 0,

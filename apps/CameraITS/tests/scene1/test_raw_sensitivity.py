@@ -40,6 +40,7 @@ def main():
         s_e_prod = s_ae * e_ae
 
         variances = []
+        # TODO: Don't hardcode the sens step size.
         for s in range(sens_min, sens_max, 1000):
 
             e = int(s_e_prod / float(s))

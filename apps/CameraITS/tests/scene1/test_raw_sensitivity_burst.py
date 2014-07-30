@@ -43,6 +43,7 @@ def main():
 
         reqs = []
         settings = []
+        # TODO: Don't hardcode the sens step size.
         for s in range(sens_min, sens_max, 1000):
             e = int(s_e_prod / float(s))
             req = its.objects.manual_capture_request(s, e)

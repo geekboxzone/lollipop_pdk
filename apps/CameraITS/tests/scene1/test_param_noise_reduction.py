@@ -53,6 +53,7 @@ def main():
     with its.device.ItsSession() as cam:
         # NR mode 0 with low gain
         req["android.noiseReduction.mode"] = 0
+        # TODO: Stop using hard-coded exposure values.
         req["android.sensor.sensitivity"] = 100
         req["android.sensor.exposureTime"] = 20*1000*1000
         cap = cam.do_capture(req)

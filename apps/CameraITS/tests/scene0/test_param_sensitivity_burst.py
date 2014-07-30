@@ -22,10 +22,11 @@ import matplotlib.pyplot
 
 def main():
     """Test that the android.sensor.sensitivity parameter is applied properly
-    within a burst. Inspects the output metadata.
+    within a burst. Inspects the output metadata only (not the image data).
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    # TODO: Don't use hardcoded exposure values; query the legal range.
     sensitivities = range(350, 400, 7)
     reqs = [its.objects.manual_capture_request(s,10*1000*1000)
             for s in sensitivities]

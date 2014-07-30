@@ -31,6 +31,7 @@ def main():
     manual_transform = its.objects.int_to_rational([1,2,3, 4,5,6, 7,8,9])
     manual_gains = [1,2,3,4]
     manual_region = [{"x":8,"y":8,"width":128,"height":128,"weight":1}]
+    # TODO: Stop using hardcoded exposure values.
     manual_exp_time = 100*1000*1000
     manual_sensitivity = 100
 
