@@ -70,14 +70,15 @@ def main():
                               its.objects.rational_to_float(n2))
 
     def draw_lsc_plot(w_map, h_map, lsc_map, name):
-        fig = matplotlib.pyplot.figure()
-        ax = fig.gca(projection='3d')
-        xs = numpy.array([range(w_map)] * h_map).reshape(h_map, w_map)
-        ys = numpy.array([[i]*w_map for i in range(h_map)]).reshape(h_map, w_map)
         for ch in range(4):
+            fig = matplotlib.pyplot.figure()
+            ax = fig.gca(projection='3d')
+            xs = numpy.array([range(w_map)] * h_map).reshape(h_map, w_map)
+            ys = numpy.array([[i]*w_map for i in range(h_map)]).reshape(
+                    h_map, w_map)
             zs = numpy.array(lsc_map[ch::4]).reshape(h_map, w_map)
             ax.plot_wireframe(xs, ys, zs)
-        matplotlib.pyplot.savefig("%s_plot_lsc_%s.png" % (NAME, name))
+            matplotlib.pyplot.savefig("%s_plot_lsc_%s_ch%d.png"%(NAME,name,ch))
 
     def test_auto(cam, w_map, h_map):
         # Get 3A lock first, so the auto values in the capture result are
