@@ -59,7 +59,7 @@ def main():
             r_means.append(rgb_means[0])
             g_means.append(rgb_means[1])
             b_means.append(rgb_means[2])
-            m = m + 9
+            m = m + 4
 
     # Draw a plot.
     pylab.plot(mults, r_means, 'r')
