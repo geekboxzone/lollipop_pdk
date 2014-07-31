@@ -26,8 +26,7 @@ import math
 def main():
     """Compute the DNG noise model from a color checker chart.
 
-    TODO: Make this more robust; some manual futzing may be needed to get
-    this to work on a new device.
+    TODO: Make this more robust; some manual futzing may be needed.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 

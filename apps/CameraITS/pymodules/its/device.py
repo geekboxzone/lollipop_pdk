@@ -80,7 +80,7 @@ class ItsSession(object):
         for s in sys.argv[1:]:
             if s[:7] == "camera=" and len(s) > 7:
                 camera_id = int(s[7:])
-        # TODO: Figure out why "--user 0" is needed, and fix the problem
+        # TODO: Figure out why "--user 0" is needed, and fix the problem.
         _run('%s logcat -c' % (self.ADB))
         _run('%s shell am force-stop --user 0 %s' % (self.ADB, self.PACKAGE))
         _run(('%s shell am startservice --user 0 -t text/plain '

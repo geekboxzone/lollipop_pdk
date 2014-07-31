@@ -138,7 +138,8 @@ def get_canonical_cfa_order(props):
             left Bayer grid of R,Gr,Gb,B, where the 2x2 grid is labeled as
             0,1,2,3 in row major order.
     """
-    # TODO: Take sensor crop region into account in the CFA logic.
+    # Note that raw streams aren't croppable, so the cropRegion doesn't need
+    # to be considered when determining the top-left pixel color.
     cfa_pat = props['android.sensor.info.colorFilterArrangement']
     if cfa_pat == 0:
         # RGGB
@@ -165,7 +166,6 @@ def get_gains_in_canonical_order(props, gains):
     Returns:
         List of gains values, in R,Gr,Gb,B order.
     """
-    # TODO: Take sensor crop region into account in the CFA logic.
     cfa_pat = props['android.sensor.info.colorFilterArrangement']
     if cfa_pat in [0,1]:
         # RGGB or GRBG, so G_even is Gr

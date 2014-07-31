@@ -16,14 +16,22 @@ import its.image
 import its.device
 import its.objects
 import os.path
+import numpy
 
 def main():
-    """Test a sequence of shots with different tonrmap curves.
+    """Test a sequence of shots with different tonemap curves.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
+    # There should be 3 identical frames followed by a different set of
+    # 3 identical frames.
+    MAX_SAME_DELTA = 0.01
+    MIN_DIFF_DELTA = 0.20
+
     with its.device.ItsSession() as cam:
         sens, exp_time, _,_,_ = cam.do_3a(do_af=False)
+
+        means = []
 
         # Capture 3 manual shots with a linear tonemap.
         req = its.objects.manual_capture_request(sens, exp_time, True)
@@ -31,6 +39,8 @@ def main():
             cap = cam.do_capture(req)
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_i=%d.jpg" % (NAME, i))
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            means.append(tile.mean(0).mean(0))
 
         # Capture 3 manual shots with the default tonemap.
         req = its.objects.manual_capture_request(sens, exp_time, False)
@@ -38,8 +48,16 @@ def main():
             cap = cam.do_capture(req)
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_i=%d.jpg" % (NAME, i))
+            tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
+            means.append(tile.mean(0).mean(0))
 
-        # TODO: Add pass/fail check.
+        # Compute the delta between each consecutive frame pair.
+        deltas = [numpy.max(numpy.fabs(means[i+1]-means[i])) \
+                  for i in range(len(means)-1)]
+        print "Deltas between consecutive frames:", deltas
+
+        assert(all([abs(deltas[i]) < MAX_SAME_DELTA for i in [0,1,3,4]]))
+        assert(abs(deltas[2]) > MIN_DIFF_DELTA)
 
 if __name__ == '__main__':
     main()
