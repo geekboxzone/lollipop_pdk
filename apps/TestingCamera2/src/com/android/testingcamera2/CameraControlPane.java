@@ -685,12 +685,14 @@ public class CameraControlPane extends ControlPane {
             new CameraManager.AvailabilityListener() {
         @Override
         public void onCameraAvailable(String cameraId) {
-            updateCameraList();
+            // TODO: Update camera list in an intelligent fashion
+            // (can't just call updateCameraList or the selected camera may change)
         }
 
         @Override
         public void onCameraUnavailable(String cameraId) {
-            updateCameraList();
+            // TODO: Update camera list in an intelligent fashion
+            // (can't just call updateCameraList or the selected camera may change)
         }
     };
 
