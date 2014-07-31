@@ -64,18 +64,14 @@ def main():
 
         caps = cam.do_capture(reqs, cam.CAP_RAW)
 
-        # A list of the (x,y) coords of the top-left pixel of a collection of
-        # 64x64 pixel patches of a color checker chart. Each patch should be
-        # uniform, however the actual color doesn't matter.
+        # A list of the (x,y) coords of the center pixel of a collection of
+        # patches of a color checker chart. Each patch should be uniform,
+        # however the actual color doesn't matter. Note that the coords are
+        # relative to the *converted* RGB image, which is 1/2 x 1/2 of the
+        # full size; convert back to full.
         img = its.image.convert_capture_to_rgb_image(caps[0], props=props)
-        (x0,y0),(dxh,dyh),(dxv,dyv) = \
-                its.image.get_color_checker_chart_patches(img, NAME+"_debug")
-        patches = []
-        for xi in range(6):
-            for yi in range(4):
-                xc = int(x0 + dxh*xi + dxv*yi)
-                yc = int(y0 + dyh*xi + dyv*yi)
-                patches.append((xc-32,yc-32))
+        patches = its.image.get_color_checker_chart_patches(img, NAME+"_debug")
+        patches = [(2*x,2*y) for (x,y) in sum(patches,[])]
 
         lines = []
         for (s,cap) in zip(sens,caps):
@@ -88,8 +84,8 @@ def main():
             for i,plane in enumerate(planes):
                 plane = (plane * white_level - black_levels[i]) / (
                         white_level - black_levels[i])
-                for (x,y) in patches:
-                    tile = plane[y/2:y/2+32,x/2:x/2+32,:]
+                for j,(x,y) in enumerate(patches):
+                    tile = plane[y/2-16:y/2+16:,x/2-16:x/2+16:,::]
                     mean = its.image.compute_image_means(tile)[0]
                     var = its.image.compute_image_variances(tile)[0]
                     if (mean > CLAMP_THRESH and mean < 1.0-CLAMP_THRESH):
@@ -110,6 +106,7 @@ def main():
             lines.append((s,m,b))
             print s, "->", m, b
 
+            # TODO: Clean up these checks (which currently fail in some cases).
             # Some sanity checks:
             # * Noise levels should increase with brightness.
             # * Extrapolating to a black image, the noise should be positive.
@@ -147,28 +144,30 @@ def main():
          */
         #include <stdio.h>
         #include <assert.h>
-        void compute_noise_model_entries(int sens, double *o, double *s);
+        double compute_noise_model_entry_S(int sens);
+        double compute_noise_model_entry_O(int sens);
         int main(void) {
             int sens;
-            double o, s;
             for (sens = %d; sens <= %d; sens += 100) {
-                compute_noise_model_entries(sens, &o, &s);
+                double o = compute_noise_model_entry_O(sens);
+                double s = compute_noise_model_entry_S(sens);
                 printf("%%d,%%lf,%%lf\\n", sens, o, s);
             }
             return 0;
         }
 
-        /* Generated function to map a given sensitivity to the O and S noise
+        /* Generated functions to map a given sensitivity to the O and S noise
          * model parameters in the DNG noise model.
          */
-        void compute_noise_model_entries(int sens, double *o, double *s) {
-            assert(sens >= %d && sens <= %d && o && s);
-            *s = %e * sens + %e;
-            *o = %e * sens + %e;
-            *s = *s < 0.0 ? 0.0 : *s;
-            *o = *o < 0.0 ? 0.0 : *o;
+        double compute_noise_model_entry_S(int sens) {
+            double s = %e * sens + %e;
+            return s < 0.0 ? 0.0 : s;
         }
-        """%(sens_min,sens_max,sens_min,sens_max,mS,bS,mO,bO)
+        double compute_noise_model_entry_O(int sens) {
+            double o = %e * sens + %e;
+            return o < 0.0 ? 0.0 : o;
+        }
+        """%(sens_min,sens_max,mS,bS,mO,bO)
 
 if __name__ == '__main__':
     main()

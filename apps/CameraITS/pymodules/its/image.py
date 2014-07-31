@@ -584,12 +584,8 @@ def get_color_checker_chart_patches(img, debug_fname_prefix=None):
             successfully.
 
     Returns:
-        Three tuples:
-        (1) The integer (x,y) coords of the center of the chart's patch (0,0).
-        (2) The float (dx,dy) displacement to the chart's (0,1) patch, which
-            is the pink patch to the right of the top-left brown patch.
-        (3) The float (dx,dt) displacement to the chart's (1,0) patch, which
-            is the orange patch below the top-left brown patch.
+        6x4 list of lists of integer (x,y) coords of the center of each patch,
+        ordered in the "chart order" (6x4 row major).
     """
 
     # Shrink the original image.
@@ -674,43 +670,42 @@ def get_color_checker_chart_patches(img, debug_fname_prefix=None):
     vec_across = tuple([(next_center[i]-origin_center[i])/5.0 for i in [0,1]])
     vec_down = tuple([(prev_center[i]-origin_center[i])/3.0 for i in [0,1]])
 
-    # Sanity check: test that the R,G,B,black,white patches are correct.
-    patch_info = [("r",2,2), ("g",2,1), ("b",2,0), ("w",3,0), ("k",3,5)]
-    for i in range(len(patch_info)):
-        color,yi,xi = patch_info[i]
-        xc = int(origin_center[0] + vec_across[0]*xi + vec_down[0]*yi)
-        yc = int(origin_center[1] + vec_across[1]*xi + vec_down[1]*yi)
-        means = __measure_color_checker_patch(img, xc,yc, 64)
-        if color == "r":
-            high_chans = [0]
-            low_chans = [1,2]
-        elif color == "g":
-            high_chans = [1]
-            low_chans = [0,2]
-        elif color == "b":
-            high_chans = [2]
-            low_chans = [0,1]
-        elif color == "w":
-            high_chans = [0,1,2]
-            low_chans = []
-        elif color == "k":
-            high_chans = []
-            low_chans = [0,1,2]
-        else:
-            assert(False)
+    # Compute the center of each patch.
+    patches = [[],[],[],[]]
+    for yi in range(4):
+        for xi in range(6):
+            x0,y0 = origin_center
+            dxh,dyh = vec_across
+            dxv,dyv = vec_down
+            xc = int(x0 + dxh*xi + dxv*yi)
+            yc = int(y0 + dyh*xi + dyv*yi)
+            patches[yi].append((xc,yc))
 
-        # If the debug info is requested, then don't assert that the patches
-        # are matched, to allow the caller to see the output.
-        if debug_fname_prefix is not None:
-            img[int(yc),int(xc)] = 1.0
-        else:
-            assert(min([means[i] for i in high_chans]+[1]) > \
-                   max([means[i] for i in low_chans]+[0]))
+    # Sanity check: test that the R,G,B,black,white patches are correct.
+    patch_info = [(2,2,[0]), # Red
+                  (2,1,[1]), # Green
+                  (2,0,[2]), # Blue
+                  (3,0,[0,1,2]), # White
+                  (3,5,[])] # Black
+    for i in range(len(patch_info)):
+        yi,xi,high_chans = patch_info[i]
+        low_chans = [i for i in [0,1,2] if i not in high_chans]
+        xc,yc = patches[yi][xi]
+        means = __measure_color_checker_patch(img, xc,yc, 64)
+        if (min([means[i] for i in high_chans]+[1]) < \
+                max([means[i] for i in low_chans]+[0])):
+            print "Color patch sanity check failed: patch", i
+            # If the debug info is requested, then don't assert that the patches
+            # are matched, to allow the caller to see the output.
+            if debug_fname_prefix is None:
+                assert(0)
 
     if debug_fname_prefix is not None:
+        for (xc,yc) in sum(patches,[]):
+            img[yc,xc] = 1.0
         write_image(img, debug_fname_prefix+"_2.jpg")
 
-    return origin_center, vec_across, vec_down
+    return patches
 
 class __UnitTest(unittest.TestCase):
     """Run a suite of unit tests on this module.
