@@ -20,6 +20,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.ImageFormat;
+import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
@@ -51,6 +52,7 @@ import android.view.Surface;
 import com.android.ex.camera2.blocking.BlockingCameraManager;
 import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
 import com.android.ex.camera2.blocking.BlockingStateListener;
+import com.android.ex.camera2.blocking.BlockingSessionListener;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -108,9 +110,11 @@ public class ItsService extends Service implements SensorEventListener {
 
     private CameraManager mCameraManager = null;
     private HandlerThread mCameraThread = null;
+    private Handler mCameraHandler = null;
     private BlockingCameraManager mBlockingCameraManager = null;
     private BlockingStateListener mCameraListener = null;
     private CameraDevice mCamera = null;
+    private CameraCaptureSession mSession = null;
     private ImageReader[] mCaptureReaders = null;
     private CameraCharacteristics mCameraCharacteristics = null;
 
@@ -166,7 +170,7 @@ public class ItsService extends Service implements SensorEventListener {
         void onCaptureAvailable(Image capture);
     }
 
-    public abstract class CaptureResultListener extends CameraDevice.CaptureListener {}
+    public abstract class CaptureResultListener extends CameraCaptureSession.CaptureListener {}
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -211,9 +215,9 @@ public class ItsService extends Service implements SensorEventListener {
             mCameraThread = new HandlerThread("ItsCameraThread");
             try {
                 mCameraThread.start();
-                Handler cameraHandler = new Handler(mCameraThread.getLooper());
+                mCameraHandler = new Handler(mCameraThread.getLooper());
                 mCamera = mBlockingCameraManager.openCamera(devices[cameraId],
-                        mCameraListener, cameraHandler);
+                        mCameraListener, mCameraHandler);
                 mCameraCharacteristics = mCameraManager.getCameraCharacteristics(
                         devices[cameraId]);
             } catch (CameraAccessException e) {
@@ -634,11 +638,9 @@ public class ItsService extends Service implements SensorEventListener {
             prepareCaptureReader(widths, heights, formats, 1);
             List<Surface> outputSurfaces = new ArrayList<Surface>(1);
             outputSurfaces.add(mCaptureReaders[0].getSurface());
-            mCamera.configureOutputs(outputSurfaces);
-            mCameraListener.waitForState(BlockingStateListener.STATE_BUSY,
-                    TIMEOUT_STATE_MS);
-            mCameraListener.waitForState(BlockingStateListener.STATE_IDLE,
-                    TIMEOUT_IDLE_MS);
+            BlockingSessionListener sessionListener = new BlockingSessionListener();
+            mCamera.createCaptureSession(outputSurfaces, sessionListener, mCameraHandler);
+            mSession = sessionListener.waitAndGetSession(TIMEOUT_IDLE_MS);
 
             // Add a listener that just recycles buffers; they aren't saved anywhere.
             ImageReader.OnImageAvailableListener readerListener =
@@ -755,7 +757,7 @@ public class ItsService extends Service implements SensorEventListener {
                     req.addTarget(mCaptureReaders[0].getSurface());
 
                     mIssuedRequest3A = true;
-                    mCamera.capture(req.build(), mCaptureResultListener, mResultHandler);
+                    mSession.capture(req.build(), mCaptureResultListener, mResultHandler);
                 } else {
                     Log.i(TAG, "3A converged");
                     break;
@@ -872,11 +874,9 @@ public class ItsService extends Service implements SensorEventListener {
                 for (int i = 0; i < numSurfaces; i++) {
                     outputSurfaces.add(mCaptureReaders[i].getSurface());
                 }
-                mCamera.configureOutputs(outputSurfaces);
-                mCameraListener.waitForState(BlockingStateListener.STATE_BUSY,
-                        TIMEOUT_STATE_MS);
-                mCameraListener.waitForState(BlockingStateListener.STATE_IDLE,
-                        TIMEOUT_IDLE_MS);
+                BlockingSessionListener sessionListener = new BlockingSessionListener();
+                mCamera.createCaptureSession(outputSurfaces, sessionListener, mCameraHandler);
+                mSession = sessionListener.waitAndGetSession(TIMEOUT_IDLE_MS);
 
                 for (int i = 0; i < numSurfaces; i++) {
                     ImageReader.OnImageAvailableListener readerListener =
@@ -907,7 +907,7 @@ public class ItsService extends Service implements SensorEventListener {
                 for (int j = 0; j < numSurfaces; j++) {
                     req.addTarget(mCaptureReaders[j].getSurface());
                 }
-                mCamera.capture(req.build(), mCaptureResultListener, mResultHandler);
+                mSession.capture(req.build(), mCaptureResultListener, mResultHandler);
             }
 
             // Make sure all callbacks have been hit (wait until captures are done).
@@ -1014,11 +1014,11 @@ public class ItsService extends Service implements SensorEventListener {
 
     private final CaptureResultListener mCaptureResultListener = new CaptureResultListener() {
         @Override
-        public void onCaptureStarted(CameraDevice camera, CaptureRequest request, long timestamp) {
+        public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request, long timestamp) {
         }
 
         @Override
-        public void onCaptureCompleted(CameraDevice camera, CaptureRequest request,
+        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
                 TotalCaptureResult result) {
             try {
                 // Currently result has all 0 values.
@@ -1140,7 +1140,7 @@ public class ItsService extends Service implements SensorEventListener {
         }
 
         @Override
-        public void onCaptureFailed(CameraDevice camera, CaptureRequest request,
+        public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request,
                 CaptureFailure failure) {
             mCaptureCallbackLatch.countDown();
             Log.e(TAG, "Script error: capture failed");
