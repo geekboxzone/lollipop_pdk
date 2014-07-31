@@ -130,27 +130,6 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
         }
 
         @Override
-        @Deprecated
-        public void onIdle(CameraDevice camera) {
-            TLog.i("Camera %s now idle", camera.getId());
-            mClientListener.onIdle(camera);
-        }
-
-        @Override
-        @Deprecated
-        public void onActive(CameraDevice camera) {
-            TLog.i("Camera %s now active", camera.getId());
-            mClientListener.onActive(camera);
-        }
-
-        @Override
-        @Deprecated
-        public void onBusy(CameraDevice camera) {
-            TLog.i("Camera %s now busy", camera.getId());
-            mClientListener.onBusy(camera);
-        }
-
-        @Override
         public void onClosed(CameraDevice camera) {
             mOpenCameras.remove(camera);
             TLog.i("Camera %s now closed", camera.getId());
@@ -174,13 +153,6 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
             mOpenCameras.add(camera);
             TLog.i("Camera %s now open", camera.getId());
             mClientListener.onOpened(camera);
-        }
-
-        @Override
-        @Deprecated
-        public void onUnconfigured(CameraDevice camera) {
-            TLog.i("Camera %s now unconfigured", camera.getId());
-            mClientListener.onUnconfigured(camera);
         }
 
     }

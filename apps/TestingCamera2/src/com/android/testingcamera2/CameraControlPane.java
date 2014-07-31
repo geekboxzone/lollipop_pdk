@@ -520,24 +520,6 @@ public class CameraControlPane extends ControlPane {
 
     private final CameraDevice.StateListener mCameraListener = new CameraDevice.StateListener() {
         @Override
-        @Deprecated
-        public void onIdle(CameraDevice camera) {
-            //setCameraState(CameraState.IDLE);
-        }
-
-        @Override
-        @Deprecated
-        public void onActive(CameraDevice camera) {
-            //setCameraState(CameraState.ACTIVE);
-        }
-
-        @Override
-        @Deprecated
-        public void onBusy(CameraDevice camera) {
-            //setCameraState(CameraState.BUSY);
-        }
-
-        @Override
         public void onClosed(CameraDevice camera) {
             // Don't change state on close, tracked by callers of close()
         }
@@ -557,13 +539,6 @@ public class CameraControlPane extends ControlPane {
             mCurrentCamera = camera;
             setCameraState(CameraState.OPENED);
         }
-
-        @Override
-        @Deprecated
-        public void onUnconfigured(CameraDevice camera) {
-            //setCameraState(CameraState.UNCONFIGURED);
-        }
-
     };
 
     private void switchToCamera(String newCameraId) {

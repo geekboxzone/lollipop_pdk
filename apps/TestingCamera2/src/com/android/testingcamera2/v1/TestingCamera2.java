@@ -22,6 +22,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
@@ -387,13 +388,14 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
             new CameraOps.CaptureResultListener() {
 
                 @Override
-                public void onCaptureStarted(CameraDevice camera, CaptureRequest request,
+                public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
                         long timestamp) {
                 }
 
                 @Override
                 public void onCaptureCompleted(
-                        CameraDevice camera, CaptureRequest request, TotalCaptureResult result) {
+                        CameraCaptureSession session, CaptureRequest request,
+                        TotalCaptureResult result) {
                     Log.i(TAG, "Capture result is available");
                     Integer reqCtrlMode;
                     Integer resCtrlMode;
@@ -436,7 +438,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                 }
 
                 @Override
-                public void onCaptureFailed(CameraDevice camera, CaptureRequest request,
+                public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request,
                         CaptureFailure failure) {
                     Log.e(TAG, "Capture failed");
                 }
