@@ -829,7 +829,7 @@ public class ItsService extends Service implements SensorEventListener {
                         widths[i] = surfaceObj.optInt("width");
                         heights[i] = surfaceObj.optInt("height");
                         if (widths[i] <= 0) {
-                            if (sizes.length == 0) {
+                            if (sizes == null || sizes.length == 0) {
                                 throw new ItsException(String.format(
                                         "Zero stream configs available for requested format: %s",
                                         sformat));
