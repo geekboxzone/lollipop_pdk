@@ -15,6 +15,7 @@
 import its.image
 import its.device
 import its.objects
+import its.target
 import pylab
 import os.path
 import matplotlib
@@ -26,12 +27,16 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # TODO: Don't use hardcoded exposure values; query the legal range.
-    sensitivities = range(350, 400, 7)
-    reqs = [its.objects.manual_capture_request(s,10*1000*1000)
-            for s in sensitivities]
+    NUM_STEPS = 3
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        sens_range = props['android.sensor.info.sensitivityRange']
+        sens_step = (sens_range[1] - sens_range[0]) / NUM_STEPS
+        sensitivities = range(sens_range[0], sens_range[1], sens_step)
+        reqs = [its.objects.manual_capture_request(s,10*1000*1000)
+                for s in sensitivities]
+
         caps = cam.do_capture(reqs)
         for i,cap in enumerate(caps):
             s_req = sensitivities[i]

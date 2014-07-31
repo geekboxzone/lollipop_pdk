@@ -32,19 +32,21 @@ def main():
     # one.
     VAR_THRESH = 1.01
 
+    NUM_STEPS = 5
+
     with its.device.ItsSession() as cam:
 
         props = cam.get_camera_properties()
 
         # Expose for the scene with min sensitivity
         sens_min, sens_max = props['android.sensor.info.sensitivityRange']
+        sens_step = (sens_max - sens_min) / NUM_STEPS
         s_ae,e_ae,_,_,_  = cam.do_3a()
         s_e_prod = s_ae * e_ae
 
         reqs = []
         settings = []
-        # TODO: Don't hardcode the sens step size.
-        for s in range(sens_min, sens_max, 1000):
+        for s in range(sens_min, sens_max, sens_step):
             e = int(s_e_prod / float(s))
             req = its.objects.manual_capture_request(s, e)
             reqs.append(req)
