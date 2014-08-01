@@ -24,6 +24,7 @@ import math
 import unittest
 import cStringIO
 import scipy.stats
+import copy
 
 DEFAULT_YUV_TO_RGB_CCM = numpy.matrix([
                                 [1.000,  0.000,  1.402],
@@ -60,6 +61,9 @@ def convert_capture_to_rgb_image(cap,
     """
     w = cap["width"]
     h = cap["height"]
+    if cap["format"] == "raw10":
+        assert(props is not None)
+        cap = unpack_raw10_capture(cap, props)
     if cap["format"] == "yuv":
         y = cap["data"][0:w*h]
         u = cap["data"][w*h:w*h*5/4]
@@ -68,10 +72,66 @@ def convert_capture_to_rgb_image(cap,
     elif cap["format"] == "jpeg":
         return decompress_jpeg_to_rgb_image(cap["data"])
     elif cap["format"] == "raw":
+        assert(props is not None)
         r,gr,gb,b = convert_capture_to_planes(cap, props)
         return convert_raw_to_rgb_image(r,gr,gb,b, props, cap["metadata"])
     else:
         raise its.error.Error('Invalid format %s' % (cap["format"]))
+
+def unpack_raw10_capture(cap, props):
+    """Unpack a raw-10 capture to a raw-16 capture.
+
+    Args:
+        cap: A raw-10 capture object.
+        props: Camera propertis object.
+
+    Returns:
+        New capture object with raw-16 data.
+    """
+    # Data is packed as 4x10b pixels in 5 bytes, with the first 4 bytes holding
+    # the MSPs of the pixels, and the 5th byte holding 4x2b LSBs.
+    w,h = cap["width"], cap["height"]
+    bs = cap["byteStride"]
+    if w % 4 != 0 or w*5/4 > bs:
+        raise its.error.Error('Invalid raw-10 buffer width')
+    # Remove the row padding.
+    img10 = cap["data"][0:h*bs].reshape(h,bs)[::, 0:w*5/4]
+    img16 = unpack_raw10_image(img10, w, h, bs)
+    # Package up into a new capture object.
+    cap = copy.deep_copy(cap)
+    cap["data"] = img16
+    cap["format"] = "raw"
+    return cap
+
+def unpack_raw10_image(img):
+    """Unpack a raw-10 image to a raw-16 image.
+
+    Output image will have the 10 LSBs filled in each 16b word, and the 6 MSBs
+    will be set to zero.
+
+    Args:
+        img: A raw-10 image, as a uint8 numpy array.
+
+    Returns:
+        Image as a uint16 numpy array, with all row padding stripped.
+    """
+    if img.shape[1] % 5 != 0:
+        raise its.error.Error('Invalid raw-10 buffer width')
+    w = img.shape[1]*4/5
+    h = img.shape[0]
+    # Cut out the 4x8b MSBs and shift to bits [10:2] in 16b words.
+    msbs = numpy.delete(img, numpy.s_[4::5], 1)
+    msbs = msbs.astype(numpy.uint16)
+    msbs = numpy.left_shift(msbs, 2)
+    msbs = msbs.reshape(h,w)
+    # Cut out the 4x2b LSBs and put each in bits [2:0] of their own 8b words.
+    lsbs = img[::, 4::5].reshape(h,w/4)
+    lsbs = numpy.right_shift(
+            numpy.packbits(numpy.unpackbits(lsbs).reshape(h,w/4,4,2),3), 6)
+    lsbs = lsbs.reshape(h,w)
+    # Fuse the MSBs and LSBs back together
+    img16 = numpy.bitwise_or(msbs, lsbs).reshape(h,w)
+    return img16
 
 def convert_capture_to_planes(cap, props=None):
     """Convert a captured image object to separate image planes.
@@ -82,7 +142,7 @@ def convert_capture_to_planes(cap, props=None):
         Returns Y,U,V planes, where the Y plane is full-res and the U,V planes
         are each 1/2 x 1/2 of the full res.
 
-    For Bayer captures ("raw"):
+    For Bayer captures ("raw" or "raw10"):
         Returns planes in the order R,Gr,Gb,B, regardless of the Bayer pattern
         layout. Each plane is 1/2 x 1/2 of the full res.
 
@@ -100,6 +160,9 @@ def convert_capture_to_planes(cap, props=None):
     """
     w = cap["width"]
     h = cap["height"]
+    if cap["format"] == "raw10":
+        assert(props is not None)
+        cap = unpack_raw10_capture(cap, props)
     if cap["format"] == "yuv":
         y = cap["data"][0:w*h]
         u = cap["data"][w*h:w*h*5/4]
@@ -113,6 +176,7 @@ def convert_capture_to_planes(cap, props=None):
                 rgb[1::3].reshape(h,w,1),
                 rgb[2::3].reshape(h,w,1))
     elif cap["format"] == "raw":
+        assert(props is not None)
         white_level = float(props['android.sensor.info.whiteLevel'])
         img = numpy.ndarray(shape=(h*w,), dtype='<u2',
                             buffer=cap["data"][0:w*h*2])

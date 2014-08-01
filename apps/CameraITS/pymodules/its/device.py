@@ -289,13 +289,15 @@ class ItsSession(object):
 
         The out_surfaces field can specify the width(s), height(s), and
         format(s) of the captured image. The formats may be "yuv", "jpeg",
-        "dng",or "raw". The default is a YUV420 frame ("yuv") corresponding to
-        a full sensor frame. Note that one or more surfaces can be specified,
-        allowing a capture to request images back in multiple formats (e.g.)
-        raw+yuv, raw+jpeg, yuv+jpeg, raw+yuv+jpeg. If the size is omitted for
-        a surface, the default is the largest resolution available for the
-        format of that surface. At most one output surface can be specified for
-        a given format, and raw+dng is not supported as a combination.
+        "dng", "raw", or "raw10". The default is a YUV420 frame ("yuv")
+        corresponding to a full sensor frame.
+        
+        Note that one or more surfaces can be specified, allowing a capture to
+        request images back in multiple formats (e.g.) raw+yuv, raw+jpeg,
+        yuv+jpeg, raw+yuv+jpeg. If the size is omitted for a surface, the
+        default is the largest resolution available for the format of that
+        surface. At most one output surface can be specified for a given format,
+        and raw+dng, raw10+dng, and raw+raw10 are not supported as combinations.
 
         Example of a single capture request:
 
@@ -375,7 +377,7 @@ class ItsSession(object):
             * data: the image data as a numpy array of bytes.
             * width: the width of the captured image.
             * height: the height of the captured image.
-            * format: the format of the image, in ["yuv", "jpeg". "raw", "dng"].
+            * format: image the format, in ["yuv","jpeg","raw","raw10","dng"].
             * metadata: the capture result object (Python dictionaty).
         """
         cmd = {}
@@ -398,8 +400,10 @@ class ItsSession(object):
         nsurf = 1 if out_surfaces is None else len(cmd["outputSurfaces"])
         if len(formats) > len(set(formats)):
             raise its.error.Error('Duplicate format requested')
-        if "dng" in formats and "raw" in formats:
-            raise its.error.Error('RAW+DNG not supported')
+        if "dng" in formats and "raw" in formats or \
+                "dng" in formats and "raw10" in formats or \
+                "raw" in formats and "raw10" in formats:
+            raise its.error.Error('Different raw formats not supported')
         print "Capturing %d frame%s with %d format%s [%s]" % (
                   ncap, "s" if ncap>1 else "", nsurf, "s" if nsurf>1 else "",
                   ",".join(formats))
@@ -410,17 +414,23 @@ class ItsSession(object):
         # the burst, however indifidual images of different formats ca come
         # out in any order for that capture.
         nbufs = 0
-        bufs = {"yuv":[], "raw":[], "dng":[], "jpeg":[]}
+        bufs = {"yuv":[], "raw":[], "raw10":[], "dng":[], "jpeg":[]}
         mds = []
         widths = None
         heights = None
+        byte_strides = []
         while nbufs < ncap*nsurf or len(mds) < ncap:
             jsonObj,buf = self.__read_response_from_socket()
-            if jsonObj['tag'] in ['jpegImage','yuvImage','rawImage','dngImage']\
-                    and buf is not None:
+            if jsonObj['tag'] in ['jpegImage', 'yuvImage', 'rawImage', \
+                    'raw10Image', 'dngImage'] and buf is not None:
                 fmt = jsonObj['tag'][:-5]
                 bufs[fmt].append(buf)
                 nbufs += 1
+                if jsonObj['tag'] == 'raw10Image':
+                    if not (jsonObj.has_key('objValue') and \
+                            jsonObj['objValue'].has_key('byteStride')):
+                        raise its.error.Error('Invalid raw-10 buffer')
+                    byte_strides.append(jsonObj['objValue']['byteStride'])
             elif jsonObj['tag'] == 'captureResults':
                 mds.append(jsonObj['objValue']['captureResult'])
                 outputs = jsonObj['objValue']['outputs']
@@ -437,6 +447,8 @@ class ItsSession(object):
                 obj["data"] = bufs[fmt][i]
                 obj["width"] = widths[j]
                 obj["height"] = heights[j]
+                if len(byte_strides) > 0:
+                    obj["byteStride"] = byte_strides[j]
                 obj["format"] = fmt
                 obj["metadata"] = mds[i]
                 objs.append(obj)

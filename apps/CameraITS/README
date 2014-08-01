@@ -151,8 +151,8 @@ The Python capture request object(s) can contain key/value entries corresponding
 to any of the Java CaptureRequest object fields.
 
 The output surface's width, height, and format can also be specified. Currently
-supported formats are "jpg", "raw", "dng",  and "yuv", where "yuv" is YUV420
-fully planar. The default output surface is a full sensor YUV420 frame.
+supported formats are "jpg", "raw", "raw10", "dng", and "yuv", where "yuv" is
+YUV420 fully planar. The default output surface is a full sensor YUV420 frame.
 
 The metadata that is returned along with the captured images is also in JSON
 format, serialized from the CaptureRequest and CaptureResult objects that were
