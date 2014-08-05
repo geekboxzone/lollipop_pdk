@@ -53,8 +53,6 @@ def main():
     check('props["android.scaler.availableMinFrameDurations"] is not None')
     check('md["android.sensor.frameDuration"] > ' \
           'md["android.sensor.rollingShutterSkew"] > 0')
-    check('all([a["duration"] > md["android.sensor.rollingShutterSkew"] > 0 ' \
-               'for a in props["android.scaler.availableMinFrameDurations"]])')
 
     # Test: timestampSource must be a valid value.
     check('props.has_key("android.sensor.info.timestampSource")')
