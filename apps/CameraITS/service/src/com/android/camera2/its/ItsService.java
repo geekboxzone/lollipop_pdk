@@ -125,14 +125,19 @@ public class ItsService extends Service implements SensorEventListener {
     private HandlerThread mResultThread = null;
     private Handler mResultHandler = null;
 
+    private volatile boolean mThreadExitFlag = false;
+
     private volatile ServerSocket mSocket = null;
     private volatile SocketRunnable mSocketRunnableObj = null;
     private volatile Thread mSocketThread = null;
-    private volatile Thread mSocketWriteRunnable = null;
-    private volatile boolean mSocketThreadExitFlag = false;
     private volatile BlockingQueue<ByteBuffer> mSocketWriteQueue =
             new LinkedBlockingDeque<ByteBuffer>();
     private final Object mSocketWriteLock = new Object();
+
+    private volatile SerializerRunnable mSerializerRunnableObj = null;
+    private volatile Thread mSerializerThread = null;
+    private volatile BlockingQueue<Object[]> mSerializerQueue =
+            new LinkedBlockingDeque<Object[]>();
 
     private AtomicInteger mCountRawOrDng = new AtomicInteger();
     private AtomicInteger mCountRaw10 = new AtomicInteger();
@@ -246,6 +251,11 @@ public class ItsService extends Service implements SensorEventListener {
                 mSaveHandlers[i] = new Handler(mSaveThreads[i].getLooper());
             }
 
+            // Create a thread to handle object serialization.
+            mSerializerRunnableObj = new SerializerRunnable();
+            mSerializerThread = new Thread(mSerializerRunnableObj);
+            mSerializerThread.start();
+
             // Create a thread to receive capture results and process them.
             mResultThread = new HandlerThread("ResultThread");
             mResultThread.start();
@@ -264,7 +274,7 @@ public class ItsService extends Service implements SensorEventListener {
     @Override
     public void onDestroy() {
         try {
-            mSocketThreadExitFlag = true;
+            mThreadExitFlag = true;
             for (int i = 0; i < MAX_NUM_OUTPUT_SURFACES; i++) {
                 if (mSaveThreads[i] != null) {
                     mSaveThreads[i].quit();
@@ -282,6 +292,58 @@ public class ItsService extends Service implements SensorEventListener {
             }
         } catch (ItsException e) {
             Log.e(TAG, "Script failed: ", e);
+        }
+    }
+
+    class SerializerRunnable implements Runnable {
+        // Use a separate thread to perform JSON serialization (since this can be slow due to
+        // the reflection).
+        public void run() {
+            Log.i(TAG, "Serializer thread starting");
+            while (true) {
+                try {
+                    Object objs[] = mSerializerQueue.take();
+                    JSONObject jsonObj = new JSONObject();
+                    String tag = null;
+                    for (int i = 0; i < objs.length; i++) {
+                        Object obj = objs[i];
+                        if (obj instanceof String) {
+                            if (tag != null) {
+                                throw new ItsException("Multiple tags for socket response");
+                            }
+                            tag = (String)obj;
+                        } else if (obj instanceof CameraCharacteristics) {
+                            jsonObj.put("cameraProperties", ItsSerializer.serialize(
+                                    (CameraCharacteristics)obj));
+                        } else if (obj instanceof CaptureRequest) {
+                            jsonObj.put("captureRequest", ItsSerializer.serialize(
+                                    (CaptureRequest)obj));
+                        } else if (obj instanceof CaptureResult) {
+                            jsonObj.put("captureResult", ItsSerializer.serialize(
+                                    (CaptureResult)obj));
+                        } else if (obj instanceof JSONArray) {
+                            jsonObj.put("outputs", (JSONArray)obj);
+                        } else {
+                            throw new ItsException("Invalid object received for serialiation");
+                        }
+                    }
+                    if (tag == null) {
+                        throw new ItsException("No tag provided for socket response");
+                    }
+                    mSocketRunnableObj.sendResponse(tag, null, jsonObj, null);
+                    Log.i(TAG, String.format("Serialized %s", tag));
+                } catch (org.json.JSONException e) {
+                    Log.e(TAG, "Error serializing object", e);
+                    break;
+                } catch (ItsException e) {
+                    Log.e(TAG, "Error serializing object", e);
+                    break;
+                } catch (java.lang.InterruptedException e) {
+                    Log.e(TAG, "Error serializing object (interrupted)", e);
+                    break;
+                }
+            }
+            Log.i(TAG, "Serializer thread terminated");
         }
     }
 
@@ -356,7 +418,7 @@ public class ItsService extends Service implements SensorEventListener {
             }
             mSocketThread = new Thread(new SocketWriteRunnable(mOpenSocket));
             mSocketThread.start();
-            while (!mSocketThreadExitFlag) {
+            while (!mThreadExitFlag) {
                 try {
                     BufferedReader input = new BufferedReader(
                             new InputStreamReader(mOpenSocket.getInputStream()));
@@ -511,11 +573,12 @@ public class ItsService extends Service implements SensorEventListener {
         public void sendResponse(CameraCharacteristics props)
                 throws ItsException {
             try {
-                JSONObject jsonObj = new JSONObject();
-                jsonObj.put("cameraProperties", ItsSerializer.serialize(props));
-                sendResponse("cameraProperties", null, jsonObj, null);
-            } catch (org.json.JSONException e) {
-                throw new ItsException("JSON error: ", e);
+                Object objs[] = new Object[2];
+                objs[0] = "cameraProperties";
+                objs[1] = props;
+                mSerializerQueue.put(objs);
+            } catch (InterruptedException e) {
+                throw new ItsException("Interrupted: ", e);
             }
         }
 
@@ -525,10 +588,6 @@ public class ItsService extends Service implements SensorEventListener {
                                               ImageReader[] readers)
                 throws ItsException {
             try {
-                JSONObject jsonObj = new JSONObject();
-                jsonObj.put("cameraProperties", ItsSerializer.serialize(props));
-                jsonObj.put("captureRequest", ItsSerializer.serialize(request));
-                jsonObj.put("captureResult", ItsSerializer.serialize(result));
                 JSONArray jsonSurfaces = new JSONArray();
                 for (int i = 0; i < readers.length; i++) {
                     JSONObject jsonSurface = new JSONObject();
@@ -548,10 +607,18 @@ public class ItsService extends Service implements SensorEventListener {
                     }
                     jsonSurfaces.put(jsonSurface);
                 }
-                jsonObj.put("outputs", jsonSurfaces);
-                sendResponse("captureResults", null, jsonObj, null);
+
+                Object objs[] = new Object[5];
+                objs[0] = "captureResults";
+                objs[1] = props;
+                objs[2] = request;
+                objs[3] = result;
+                objs[4] = jsonSurfaces;
+                mSerializerQueue.put(objs);
             } catch (org.json.JSONException e) {
                 throw new ItsException("JSON error: ", e);
+            } catch (InterruptedException e) {
+                throw new ItsException("Interrupted: ", e);
             }
         }
     }
@@ -975,7 +1042,7 @@ public class ItsService extends Service implements SensorEventListener {
                         mSocketRunnableObj.sendResponseCaptureBuffer("rawImage", buf, 0);
                     } else {
                         // Wait until the corresponding capture result is ready.
-                        while (! mSocketThreadExitFlag) {
+                        while (! mThreadExitFlag) {
                             if (mCaptureResults[count] != null) {
                                 Log.i(TAG, "Writing capture as DNG");
                                 DngCreator dngCreator = new DngCreator(
@@ -997,13 +1064,13 @@ public class ItsService extends Service implements SensorEventListener {
                 mCaptureCallbackLatch.countDown();
             } catch (IOException e) {
                 Log.e(TAG, "Script error: ", e);
-                mSocketThreadExitFlag = true;
+                mThreadExitFlag = true;
             } catch (InterruptedException e) {
                 Log.e(TAG, "Script error: ", e);
-                mSocketThreadExitFlag = true;
+                mThreadExitFlag = true;
             } catch (ItsException e) {
                 Log.e(TAG, "Script error: ", e);
-                mSocketThreadExitFlag = true;
+                mThreadExitFlag = true;
             }
         }
     };
@@ -1132,10 +1199,10 @@ public class ItsService extends Service implements SensorEventListener {
                 }
             } catch (ItsException e) {
                 Log.e(TAG, "Script error: ", e);
-                mSocketThreadExitFlag = true;
+                mThreadExitFlag = true;
             } catch (Exception e) {
                 Log.e(TAG, "Script error: ", e);
-                mSocketThreadExitFlag = true;
+                mThreadExitFlag = true;
             }
         }
 
