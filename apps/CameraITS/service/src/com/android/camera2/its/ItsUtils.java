@@ -140,7 +140,8 @@ public class ItsUtils {
             data = new byte[buffer.capacity()];
             buffer.get(data);
             return data;
-        } else if (format == ImageFormat.YUV_420_888 || format == ImageFormat.RAW_SENSOR) {
+        } else if (format == ImageFormat.YUV_420_888 || format == ImageFormat.RAW_SENSOR
+                || format == ImageFormat.RAW10) {
             Log.i(TAG, String.format("Reading image, format %d", format));
             int offset = 0;
             data = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
@@ -163,7 +164,7 @@ public class ItsUtils {
                         offset += length;
                     } else {
                         // Generic case: should work for any pixelStride but slower.
-                        // Use use intermediate buffer to avoid read byte-by-byte from
+                        // Use intermediate buffer to avoid read byte-by-byte from
                         // DirectByteBuffer, which is very bad for performance.
                         // Also need avoid access out of bound by only reading the available
                         // bytes in the bytebuffer.
@@ -194,6 +195,7 @@ public class ItsUtils {
             case ImageFormat.YV12:
                 return 3 == planes.length;
             case ImageFormat.RAW_SENSOR:
+            case ImageFormat.RAW10:
             case ImageFormat.JPEG:
                 return 1 == planes.length;
             default:

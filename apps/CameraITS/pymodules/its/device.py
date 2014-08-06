@@ -418,7 +418,6 @@ class ItsSession(object):
         mds = []
         widths = None
         heights = None
-        byte_strides = []
         while nbufs < ncap*nsurf or len(mds) < ncap:
             jsonObj,buf = self.__read_response_from_socket()
             if jsonObj['tag'] in ['jpegImage', 'yuvImage', 'rawImage', \
@@ -426,11 +425,6 @@ class ItsSession(object):
                 fmt = jsonObj['tag'][:-5]
                 bufs[fmt].append(buf)
                 nbufs += 1
-                if jsonObj['tag'] == 'raw10Image':
-                    if not (jsonObj.has_key('objValue') and \
-                            jsonObj['objValue'].has_key('byteStride')):
-                        raise its.error.Error('Invalid raw-10 buffer')
-                    byte_strides.append(jsonObj['objValue']['byteStride'])
             elif jsonObj['tag'] == 'captureResults':
                 mds.append(jsonObj['objValue']['captureResult'])
                 outputs = jsonObj['objValue']['outputs']
@@ -447,8 +441,6 @@ class ItsSession(object):
                 obj["data"] = bufs[fmt][i]
                 obj["width"] = widths[j]
                 obj["height"] = heights[j]
-                if len(byte_strides) > 0:
-                    obj["byteStride"] = byte_strides[j]
                 obj["format"] = fmt
                 obj["metadata"] = mds[i]
                 objs.append(obj)

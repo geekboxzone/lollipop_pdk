@@ -91,15 +91,10 @@ def unpack_raw10_capture(cap, props):
     # Data is packed as 4x10b pixels in 5 bytes, with the first 4 bytes holding
     # the MSPs of the pixels, and the 5th byte holding 4x2b LSBs.
     w,h = cap["width"], cap["height"]
-    bs = cap["byteStride"]
-    if w % 4 != 0 or w*5/4 > bs:
+    if w % 4 != 0:
         raise its.error.Error('Invalid raw-10 buffer width')
-    # Remove the row padding.
-    img10 = cap["data"][0:h*bs].reshape(h,bs)[::, 0:w*5/4]
-    img16 = unpack_raw10_image(img10, w, h, bs)
-    # Package up into a new capture object.
     cap = copy.deep_copy(cap)
-    cap["data"] = img16
+    cap["data"] = unpack_raw10_image(cap["data"].reshape(h,w*5/4))
     cap["format"] = "raw"
     return cap
 

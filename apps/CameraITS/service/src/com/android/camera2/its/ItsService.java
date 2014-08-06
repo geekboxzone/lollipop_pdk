@@ -526,18 +526,9 @@ public class ItsService extends Service implements SensorEventListener {
             sendResponse(tag, null, obj, null);
         }
 
-        public void sendResponseCaptureBuffer(String tag, ByteBuffer bbuf, int byteStride)
+        public void sendResponseCaptureBuffer(String tag, ByteBuffer bbuf)
                 throws ItsException {
-            try {
-                JSONObject obj = null;
-                if (byteStride > 0) {
-                    obj = new JSONObject();
-                    obj.put("byteStride", byteStride);
-                }
-                sendResponse(tag, null, obj, bbuf);
-            } catch (org.json.JSONException e) {
-                throw new ItsException("JSON error: ", e);
-            }
+            sendResponse(tag, null, null, bbuf);
         }
 
         public void sendResponse(LinkedList<MySensorEvent> events)
@@ -1019,27 +1010,26 @@ public class ItsService extends Service implements SensorEventListener {
                     Log.i(TAG, "Received JPEG capture");
                     ByteBuffer buf = capture.getPlanes()[0].getBuffer();
                     int count = mCountJpg.getAndIncrement();
-                    mSocketRunnableObj.sendResponseCaptureBuffer("jpegImage", buf, 0);
+                    mSocketRunnableObj.sendResponseCaptureBuffer("jpegImage", buf);
                 } else if (format == ImageFormat.YUV_420_888) {
                     Log.i(TAG, "Received YUV capture");
                     byte[] img = ItsUtils.getDataFromImage(capture);
                     ByteBuffer buf = ByteBuffer.wrap(img);
                     int count = mCountYuv.getAndIncrement();
-                    mSocketRunnableObj.sendResponseCaptureBuffer("yuvImage", buf, 0);
+                    mSocketRunnableObj.sendResponseCaptureBuffer("yuvImage", buf);
                 } else if (format == ImageFormat.RAW10) {
                     Log.i(TAG, "Received RAW10 capture");
-                    int byteStride = capture.getPlanes()[0].getRowStride();
                     byte[] img = ItsUtils.getDataFromImage(capture);
                     ByteBuffer buf = ByteBuffer.wrap(img);
                     int count = mCountRaw10.getAndIncrement();
-                    mSocketRunnableObj.sendResponseCaptureBuffer("raw10Image", buf, byteStride);
+                    mSocketRunnableObj.sendResponseCaptureBuffer("raw10Image", buf);
                 } else if (format == ImageFormat.RAW_SENSOR) {
                     Log.i(TAG, "Received RAW16 capture");
                     int count = mCountRawOrDng.getAndIncrement();
                     if (! mCaptureRawIsDng) {
                         byte[] img = ItsUtils.getDataFromImage(capture);
                         ByteBuffer buf = ByteBuffer.wrap(img);
-                        mSocketRunnableObj.sendResponseCaptureBuffer("rawImage", buf, 0);
+                        mSocketRunnableObj.sendResponseCaptureBuffer("rawImage", buf);
                     } else {
                         // Wait until the corresponding capture result is ready.
                         while (! mThreadExitFlag) {
@@ -1051,7 +1041,7 @@ public class ItsService extends Service implements SensorEventListener {
                                 dngCreator.writeImage(dngStream, capture);
                                 byte[] dngArray = dngStream.toByteArray();
                                 ByteBuffer dngBuf = ByteBuffer.wrap(dngArray);
-                                mSocketRunnableObj.sendResponseCaptureBuffer("dngImage", dngBuf, 0);
+                                mSocketRunnableObj.sendResponseCaptureBuffer("dngImage", dngBuf);
                                 break;
                             } else {
                                 Thread.sleep(1);
