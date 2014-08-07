@@ -93,7 +93,7 @@ class ItsSession(object):
 
     def _wait_until_socket_ready(self):
         proc = subprocess.Popen(
-                self.ADB.split() + ["logcat", "-s", "'ItsService:v'"],
+                self.ADB.split() + ["logcat"],
                 stdout=subprocess.PIPE)
         logcat = proc.stdout
         while True:

@@ -333,7 +333,7 @@ public class ItsSerializer {
             } else if (keyType == Float.class) {
                 // The JSON serializer doesn't handle floating point NaN or Inf.
                 if (((Float)keyValue).isInfinite() || ((Float)keyValue).isNaN()) {
-                    Log.w(TAG, "Inf/NaN floating point value serialized: " + keyName);
+                    Logt.w(TAG, "Inf/NaN floating point value serialized: " + keyName);
                     return null;
                 }
                 return new MetadataEntry(keyName, keyValue);
@@ -562,7 +562,7 @@ public class ItsSerializer {
                         // value to the jsonObj when it is detected.
                         if (entry != null && entry.key != null && entry.value != null
                                           && entry.value.toString() == null) {
-                            Log.w(TAG, "Error encountered serializing value for key: " + entry.key);
+                            Logt.w(TAG, "Error encountered serializing value for key: " + entry.key);
                         } else if (entry != null) {
                             jsonObj.put(entry.key, entry.value);
                         } else {
@@ -585,7 +585,7 @@ public class ItsSerializer {
     public static CaptureRequest.Builder deserialize(CaptureRequest.Builder mdDefault,
             JSONObject jsonReq) throws ItsException {
         try {
-            Log.i(TAG, "Parsing JSON capture request ...");
+            Logt.i(TAG, "Parsing JSON capture request ...");
 
             // Iterate over the CaptureRequest reflected fields.
             CaptureRequest.Builder md = mdDefault;
@@ -672,7 +672,7 @@ public class ItsSerializer {
                                     }
                                 }
                                 if (val != null) {
-                                    Log.i(TAG, "Set: "+keyName+" -> "+Arrays.toString(val));
+                                    Logt.i(TAG, "Set: "+keyName+" -> "+Arrays.toString(val));
                                     md.set(key, val);
                                     jsonReq.remove(keyName);
                                 }
@@ -744,7 +744,7 @@ public class ItsSerializer {
                                             keyName + ", " + keyType);
                                 }
                                 if (val != null) {
-                                    Log.i(TAG, "Set: " + keyName + " -> " + val);
+                                    Logt.i(TAG, "Set: " + keyName + " -> " + val);
                                     md.set(key ,val);
                                     jsonReq.remove(keyName);
                                 }
@@ -759,7 +759,7 @@ public class ItsSerializer {
                 throw new ItsException("Invalid JSON key(s): " + jsonReq.toString());
             }
 
-            Log.i(TAG, "Parsing JSON capture request completed");
+            Logt.i(TAG, "Parsing JSON capture request completed");
             return md;
         } catch (java.lang.IllegalAccessException e) {
             throw new ItsException("Access error: ", e);

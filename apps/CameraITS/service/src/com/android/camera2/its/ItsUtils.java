@@ -142,7 +142,7 @@ public class ItsUtils {
             return data;
         } else if (format == ImageFormat.YUV_420_888 || format == ImageFormat.RAW_SENSOR
                 || format == ImageFormat.RAW10) {
-            Log.i(TAG, String.format("Reading image, format %d", format));
+            Logt.i(TAG, String.format("Reading image, format %d", format));
             int offset = 0;
             data = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
             byte[] rowData = new byte[planes[0].getRowStride()];
@@ -179,7 +179,7 @@ public class ItsUtils {
                     }
                 }
             }
-            Log.i(TAG, String.format("Done reading image, format %d", format));
+            Logt.i(TAG, String.format("Done reading image, format %d", format));
             return data;
         } else {
             throw new ItsException("Unsupported image format: " + format);

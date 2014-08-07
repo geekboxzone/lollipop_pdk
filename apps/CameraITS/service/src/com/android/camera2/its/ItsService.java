@@ -212,10 +212,10 @@ public class ItsService extends Service implements SensorEventListener {
             int cameraId = 0;
             String args = intent.getDataString();
             if (args != null) {
-                Log.i(TAG, String.format("Received intent args: %s", args));
+                Logt.i(TAG, String.format("Received intent args: %s", args));
                 cameraId = Integer.parseInt(args);
             }
-            Log.i(TAG, String.format("Opening camera %d", cameraId));
+            Logt.i(TAG, String.format("Opening camera %d", cameraId));
 
             mCameraThread = new HandlerThread("ItsCameraThread");
             try {
@@ -266,7 +266,7 @@ public class ItsService extends Service implements SensorEventListener {
             mSocketThread = new Thread(mSocketRunnableObj);
             mSocketThread.start();
         } catch (ItsException e) {
-            Log.e(TAG, "Service failed to start: ", e);
+            Logt.e(TAG, "Service failed to start: ", e);
         }
         return START_STICKY;
     }
@@ -291,7 +291,7 @@ public class ItsService extends Service implements SensorEventListener {
                 throw new ItsException("Failed to close device");
             }
         } catch (ItsException e) {
-            Log.e(TAG, "Script failed: ", e);
+            Logt.e(TAG, "Script failed: ", e);
         }
     }
 
@@ -299,7 +299,7 @@ public class ItsService extends Service implements SensorEventListener {
         // Use a separate thread to perform JSON serialization (since this can be slow due to
         // the reflection).
         public void run() {
-            Log.i(TAG, "Serializer thread starting");
+            Logt.i(TAG, "Serializer thread starting");
             while (true) {
                 try {
                     Object objs[] = mSerializerQueue.take();
@@ -331,19 +331,19 @@ public class ItsService extends Service implements SensorEventListener {
                         throw new ItsException("No tag provided for socket response");
                     }
                     mSocketRunnableObj.sendResponse(tag, null, jsonObj, null);
-                    Log.i(TAG, String.format("Serialized %s", tag));
+                    Logt.i(TAG, String.format("Serialized %s", tag));
                 } catch (org.json.JSONException e) {
-                    Log.e(TAG, "Error serializing object", e);
+                    Logt.e(TAG, "Error serializing object", e);
                     break;
                 } catch (ItsException e) {
-                    Log.e(TAG, "Error serializing object", e);
+                    Logt.e(TAG, "Error serializing object", e);
                     break;
                 } catch (java.lang.InterruptedException e) {
-                    Log.e(TAG, "Error serializing object (interrupted)", e);
+                    Logt.e(TAG, "Error serializing object (interrupted)", e);
                     break;
                 }
             }
-            Log.i(TAG, "Serializer thread terminated");
+            Logt.i(TAG, "Serializer thread terminated");
         }
     }
 
@@ -360,7 +360,7 @@ public class ItsService extends Service implements SensorEventListener {
         }
 
         public void run() {
-            Log.i(TAG, "Socket writer thread starting");
+            Logt.i(TAG, "Socket writer thread starting");
             while (true) {
                 try {
                     ByteBuffer b = mSocketWriteQueue.take();
@@ -372,16 +372,16 @@ public class ItsService extends Service implements SensorEventListener {
                         mOpenSocket.getOutputStream().write(barray);
                     }
                     mOpenSocket.getOutputStream().flush();
-                    Log.i(TAG, String.format("Wrote to socket: %d bytes", b.capacity()));
+                    Logt.i(TAG, String.format("Wrote to socket: %d bytes", b.capacity()));
                 } catch (IOException e) {
-                    Log.e(TAG, "Error writing to socket", e);
+                    Logt.e(TAG, "Error writing to socket", e);
                     break;
                 } catch (java.lang.InterruptedException e) {
-                    Log.e(TAG, "Error writing to socket (interrupted)", e);
+                    Logt.e(TAG, "Error writing to socket (interrupted)", e);
                     break;
                 }
             }
-            Log.i(TAG, "Socket writer thread terminated");
+            Logt.i(TAG, "Socket writer thread terminated");
         }
     }
 
@@ -398,22 +398,22 @@ public class ItsService extends Service implements SensorEventListener {
         private SocketWriteRunnable mSocketWriteRunnable = null;
 
         public void run() {
-            Log.i(TAG, "Socket thread starting");
+            Logt.i(TAG, "Socket thread starting");
             try {
                 mSocket = new ServerSocket(SERVERPORT);
             } catch (IOException e) {
-                Log.e(TAG, "Failed to create socket", e);
+                Logt.e(TAG, "Failed to create socket", e);
             }
             try {
-                Log.i(TAG, "Waiting for client to connect to socket");
+                Logt.i(TAG, "Waiting for client to connect to socket");
                 mOpenSocket = mSocket.accept();
                 if (mOpenSocket == null) {
-                    Log.e(TAG, "Socket connection error");
+                    Logt.e(TAG, "Socket connection error");
                     return;
                 }
-                Log.i(TAG, "Socket connected");
+                Logt.i(TAG, "Socket connected");
             } catch (IOException e) {
-                Log.e(TAG, "Socket open error: ", e);
+                Logt.e(TAG, "Socket open error: ", e);
                 return;
             }
             mSocketThread = new Thread(new SocketWriteRunnable(mOpenSocket));
@@ -423,31 +423,31 @@ public class ItsService extends Service implements SensorEventListener {
                     BufferedReader input = new BufferedReader(
                             new InputStreamReader(mOpenSocket.getInputStream()));
                     if (input == null) {
-                        Log.e(TAG, "Failed to get socket input stream");
+                        Logt.e(TAG, "Failed to get socket input stream");
                         break;
                     }
                     String line = input.readLine();
                     if (line == null) {
-                        Log.e(TAG, "Failed to read socket line");
+                        Logt.e(TAG, "Failed to read socket line");
                         break;
                     }
                     processSocketCommand(line);
                 } catch (IOException e) {
-                    Log.e(TAG, "Socket read error: ", e);
+                    Logt.e(TAG, "Socket read error: ", e);
                     break;
                 } catch (ItsException e) {
-                    Log.e(TAG, "Script error: ", e);
+                    Logt.e(TAG, "Script error: ", e);
                     break;
                 }
             }
-            Log.i(TAG, "Socket server loop exited");
+            Logt.i(TAG, "Socket server loop exited");
             try {
                 if (mOpenSocket != null) {
                     mOpenSocket.close();
                     mOpenSocket = null;
                 }
             } catch (java.io.IOException e) {
-                Log.w(TAG, "Exception closing socket");
+                Logt.w(TAG, "Exception closing socket");
             }
             try {
                 if (mSocket != null) {
@@ -455,9 +455,9 @@ public class ItsService extends Service implements SensorEventListener {
                     mSocket = null;
                 }
             } catch (java.io.IOException e) {
-                Log.w(TAG, "Exception closing socket");
+                Logt.w(TAG, "Exception closing socket");
             }
-            Log.i(TAG, "Socket server thread exited");
+            Logt.i(TAG, "Socket server thread exited");
         }
 
         public void processSocketCommand(String cmd)
@@ -481,7 +481,7 @@ public class ItsService extends Service implements SensorEventListener {
                     throw new ItsException("Unknown command: " + cmd);
                 }
             } catch (org.json.JSONException e) {
-                Log.e(TAG, "Invalid command: ", e);
+                Logt.e(TAG, "Invalid command: ", e);
             }
         }
 
@@ -748,7 +748,7 @@ public class ItsService extends Service implements SensorEventListener {
                             CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) == 0) {
                 // Send a dummy result back for the code that is waiting for this message to see
                 // that AF has converged.
-                Log.i(TAG, "Ignoring request for AF on fixed-focus camera");
+                Logt.i(TAG, "Ignoring request for AF on fixed-focus camera");
                 mSocketRunnableObj.sendResponse("afResult", "0.0");
                 doAF = false;
             }
@@ -798,7 +798,7 @@ public class ItsService extends Service implements SensorEventListener {
 
                     // Trigger AE first.
                     if (doAE && !triggeredAE) {
-                        Log.i(TAG, "Triggering AE");
+                        Logt.i(TAG, "Triggering AE");
                         req.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                                 CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
                         triggeredAE = true;
@@ -806,7 +806,7 @@ public class ItsService extends Service implements SensorEventListener {
 
                     // After AE has converged, trigger AF.
                     if (doAF && !triggeredAF && (!doAE || (triggeredAE && mConvergedAE))) {
-                        Log.i(TAG, "Triggering AF");
+                        Logt.i(TAG, "Triggering AF");
                         req.set(CaptureRequest.CONTROL_AF_TRIGGER,
                                 CaptureRequest.CONTROL_AF_TRIGGER_START);
                         triggeredAF = true;
@@ -817,7 +817,7 @@ public class ItsService extends Service implements SensorEventListener {
                     mIssuedRequest3A = true;
                     mSession.capture(req.build(), mCaptureResultListener, mResultHandler);
                 } else {
-                    Log.i(TAG, "3A converged");
+                    Logt.i(TAG, "3A converged");
                     break;
                 }
             }
@@ -841,7 +841,7 @@ public class ItsService extends Service implements SensorEventListener {
             for (int i = 0; i < len; i++) {
                 pattern[i] = patternArray.getLong(i);
             }
-            Log.i(TAG, String.format("Starting vibrator, pattern length %d",len));
+            Logt.i(TAG, String.format("Starting vibrator, pattern length %d",len));
             mVibrator.vibrate(pattern, -1);
             mSocketRunnableObj.sendResponse("vibrationStarted", "");
         } catch (org.json.JSONException e) {
@@ -1007,24 +1007,24 @@ public class ItsService extends Service implements SensorEventListener {
             try {
                 int format = capture.getFormat();
                 if (format == ImageFormat.JPEG) {
-                    Log.i(TAG, "Received JPEG capture");
+                    Logt.i(TAG, "Received JPEG capture");
                     ByteBuffer buf = capture.getPlanes()[0].getBuffer();
                     int count = mCountJpg.getAndIncrement();
                     mSocketRunnableObj.sendResponseCaptureBuffer("jpegImage", buf);
                 } else if (format == ImageFormat.YUV_420_888) {
-                    Log.i(TAG, "Received YUV capture");
+                    Logt.i(TAG, "Received YUV capture");
                     byte[] img = ItsUtils.getDataFromImage(capture);
                     ByteBuffer buf = ByteBuffer.wrap(img);
                     int count = mCountYuv.getAndIncrement();
                     mSocketRunnableObj.sendResponseCaptureBuffer("yuvImage", buf);
                 } else if (format == ImageFormat.RAW10) {
-                    Log.i(TAG, "Received RAW10 capture");
+                    Logt.i(TAG, "Received RAW10 capture");
                     byte[] img = ItsUtils.getDataFromImage(capture);
                     ByteBuffer buf = ByteBuffer.wrap(img);
                     int count = mCountRaw10.getAndIncrement();
                     mSocketRunnableObj.sendResponseCaptureBuffer("raw10Image", buf);
                 } else if (format == ImageFormat.RAW_SENSOR) {
-                    Log.i(TAG, "Received RAW16 capture");
+                    Logt.i(TAG, "Received RAW16 capture");
                     int count = mCountRawOrDng.getAndIncrement();
                     if (! mCaptureRawIsDng) {
                         byte[] img = ItsUtils.getDataFromImage(capture);
@@ -1034,7 +1034,7 @@ public class ItsService extends Service implements SensorEventListener {
                         // Wait until the corresponding capture result is ready.
                         while (! mThreadExitFlag) {
                             if (mCaptureResults[count] != null) {
-                                Log.i(TAG, "Writing capture as DNG");
+                                Logt.i(TAG, "Writing capture as DNG");
                                 DngCreator dngCreator = new DngCreator(
                                         mCameraCharacteristics, mCaptureResults[count]);
                                 ByteArrayOutputStream dngStream = new ByteArrayOutputStream();
@@ -1053,13 +1053,13 @@ public class ItsService extends Service implements SensorEventListener {
                 }
                 mCaptureCallbackLatch.countDown();
             } catch (IOException e) {
-                Log.e(TAG, "Script error: ", e);
+                Logt.e(TAG, "Script error: ", e);
                 mThreadExitFlag = true;
             } catch (InterruptedException e) {
-                Log.e(TAG, "Script error: ", e);
+                Logt.e(TAG, "Script error: ", e);
                 mThreadExitFlag = true;
             } catch (ItsException e) {
-                Log.e(TAG, "Script error: ", e);
+                Logt.e(TAG, "Script error: ", e);
                 mThreadExitFlag = true;
             }
         }
@@ -1120,7 +1120,7 @@ public class ItsService extends Service implements SensorEventListener {
                 logMsg.append(String.format(
                         "foc=%.1f",
                         result.get(CaptureResult.LENS_FOCUS_DISTANCE)));
-                Log.i(TAG, logMsg.toString());
+                Logt.i(TAG, logMsg.toString());
 
                 if (result.get(CaptureResult.CONTROL_AE_STATE) != null) {
                     mConvergedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
@@ -1170,7 +1170,7 @@ public class ItsService extends Service implements SensorEventListener {
                                 r2f(result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM).getElement(2,2))
                                 ));
                     } else {
-                        Log.i(TAG, String.format(
+                        Logt.i(TAG, String.format(
                                 "AWB converged but NULL color correction values, gains:%b, ccm:%b",
                                 result.get(CaptureResult.COLOR_CORRECTION_GAINS) == null,
                                 result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) == null));
@@ -1188,10 +1188,10 @@ public class ItsService extends Service implements SensorEventListener {
                     mCaptureCallbackLatch.countDown();
                 }
             } catch (ItsException e) {
-                Log.e(TAG, "Script error: ", e);
+                Logt.e(TAG, "Script error: ", e);
                 mThreadExitFlag = true;
             } catch (Exception e) {
-                Log.e(TAG, "Script error: ", e);
+                Logt.e(TAG, "Script error: ", e);
                 mThreadExitFlag = true;
             }
         }
@@ -1200,7 +1200,7 @@ public class ItsService extends Service implements SensorEventListener {
         public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request,
                 CaptureFailure failure) {
             mCaptureCallbackLatch.countDown();
-            Log.e(TAG, "Script error: capture failed");
+            Logt.e(TAG, "Script error: capture failed");
         }
     };
 }
