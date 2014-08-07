@@ -1008,7 +1008,8 @@ public class ItsService extends Service implements SensorEventListener {
                 int format = capture.getFormat();
                 if (format == ImageFormat.JPEG) {
                     Logt.i(TAG, "Received JPEG capture");
-                    ByteBuffer buf = capture.getPlanes()[0].getBuffer();
+                    byte[] img = ItsUtils.getDataFromImage(capture);
+                    ByteBuffer buf = ByteBuffer.wrap(img);
                     int count = mCountJpg.getAndIncrement();
                     mSocketRunnableObj.sendResponseCaptureBuffer("jpegImage", buf);
                 } else if (format == ImageFormat.YUV_420_888) {
