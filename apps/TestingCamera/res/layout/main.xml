@@ -353,6 +353,15 @@
                 android:textOff="@string/record_hint_off_label"
                 android:textOn="@string/record_hint_on_label" />
 
+            <ToggleButton
+                android:id="@+id/lock_camera"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColorLink="@android:color/holo_blue_dark"
+                android:textOff="@string/lock_camera_off_label"
+                android:textOn="@string/lock_camera_on_label" />
+
             <View
                 android:id="@+id/horizontal_rule_5"
                 android:layout_width="fill_parent"

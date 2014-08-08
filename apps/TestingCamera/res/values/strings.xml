@@ -33,6 +33,8 @@
     <string name="record_stabilization_off_label">Video Stabilization off</string>
     <string name="record_hint_on_label">Recording Hint on</string>
     <string name="record_hint_off_label">Recording Hint off</string>
+    <string name="lock_camera_on_label">Lock on</string>
+    <string name="lock_camera_off_label">Lock off</string>
     <string name="camcorder_profile_prompt">Camcorder profile</string>
     <string name="video_record_size_prompt">Video Record size</string>
     <string name="video_frame_rate_prompt">Video Frame Rate</string>
