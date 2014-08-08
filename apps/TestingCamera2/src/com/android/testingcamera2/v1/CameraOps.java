@@ -390,6 +390,7 @@ public class CameraOps {
 
             CaptureRequest.Builder captureBuilder =
                     mCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientationHint());
 
             captureBuilder.addTarget(mCaptureReader.getSurface());
 
