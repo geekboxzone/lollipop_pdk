@@ -103,6 +103,7 @@ public class TestingCamera extends Activity
     private CheckBox mRecordHandoffCheckBox;
     private ToggleButton mRecordStabilizationToggle;
     private ToggleButton mRecordHintToggle;
+    private ToggleButton mLockCameraToggle;
     private Spinner mCallbackFormatSpinner;
     private ToggleButton mCallbackToggle;
     private TextView mColorEffectSpinnerLabel;
@@ -265,6 +266,11 @@ public class TestingCamera extends Activity
         mRecordHintToggle = (ToggleButton) findViewById(R.id.record_hint);
         mRecordHintToggle.setOnClickListener(mRecordHintToggleListener);
         mOpenOnlyControls.add(mRecordHintToggle);
+
+        mLockCameraToggle = (ToggleButton) findViewById(R.id.lock_camera);
+        mLockCameraToggle.setOnClickListener(mLockCameraToggleListener);
+        mLockCameraToggle.setChecked(true); // ON by default
+        mOpenOnlyControls.add(mLockCameraToggle);
 
         mCallbackFormatSpinner = (Spinner) findViewById(R.id.callback_format_spinner);
         mCallbackFormatSpinner.setOnItemSelectedListener(mCallbackFormatListener);
@@ -712,6 +718,11 @@ public class TestingCamera extends Activity
             new View.OnClickListener() {
         @Override
         public void onClick(View v) {
+            if (!mLockCameraToggle.isChecked()) {
+                logE("Re-lock camera before recording");
+                return;
+            }
+
             mPreviewToggle.setEnabled(false);
             if (mState == CAMERA_PREVIEW) {
                 startRecording();
@@ -743,6 +754,28 @@ public class TestingCamera extends Activity
             mParams.setRecordingHint(on);
 
             mCamera.setParameters(mParams);
+        }
+    };
+
+    private View.OnClickListener mLockCameraToggleListener =
+            new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+
+            if (mState == CAMERA_RECORD) {
+                logE("Stop recording before toggling lock");
+                return;
+            }
+
+            boolean on = ((ToggleButton) v).isChecked();
+
+            if (on) {
+                mCamera.lock();
+                log("Locked camera");
+            } else {
+                mCamera.unlock();
+                log("Unlocked camera");
+            }
         }
     };
 
