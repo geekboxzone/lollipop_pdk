@@ -85,7 +85,7 @@ public class ItsService extends Service implements SensorEventListener {
     public static final String TAG = ItsService.class.getSimpleName();
 
     // Timeouts, in seconds.
-    public static final int TIMEOUT_CAPTURE = 10;
+    public static final int TIMEOUT_CALLBACK = 3;
     public static final int TIMEOUT_3A = 10;
 
     // State transition timeouts, in ms.
@@ -139,6 +139,7 @@ public class ItsService extends Service implements SensorEventListener {
     private volatile BlockingQueue<Object[]> mSerializerQueue =
             new LinkedBlockingDeque<Object[]>();
 
+    private AtomicInteger mCountCallbacksRemaining = new AtomicInteger();
     private AtomicInteger mCountRawOrDng = new AtomicInteger();
     private AtomicInteger mCountRaw10 = new AtomicInteger();
     private AtomicInteger mCountJpg = new AtomicInteger();
@@ -168,8 +169,6 @@ public class ItsService extends Service implements SensorEventListener {
     private volatile LinkedList<MySensorEvent> mEvents = null;
     private volatile Object mEventLock = new Object();
     private volatile boolean mEventsEnabled = false;
-
-    private CountDownLatch mCaptureCallbackLatch;
 
     public interface CaptureListener {
         void onCaptureAvailable(Image capture);
@@ -946,7 +945,7 @@ public class ItsService extends Service implements SensorEventListener {
                 // sequence of capture requests. There is one callback per image surface, and one
                 // callback for the CaptureResult, for each capture.
                 int numCaptures = requests.size();
-                mCaptureCallbackLatch = new CountDownLatch(numCaptures * (numSurfaces + 1));
+                mCountCallbacksRemaining.set(numCaptures * (numSurfaces + 1));
 
             } catch (CameraAccessException e) {
                 throw new ItsException("Error configuring outputs", e);
@@ -969,13 +968,20 @@ public class ItsService extends Service implements SensorEventListener {
             }
 
             // Make sure all callbacks have been hit (wait until captures are done).
-            try {
-                if (!mCaptureCallbackLatch.await(TIMEOUT_CAPTURE, TimeUnit.SECONDS)) {
-                    throw new ItsException(
-                            "Timeout hit, but all callbacks not received");
+            // If no timeouts are received after a timeout, then fail.
+            int currentCount = mCountCallbacksRemaining.get();
+            while (currentCount > 0) {
+                try {
+                    Thread.sleep(TIMEOUT_CALLBACK*1000);
+                } catch (InterruptedException e) {
+                    throw new ItsException("Timeout failure", e);
                 }
-            } catch (InterruptedException e) {
-                throw new ItsException("Interrupted: ", e);
+                int newCount = mCountCallbacksRemaining.get();
+                if (newCount == currentCount) {
+                    throw new ItsException(
+                            "No callback received within timeout");
+                }
+                currentCount = newCount;
             }
         } catch (android.hardware.camera2.CameraAccessException e) {
             throw new ItsException("Access error: ", e);
@@ -1052,7 +1058,7 @@ public class ItsService extends Service implements SensorEventListener {
                 } else {
                     throw new ItsException("Unsupported image format: " + format);
                 }
-                mCaptureCallbackLatch.countDown();
+                mCountCallbacksRemaining.decrementAndGet();
             } catch (IOException e) {
                 Logt.e(TAG, "Script error: ", e);
                 mThreadExitFlag = true;
@@ -1186,7 +1192,7 @@ public class ItsService extends Service implements SensorEventListener {
                     mCaptureResults[count] = result;
                     mSocketRunnableObj.sendResponseCaptureResult(mCameraCharacteristics,
                             request, result, mCaptureReaders);
-                    mCaptureCallbackLatch.countDown();
+                    mCountCallbacksRemaining.decrementAndGet();
                 }
             } catch (ItsException e) {
                 Logt.e(TAG, "Script error: ", e);
@@ -1200,7 +1206,6 @@ public class ItsService extends Service implements SensorEventListener {
         @Override
         public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request,
                 CaptureFailure failure) {
-            mCaptureCallbackLatch.countDown();
             Logt.e(TAG, "Script error: capture failed");
         }
     };
