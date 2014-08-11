@@ -57,6 +57,7 @@ import android.widget.ToggleButton;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -424,6 +425,16 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                     Long reqFD = request.get(CaptureRequest.SENSOR_FRAME_DURATION);
                     Long resFD = result.get(CaptureResult.SENSOR_FRAME_DURATION);
                     info.append("Frame duration: request " + reqFD + ". result " + resFD);
+                    info.append("\n");
+
+                    List<CaptureResult.Key<?>> resultKeys = result.getKeys();
+                    if (VERBOSE) {
+                        CaptureResult.Key<?>[] arrayKeys =
+                                resultKeys.toArray(new CaptureResult.Key<?>[0]);
+                        Log.v(TAG, "onCaptureCompleted - dumping keys: " +
+                                Arrays.toString(arrayKeys));
+                    }
+                    info.append("Total keys: " + resultKeys.size());
                     info.append("\n");
 
                     if (mMainHandler != null) {
