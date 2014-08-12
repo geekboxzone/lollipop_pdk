@@ -49,18 +49,21 @@ def main():
         auto_req['android.control.aeMode'] = 1  # On
         cap = cam.do_capture(auto_req)
         state = cap['metadata']['android.control.aeState']
+        print "AE state after auto request:", state
         assert(state in [SEARCHING, CONVERGED])
 
         # Capture with auto request with a precapture trigger.
         auto_req['android.control.aePrecaptureTrigger'] = 1  # Start
         cap = cam.do_capture(auto_req)
         state = cap['metadata']['android.control.aeState']
+        print "AE state after auto request with precapture trigger:", state
         assert(state in [SEARCHING, CONVERGED, PRECAPTURE])
 
         # Capture some more auto requests, and AE should converge.
         auto_req['android.control.aePrecaptureTrigger'] = 0
         caps = cam.do_capture([auto_req]*5)
         state = caps[-1]['metadata']['android.control.aeState']
+        print "AE state after auto request:", state
         assert(state == CONVERGED)
 
 if __name__ == '__main__':
