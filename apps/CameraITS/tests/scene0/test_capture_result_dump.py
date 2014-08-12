@@ -28,6 +28,7 @@ def main():
         # Arbitrary capture request exposure values; image content is not
         # important for this test, only the metadata.
         req = its.objects.manual_capture_request(100, 10*1000*1000)
+        req["android.statistics.lensShadingMapMode"] = 1
         cap = cam.do_capture(req, cam.CAP_YUV)
         pprint.pprint(cap["metadata"])
 
