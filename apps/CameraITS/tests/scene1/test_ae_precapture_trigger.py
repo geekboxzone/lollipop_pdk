@@ -28,6 +28,9 @@ def main():
     PRECAPTURE = 5
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        _,fmt = its.objects.get_fastest_manual_capture_settings(props)
+
         # Capture 5 manual requests, with AE disabled, and the last request
         # has an AE precapture trigger (which should be ignored since AE is
         # disabled).
@@ -40,28 +43,28 @@ def main():
         precap_req['android.control.aeMode'] = 0 # Off
         precap_req['android.control.aePrecaptureTrigger'] = 1 # Start
         manual_reqs.append(precap_req)
-        caps = cam.do_capture(manual_reqs)
+        caps = cam.do_capture(manual_reqs, fmt)
         for cap in caps:
             assert(cap['metadata']['android.control.aeState'] == INACTIVE)
 
         # Capture an auto request and verify the AE state; no trigger.
         auto_req = its.objects.auto_capture_request()
         auto_req['android.control.aeMode'] = 1  # On
-        cap = cam.do_capture(auto_req)
+        cap = cam.do_capture(auto_req, fmt)
         state = cap['metadata']['android.control.aeState']
         print "AE state after auto request:", state
         assert(state in [SEARCHING, CONVERGED])
 
         # Capture with auto request with a precapture trigger.
         auto_req['android.control.aePrecaptureTrigger'] = 1  # Start
-        cap = cam.do_capture(auto_req)
+        cap = cam.do_capture(auto_req, fmt)
         state = cap['metadata']['android.control.aeState']
         print "AE state after auto request with precapture trigger:", state
         assert(state in [SEARCHING, CONVERGED, PRECAPTURE])
 
         # Capture some more auto requests, and AE should converge.
         auto_req['android.control.aePrecaptureTrigger'] = 0
-        caps = cam.do_capture([auto_req]*5)
+        caps = cam.do_capture([auto_req]*5, fmt)
         state = caps[-1]['metadata']['android.control.aeState']
         print "AE state after auto request:", state
         assert(state == CONVERGED)
