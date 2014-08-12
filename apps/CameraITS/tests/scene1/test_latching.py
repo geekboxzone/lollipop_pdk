@@ -32,6 +32,8 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        _,fmt = its.objects.get_fastest_manual_capture_settings(props)
         e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
         e = e / 2.0
 
@@ -56,7 +58,7 @@ def main():
             its.objects.manual_capture_request(s,  e*2, True),
             ]
 
-        caps = cam.do_capture(reqs)
+        caps = cam.do_capture(reqs, fmt)
         for i,cap in enumerate(caps):
             img = its.image.convert_capture_to_rgb_image(cap)
             its.image.write_image(img, "%s_i=%02d.jpg" % (NAME, i))
