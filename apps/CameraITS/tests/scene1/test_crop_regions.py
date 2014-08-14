@@ -52,6 +52,9 @@ def main():
         wfull, hfull = cap_full["width"], cap_full["height"]
 
         # Capture a burst of crop region frames.
+        # Each is captured into an image 1/2x1/2 the size, which should allow
+        # these crop images to be compared with 1/2x1/2 regions that are
+        # cropped from the full frame.
         reqs = []
         for x,y,w,h in REGIONS:
             req = its.objects.manual_capture_request(s,e)
@@ -73,6 +76,7 @@ def main():
             # the full image, to find the best match (which should be
             # the region that corresponds to this crop image).
             img_crop = its.image.convert_capture_to_rgb_image(cap)
+            its.image.write_image(img_crop, "%s_crop%d.jpg" % (NAME, i))
             min_diff = None
             min_diff_region = None
             for j,(x,y,w,h) in enumerate(REGIONS):
@@ -82,7 +86,6 @@ def main():
                 tile_full = tile_full[0:htest:, 0:wtest:, ::]
                 tile_crop = img_crop[0:htest:, 0:wtest:, ::]
                 its.image.write_image(tile_full, "%s_fullregion%d.jpg"%(NAME,j))
-                its.image.write_image(tile_crop, "%s_crop%d.jpg" % (NAME, i))
                 diff = numpy.fabs(tile_full - tile_crop).mean()
                 if min_diff is None or diff < min_diff:
                     min_diff = diff
