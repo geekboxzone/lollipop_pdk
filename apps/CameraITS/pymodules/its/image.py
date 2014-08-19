@@ -93,7 +93,7 @@ def unpack_raw10_capture(cap, props):
     w,h = cap["width"], cap["height"]
     if w % 4 != 0:
         raise its.error.Error('Invalid raw-10 buffer width')
-    cap = copy.deep_copy(cap)
+    cap = copy.deepcopy(cap)
     cap["data"] = unpack_raw10_image(cap["data"].reshape(h,w*5/4))
     cap["format"] = "raw"
     return cap
