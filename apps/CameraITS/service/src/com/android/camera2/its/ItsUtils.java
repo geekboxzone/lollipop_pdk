@@ -122,7 +122,6 @@ public class ItsUtils {
         int format = image.getFormat();
         int width = image.getWidth();
         int height = image.getHeight();
-        int rowStride, pixelStride;
         byte[] data = null;
 
         // Read image data
@@ -142,19 +141,21 @@ public class ItsUtils {
             return data;
         } else if (format == ImageFormat.YUV_420_888 || format == ImageFormat.RAW_SENSOR
                 || format == ImageFormat.RAW10) {
-            Logt.i(TAG, String.format("Reading image, format %d", format));
             int offset = 0;
             data = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
             byte[] rowData = new byte[planes[0].getRowStride()];
             for (int i = 0; i < planes.length; i++) {
                 ByteBuffer buffer = planes[i].getBuffer();
-                rowStride = planes[i].getRowStride();
-                pixelStride = planes[i].getPixelStride();
+                int rowStride = planes[i].getRowStride();
+                int pixelStride = planes[i].getPixelStride();
+                int bytesPerPixel = ImageFormat.getBitsPerPixel(format) / 8;
+                Logt.i(TAG, String.format(
+                        "Reading image: fmt %d, plane %d, w %d, h %d, rowStride %d, pixStride %d",
+                        format, i, width, height, rowStride, pixelStride));
                 // For multi-planar yuv images, assuming yuv420 with 2x2 chroma subsampling.
                 int w = (i == 0) ? width : width / 2;
                 int h = (i == 0) ? height : height / 2;
                 for (int row = 0; row < h; row++) {
-                    int bytesPerPixel = ImageFormat.getBitsPerPixel(format) / 8;
                     if (pixelStride == bytesPerPixel) {
                         // Special case: optimized read of the entire row
                         int length = w * bytesPerPixel;
