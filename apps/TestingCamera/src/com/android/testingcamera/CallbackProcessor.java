@@ -70,8 +70,7 @@ class CallbackProcessor {
         mAllocationOut = Allocation.createTyped(mRS, outType,
                 Allocation.USAGE_IO_OUTPUT | Allocation.USAGE_SCRIPT);
 
-        ScriptC_callback swizzleScript =
-                new ScriptC_callback(mRS, res, R.raw.callback);
+        ScriptC_callback swizzleScript = new ScriptC_callback(mRS);
         swizzleScript.bind_yuv_in(mAllocationIn);
         swizzleScript.invoke_init_convert(mWidth, mHeight,
             mFormat, viewWidth, viewHeight);
