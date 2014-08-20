@@ -174,8 +174,17 @@ public class ItsUtils {
                             readSize = buffer.remaining();
                         }
                         buffer.get(rowData, 0, readSize);
-                        for (int col = 0; col < w; col++) {
-                            data[offset++] = rowData[col * pixelStride];
+                        if (pixelStride >= 1) {
+                            for (int col = 0; col < w; col++) {
+                                data[offset++] = rowData[col * pixelStride];
+                            }
+                        } else {
+                            // PixelStride of 0 can mean pixel isn't a multiple of 8 bits, for
+                            // example with RAW10. Just copy the buffer, dropping any padding at
+                            // the end of the row.
+                            int length = (w * ImageFormat.getBitsPerPixel(format)) / 8;
+                            System.arraycopy(rowData,0,data,offset,length);
+                            offset += length;
                         }
                     }
                 }
