@@ -35,6 +35,9 @@ def main():
     manual_exp_time = 100*1000*1000
     manual_sensitivity = 100
 
+    # The camera HAL may not support different gains for the two G channels.
+    manual_gains_ok = [[1,2,3,4],[1,2,2,4],[1,3,3,4]]
+
     auto_req = its.objects.auto_capture_request()
     auto_req["android.statistics.lensShadingMapMode"] = 1
 
@@ -160,8 +163,12 @@ def main():
         # values as the manually set values.
         assert(len(gains) == 4)
         assert(len(transform) == 9)
-        assert(all([is_close_float(gains[i], manual_gains[i])
-                    for i in xrange(4)]))
+        assert( all([is_close_float(gains[i], manual_gains_ok[0][i])
+                     for i in xrange(4)]) or
+                all([is_close_float(gains[i], manual_gains_ok[1][i])
+                     for i in xrange(4)]) or
+                all([is_close_float(gains[i], manual_gains_ok[2][i])
+                     for i in xrange(4)]))
         assert(all([is_close_rational(transform[i], manual_transform[i])
                     for i in xrange(9)]))
 
