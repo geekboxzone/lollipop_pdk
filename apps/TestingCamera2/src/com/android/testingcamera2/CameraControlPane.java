@@ -85,10 +85,6 @@ public class CameraControlPane extends ControlPane {
         UNAVAILABLE,
         CLOSED,
         OPENED,
-        UNCONFIGURED,
-        BUSY,
-        IDLE,
-        ACTIVE,
         DISCONNECTED,
         ERROR
     }
@@ -100,13 +96,10 @@ public class CameraControlPane extends ControlPane {
      */
     private enum SessionState {
         NONE,
-        CONFIGURING,
         CONFIGURED,
         CONFIGURE_FAILED,
         READY,
-        BUSY,
         ACTIVE,
-        ERROR,
         CLOSED
     }
 
@@ -468,6 +461,7 @@ public class CameraControlPane extends ControlPane {
         @Override
         public void onConfigured(CameraCaptureSession session) {
             mCurrentCaptureSession = session;
+            TLog.i("Configuration completed for camera %s.", mCurrentCamera.getId());
 
             setSessionState(SessionState.CONFIGURED);
         }
@@ -514,6 +508,10 @@ public class CameraControlPane extends ControlPane {
          */
         @Override
         public void onClosed(CameraCaptureSession session) {
+            // Ignore closes if the session has been replaced
+            if (mCurrentCaptureSession != null && session != mCurrentCaptureSession) {
+                return;
+            }
             setSessionState(SessionState.CLOSED);
         }
     };
@@ -573,9 +571,8 @@ public class CameraControlPane extends ControlPane {
                 mActiveCameraCall = CameraCall.NONE;
                 // fall-through
             case CLOSED:
-            case ERROR:
                 enableBaseControls(true);
-                enableOpenControls(false);
+                enableOpenControls(true);
                 enableConfiguredControls(false);
                 mConfiguredTargetPanes = null;
                 break;
@@ -584,11 +581,6 @@ public class CameraControlPane extends ControlPane {
                 enableOpenControls(true);
                 enableConfiguredControls(false);
                 mConfiguredTargetPanes = null;
-                break;
-            case BUSY:
-                enableBaseControls(true);
-                enableOpenControls(false);
-                enableConfiguredControls(false);
                 break;
             case CONFIGURED:
                 if (mActiveCameraCall != CameraCall.CONFIGURE) {
