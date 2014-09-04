@@ -38,7 +38,7 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCaptureSession.CaptureListener;
+import android.hardware.camera2.CameraCaptureSession.CaptureCallback;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
@@ -297,7 +297,7 @@ public class CameraControlPane extends ControlPane {
         return null;
     }
 
-    private CaptureListener mResultListener = new CaptureListener() {
+    private CaptureCallback mResultListener = new CaptureCallback() {
         public void onCaptureCompleted(
                 CameraCaptureSession session,
                 CaptureRequest request,

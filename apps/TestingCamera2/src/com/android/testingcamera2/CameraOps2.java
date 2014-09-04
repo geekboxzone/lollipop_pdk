@@ -29,7 +29,7 @@ import android.hardware.camera2.CameraAccessException;
  * A central manager of camera devices and current clients for them.
  *
  */
-public class CameraOps2 extends CameraManager.AvailabilityListener {
+public class CameraOps2 extends CameraManager.AvailabilityCallback {
 
     private final CameraManager mCameraManager;
 
@@ -50,7 +50,7 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
             TLog.e("Unable to get camera list: %s", e);
         }
 
-        mCameraManager.addAvailabilityListener(this, /*handler*/null);
+        mCameraManager.registerAvailabilityCallback(this, /*handler*/null);
     }
 
     /**
@@ -63,16 +63,16 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
      * @throws CameraAccessException
      *             if the camera manager cannot be queried
      */
-    public String[] getCamerasAndListen(CameraManager.AvailabilityListener listener)
+    public String[] getCamerasAndListen(CameraManager.AvailabilityCallback listener)
             throws CameraAccessException {
 
-        mCameraManager.addAvailabilityListener(listener, /*handler*/null);
+        mCameraManager.registerAvailabilityCallback(listener, /*handler*/null);
 
         return mCameraManager.getCameraIdList();
     }
 
-    public void removeAvailabilityListener(CameraManager.AvailabilityListener listener) {
-        mCameraManager.removeAvailabilityListener(listener);
+    public void removeAvailabilityCallback(CameraManager.AvailabilityCallback listener) {
+        mCameraManager.unregisterAvailabilityCallback(listener);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
      * @return true if open call was sent successfully. The client needs to wait
      *         for its listener to be called to determine if open will succeed.
      */
-    public boolean openCamera(String cameraId, CameraDevice.StateListener listener) {
+    public boolean openCamera(String cameraId, CameraDevice.StateCallback listener) {
         for (CameraDevice camera : mOpenCameras) {
             if (camera.getId() == cameraId) {
                 TLog.e("Camera %s is already open", cameraId);
@@ -102,7 +102,7 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
             }
         }
         try {
-            DeviceStateListener proxyListener = new DeviceStateListener(listener);
+            DeviceStateCallback proxyListener = new DeviceStateCallback(listener);
             mCameraManager.openCamera(cameraId, proxyListener, null);
         } catch (CameraAccessException e) {
             TLog.e("Unable to open camera %s.", e, cameraId);
@@ -121,11 +121,11 @@ public class CameraOps2 extends CameraManager.AvailabilityListener {
         return null;
     }
 
-    private class DeviceStateListener extends CameraDevice.StateListener {
+    private class DeviceStateCallback extends CameraDevice.StateCallback {
 
-        private final CameraDevice.StateListener mClientListener;
+        private final CameraDevice.StateCallback mClientListener;
 
-        public DeviceStateListener(CameraDevice.StateListener clientListener) {
+        public DeviceStateCallback(CameraDevice.StateCallback clientListener) {
             mClientListener = clientListener;
         }
 

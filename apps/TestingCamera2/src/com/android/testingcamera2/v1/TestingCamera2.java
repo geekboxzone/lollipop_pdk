@@ -326,7 +326,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
                 @Override
                 public void run() {
                     try {
-                        mCameraOps.minimalJpegCapture(mCaptureListener, mCaptureResultListener,
+                        mCameraOps.minimalJpegCapture(mCaptureCallback, mCaptureResultListener,
                                 uiHandler, mCameraControl);
                         if (mCurrentPreviewHolder != null) {
                             mCameraOps.minimalPreview(mCurrentPreviewHolder, mCameraControl);
@@ -368,7 +368,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
         }
     }
 
-    private final CameraOps.CaptureListener mCaptureListener = new CameraOps.CaptureListener() {
+    private final CameraOps.CaptureCallback mCaptureCallback = new CameraOps.CaptureCallback() {
         @Override
         public void onCaptureAvailable(Image capture) {
             if (capture.getFormat() != ImageFormat.JPEG) {

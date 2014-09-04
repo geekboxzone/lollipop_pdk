@@ -39,8 +39,8 @@ import android.view.SurfaceHolder;
 
 import com.android.ex.camera2.blocking.BlockingCameraManager;
 import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
-import com.android.ex.camera2.blocking.BlockingStateListener;
-import com.android.ex.camera2.blocking.BlockingSessionListener;
+import com.android.ex.camera2.blocking.BlockingStateCallback;
+import com.android.ex.camera2.blocking.BlockingSessionCallback;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,8 +64,8 @@ public class CameraOps {
 
     private final CameraManager mCameraManager;
     private final BlockingCameraManager mBlockingCameraManager;
-    private final BlockingStateListener mDeviceListener =
-            new BlockingStateListener();
+    private final BlockingStateCallback mDeviceListener =
+            new BlockingStateCallback();
 
     private CameraDevice mCamera;
     private CameraCaptureSession mSession;
@@ -141,10 +141,10 @@ public class CameraOps {
         }
     }
 
-    public void registerCameraListener(CameraManager.AvailabilityListener listener)
+    public void registerCameraListener(CameraManager.AvailabilityCallback listener)
             throws ApiFailureException {
         checkOk();
-        mCameraManager.addAvailabilityListener(listener, mOpsHandler);
+        mCameraManager.registerAvailabilityCallback(listener, mOpsHandler);
     }
 
     public CameraCharacteristics getCameraCharacteristics() {
@@ -207,7 +207,7 @@ public class CameraOps {
     }
 
     private void configureOutputs(List<Surface> outputs) throws CameraAccessException {
-        BlockingSessionListener sessionListener = new BlockingSessionListener();
+        BlockingSessionCallback sessionListener = new BlockingSessionCallback();
         mCamera.createCaptureSession(outputs, sessionListener, mOpsHandler);
         mSession = sessionListener.waitAndGetSession(IDLE_WAIT_MS);
     }
@@ -354,7 +354,7 @@ public class CameraOps {
         }
     }
 
-    public void minimalJpegCapture(final CaptureListener listener, CaptureResultListener l,
+    public void minimalJpegCapture(final CaptureCallback listener, CaptureResultListener l,
             Handler h, CameraControls cameraControl) throws ApiFailureException {
         minimalOpenCamera();
 
@@ -603,10 +603,10 @@ public class CameraOps {
         }
     }
 
-    public interface CaptureListener {
+    public interface CaptureCallback {
         void onCaptureAvailable(Image capture);
     }
 
     public static abstract class CaptureResultListener
-            extends CameraCaptureSession.CaptureListener {}
+            extends CameraCaptureSession.CaptureCallback {}
 }
