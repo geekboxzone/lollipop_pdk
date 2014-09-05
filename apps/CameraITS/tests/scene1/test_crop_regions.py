@@ -23,6 +23,9 @@ import matplotlib.pyplot
 import copy
 import numpy
 
+# TODO: Fix this test. Currently assumes a non-supported output size in the
+# HAL-cropped images.
+
 def main():
     """Test that crop regions work.
     """
