@@ -291,7 +291,7 @@ class ItsSession(object):
         format(s) of the captured image. The formats may be "yuv", "jpeg",
         "dng", "raw", or "raw10". The default is a YUV420 frame ("yuv")
         corresponding to a full sensor frame.
-        
+
         Note that one or more surfaces can be specified, allowing a capture to
         request images back in multiple formats (e.g.) raw+yuv, raw+jpeg,
         yuv+jpeg, raw+yuv+jpeg. If the size is omitted for a surface, the

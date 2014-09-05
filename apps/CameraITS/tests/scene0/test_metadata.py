@@ -31,6 +31,7 @@ def main():
         # Arbitrary capture request exposure values; image content is not
         # important for this test, only the metadata.
         props = cam.get_camera_properties()
+        # TODO: Update test to ensure manual settings are within legal ranges.
         req = its.objects.manual_capture_request(100, 10*1000*1000)
         cap = cam.do_capture(req, cam.CAP_YUV)
         md = cap["metadata"]

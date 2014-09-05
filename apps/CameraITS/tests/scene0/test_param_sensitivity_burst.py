@@ -34,6 +34,7 @@ def main():
         sens_range = props['android.sensor.info.sensitivityRange']
         sens_step = (sens_range[1] - sens_range[0]) / NUM_STEPS
         sensitivities = range(sens_range[0], sens_range[1], sens_step)
+        # TODO: Update test to ensure manual settings are within legal ranges.
         reqs = [its.objects.manual_capture_request(s,10*1000*1000)
                 for s in sensitivities]
 
