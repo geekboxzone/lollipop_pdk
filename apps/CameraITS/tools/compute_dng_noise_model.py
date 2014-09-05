@@ -50,10 +50,11 @@ def main():
         s_e_prod *= 2
 
         # Capture raw frames across the full sensitivity range.
-        SENSITIVITY_STEP = 400
+        NUM_SENS_STEPS = 15
+        sens_step = int((sens_max - sens_min - 1) / float(NUM_SENS_STEPS))
         reqs = []
         sens = []
-        for s in range(sens_min, sens_max, SENSITIVITY_STEP):
+        for s in range(sens_min, sens_max, sens_step):
             e = int(s_e_prod / float(s))
             req = its.objects.manual_capture_request(s, e)
             req["android.colorCorrection.transform"] = \
