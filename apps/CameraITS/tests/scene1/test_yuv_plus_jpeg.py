@@ -37,12 +37,12 @@ def main():
 
         cap_yuv, cap_jpeg = cam.do_capture(req, [fmt_yuv, fmt_jpeg])
 
-        img = its.image.convert_capture_to_rgb_image(cap_yuv)
+        img = its.image.convert_capture_to_rgb_image(cap_yuv, True)
         its.image.write_image(img, "%s_yuv.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         rgb0 = its.image.compute_image_means(tile)
 
-        img = its.image.convert_capture_to_rgb_image(cap_jpeg)
+        img = its.image.convert_capture_to_rgb_image(cap_jpeg, True)
         its.image.write_image(img, "%s_jpeg.jpg" % (NAME))
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         rgb1 = its.image.compute_image_means(tile)
