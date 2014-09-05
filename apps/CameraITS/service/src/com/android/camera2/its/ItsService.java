@@ -51,8 +51,8 @@ import android.view.Surface;
 
 import com.android.ex.camera2.blocking.BlockingCameraManager;
 import com.android.ex.camera2.blocking.BlockingCameraManager.BlockingOpenException;
-import com.android.ex.camera2.blocking.BlockingStateListener;
-import com.android.ex.camera2.blocking.BlockingSessionListener;
+import com.android.ex.camera2.blocking.BlockingStateCallback;
+import com.android.ex.camera2.blocking.BlockingSessionCallback;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -112,7 +112,7 @@ public class ItsService extends Service implements SensorEventListener {
     private HandlerThread mCameraThread = null;
     private Handler mCameraHandler = null;
     private BlockingCameraManager mBlockingCameraManager = null;
-    private BlockingStateListener mCameraListener = null;
+    private BlockingStateCallback mCameraListener = null;
     private CameraDevice mCamera = null;
     private CameraCaptureSession mSession = null;
     private ImageReader[] mCaptureReaders = null;
@@ -170,11 +170,11 @@ public class ItsService extends Service implements SensorEventListener {
     private volatile Object mEventLock = new Object();
     private volatile boolean mEventsEnabled = false;
 
-    public interface CaptureListener {
+    public interface CaptureCallback {
         void onCaptureAvailable(Image capture);
     }
 
-    public abstract class CaptureResultListener extends CameraCaptureSession.CaptureListener {}
+    public abstract class CaptureResultListener extends CameraCaptureSession.CaptureCallback {}
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -194,7 +194,7 @@ public class ItsService extends Service implements SensorEventListener {
                 throw new ItsException("Failed to connect to camera manager");
             }
             mBlockingCameraManager = new BlockingCameraManager(mCameraManager);
-            mCameraListener = new BlockingStateListener();
+            mCameraListener = new BlockingStateCallback();
 
             // Open the camera device, and get its properties.
             String[] devices;
@@ -614,7 +614,7 @@ public class ItsService extends Service implements SensorEventListener {
     }
 
     public ImageReader.OnImageAvailableListener
-            createAvailableListener(final CaptureListener listener) {
+            createAvailableListener(final CaptureCallback listener) {
         return new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
@@ -632,7 +632,7 @@ public class ItsService extends Service implements SensorEventListener {
     }
 
     private ImageReader.OnImageAvailableListener
-            createAvailableListenerDropper(final CaptureListener listener) {
+            createAvailableListenerDropper(final CaptureCallback listener) {
         return new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
@@ -695,13 +695,13 @@ public class ItsService extends Service implements SensorEventListener {
             prepareCaptureReader(widths, heights, formats, 1);
             List<Surface> outputSurfaces = new ArrayList<Surface>(1);
             outputSurfaces.add(mCaptureReaders[0].getSurface());
-            BlockingSessionListener sessionListener = new BlockingSessionListener();
+            BlockingSessionCallback sessionListener = new BlockingSessionCallback();
             mCamera.createCaptureSession(outputSurfaces, sessionListener, mCameraHandler);
             mSession = sessionListener.waitAndGetSession(TIMEOUT_IDLE_MS);
 
             // Add a listener that just recycles buffers; they aren't saved anywhere.
             ImageReader.OnImageAvailableListener readerListener =
-                    createAvailableListenerDropper(mCaptureListener);
+                    createAvailableListenerDropper(mCaptureCallback);
             mCaptureReaders[0].setOnImageAvailableListener(readerListener, mSaveHandlers[0]);
 
             // Get the user-specified regions for AE, AWB, AF.
@@ -931,13 +931,13 @@ public class ItsService extends Service implements SensorEventListener {
                 for (int i = 0; i < numSurfaces; i++) {
                     outputSurfaces.add(mCaptureReaders[i].getSurface());
                 }
-                BlockingSessionListener sessionListener = new BlockingSessionListener();
+                BlockingSessionCallback sessionListener = new BlockingSessionCallback();
                 mCamera.createCaptureSession(outputSurfaces, sessionListener, mCameraHandler);
                 mSession = sessionListener.waitAndGetSession(TIMEOUT_IDLE_MS);
 
                 for (int i = 0; i < numSurfaces; i++) {
                     ImageReader.OnImageAvailableListener readerListener =
-                            createAvailableListener(mCaptureListener);
+                            createAvailableListener(mCaptureCallback);
                     mCaptureReaders[i].setOnImageAvailableListener(readerListener,mSaveHandlers[i]);
                 }
 
@@ -1007,7 +1007,7 @@ public class ItsService extends Service implements SensorEventListener {
     public final void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
-    private final CaptureListener mCaptureListener = new CaptureListener() {
+    private final CaptureCallback mCaptureCallback = new CaptureCallback() {
         @Override
         public void onCaptureAvailable(Image capture) {
             try {
