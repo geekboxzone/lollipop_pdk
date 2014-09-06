@@ -29,7 +29,7 @@ def main():
         assert(exp > 0)
         assert(len(gains) == 4)
         assert(len(xform) == 9)
-        assert(focus > 0)
+        assert(focus >= 0)
 
 if __name__ == '__main__':
     main()
