@@ -1078,7 +1078,8 @@ public class ItsService extends Service implements SensorEventListener {
 
     private final CaptureResultListener mCaptureResultListener = new CaptureResultListener() {
         @Override
-        public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request, long timestamp) {
+        public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
+                long timestamp, long frameNumber) {
         }
 
         @Override
