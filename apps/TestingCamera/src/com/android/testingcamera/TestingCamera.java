@@ -33,6 +33,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.view.View;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View.OnClickListener;
@@ -402,6 +403,35 @@ public class TestingCamera extends Activity
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         mPreviewHolder = null;
+    }
+
+    public void setCameraDisplayOrientation() {
+        android.hardware.Camera.CameraInfo info =
+                new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(mCameraId, info);
+        int rotation = getWindowManager().getDefaultDisplay()
+                .getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0: degrees = 0; break;
+            case Surface.ROTATION_90: degrees = 90; break;
+            case Surface.ROTATION_180: degrees = 180; break;
+            case Surface.ROTATION_270: degrees = 270; break;
+        }
+
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        log(String.format(
+            "Camera sensor orientation %d, UI rotation %d, facing %s. Final orientation %d",
+            info.orientation, rotation,
+            info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT ? "FRONT" : "BACK",
+            result));
+        mCamera.setDisplayOrientation(result);
     }
 
     /** UI controls enable/disable for all open-only controls */
@@ -903,6 +933,8 @@ public class TestingCamera extends Activity
         }
 
         mCamera.setErrorCallback(this);
+
+        setCameraDisplayOrientation();
         mParams = mCamera.getParameters();
 
         // Set up preview size selection
