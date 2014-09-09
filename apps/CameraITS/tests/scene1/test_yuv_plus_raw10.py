@@ -37,8 +37,8 @@ def main():
         cap_raw, cap_yuv = cam.do_capture(req,
                 [{"format":"raw10"}, {"format":"yuv"}])
 
-        img = its.image.convert_capture_to_rgb_image(cap_yuv, True)
-        its.image.write_image(img, "%s_yuv.jpg" % (NAME))
+        img = its.image.convert_capture_to_rgb_image(cap_yuv)
+        its.image.write_image(img, "%s_yuv.jpg" % (NAME), True)
         tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
         rgb0 = its.image.compute_image_means(tile)
 
