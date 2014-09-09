@@ -390,7 +390,7 @@ public class TestingCamera2 extends Activity implements SurfaceHolder.Callback {
 
                 @Override
                 public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
-                        long timestamp) {
+                        long timestamp, long frameNumber) {
                 }
 
                 @Override
