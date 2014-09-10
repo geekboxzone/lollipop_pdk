@@ -46,6 +46,8 @@ def main():
             assert(cap["height"] == size[1])
             print "Captured YUV %dx%d" % (cap["width"], cap["height"])
             img = its.image.convert_capture_to_rgb_image(cap)
+            its.image.write_image(img, "%s_yuv_w%d_h%d.jpg"%(
+                    NAME,size[0],size[1]))
             tile = its.image.get_image_patch(img, 0.45, 0.45, 0.1, 0.1)
             rgb = its.image.compute_image_means(tile)
             rgbs.append(rgb)
@@ -57,6 +59,8 @@ def main():
             assert(cap["width"] == size[0])
             assert(cap["height"] == size[1])
             img = its.image.decompress_jpeg_to_rgb_image(cap["data"])
+            its.image.write_image(img, "%s_jpg_w%d_h%d.jpg"%(
+                    NAME,size[0], size[1]))
             assert(img.shape[0] == size[1])
             assert(img.shape[1] == size[0])
             assert(img.shape[2] == 3)
