@@ -773,7 +773,8 @@ public class ItsService extends Service implements SensorEventListener {
                 mInterlock3A.close();
 
                 // If not converged yet, issue another capture request.
-                if ((doAE && !mConvergedAE) || !mConvergedAWB || (doAF && !mConvergedAF)) {
+                if ((doAE && (!triggeredAE || !mConvergedAE)) || !mConvergedAWB ||
+                        (doAF && (!triggeredAF || !mConvergedAF))) {
 
                     // Baseline capture request for 3A.
                     CaptureRequest.Builder req = mCamera.createCaptureRequest(
