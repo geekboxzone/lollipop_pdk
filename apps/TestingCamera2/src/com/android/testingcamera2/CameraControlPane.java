@@ -78,7 +78,7 @@ public class CameraControlPane extends ControlPane {
 
     /**
      * These correspond to the callbacks from
-     * android.hardware.camera2.CameraDevice.StateListener, plus UNAVAILABLE for
+     * android.hardware.camera2.CameraDevice.StateCallback, plus UNAVAILABLE for
      * when there's not a valid camera selected.
      */
     private enum CameraState {
@@ -90,7 +90,7 @@ public class CameraControlPane extends ControlPane {
     }
 
     /**
-     * These correspond to the callbacks from {@link CameraCaptureSession.StateListener}, plus
+     * These correspond to the callbacks from {@link CameraCaptureSession.StateCallback}, plus
      * {@code CONFIGURING} for before a session is returned and {@code NONE} for when there
      * is no session created.
      */
@@ -356,7 +356,7 @@ public class CameraControlPane extends ControlPane {
     private void updateCameraList() {
         mCameraIds = null;
         try {
-            mCameraIds = mCameraOps.getCamerasAndListen(mCameraAvailabilityListener);
+            mCameraIds = mCameraOps.getCamerasAndListen(mCameraAvailabilityCallback);
             String[] cameraSpinnerItems = new String[mCameraIds.length];
             for (int i = 0; i < mCameraIds.length; i++) {
                 cameraSpinnerItems[i] = String.format("Camera %s", mCameraIds[i]);
@@ -455,8 +455,8 @@ public class CameraControlPane extends ControlPane {
         }
     };
 
-    private final CameraCaptureSession.StateListener mSessionListener =
-            new CameraCaptureSession.StateListener() {
+    private final CameraCaptureSession.StateCallback mSessionListener =
+            new CameraCaptureSession.StateCallback() {
 
         @Override
         public void onConfigured(CameraCaptureSession session) {
@@ -516,7 +516,7 @@ public class CameraControlPane extends ControlPane {
         }
     };
 
-    private final CameraDevice.StateListener mCameraListener = new CameraDevice.StateListener() {
+    private final CameraDevice.StateCallback mCameraListener = new CameraDevice.StateCallback() {
         @Override
         public void onClosed(CameraDevice camera) {
             // Don't change state on close, tracked by callers of close()
@@ -648,8 +648,8 @@ public class CameraControlPane extends ControlPane {
         }
     }
 
-    private final CameraManager.AvailabilityListener mCameraAvailabilityListener =
-            new CameraManager.AvailabilityListener() {
+    private final CameraManager.AvailabilityCallback mCameraAvailabilityCallback =
+            new CameraManager.AvailabilityCallback() {
         @Override
         public void onCameraAvailable(String cameraId) {
             // TODO: Update camera list in an intelligent fashion
