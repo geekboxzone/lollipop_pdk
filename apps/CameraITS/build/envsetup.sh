@@ -37,7 +37,7 @@ done
 
 export PYTHONPATH="$PWD/pymodules:$PYTHONPATH"
 
-for M in device objects image
+for M in device objects image caps dng target error
 do
     python "pymodules/its/$M.py" 2>&1 | grep -q "OK" || \
         echo ">> Unit test for $M failed" >&2

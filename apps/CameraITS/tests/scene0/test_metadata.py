@@ -16,6 +16,7 @@ import its.image
 import its.device
 import its.objects
 import its.target
+import its.caps
 import os.path
 import pprint
 
@@ -36,10 +37,20 @@ def main():
         cap = cam.do_capture(req, cam.CAP_YUV)
         md = cap["metadata"]
 
+    print "Hardware level"
+    print "  Legacy:", its.caps.legacy(props)
+    print "  Limited:", its.caps.limited(props)
+    print "  Full:", its.caps.full(props)
+    print "Capabilities"
+    print "  Manual sensor:", its.caps.manual_sensor(props)
+    print "  Manual post-proc:", its.caps.manual_post_proc(props)
+    print "  Raw:", its.caps.raw(props)
+    print "  Sensor fusion:", its.caps.sensor_fusion(props)
+
     # Test: hardware level should be a valid value.
     check('props.has_key("android.info.supportedHardwareLevel")')
     check('props["android.info.supportedHardwareLevel"] is not None')
-    check('props["android.info.supportedHardwareLevel"] in [0,1]')
+    check('props["android.info.supportedHardwareLevel"] in [0,1,2]')
     full = getval('props["android.info.supportedHardwareLevel"]') == 1
 
     # Test: rollingShutterSkew, frameDuration, and
