@@ -23,9 +23,6 @@ import matplotlib.pyplot
 import copy
 import numpy
 
-# TODO: Fix this test. Currently assumes a non-supported output size in the
-# HAL-cropped images.
-
 def main():
     """Test that crop regions work.
     """
@@ -47,6 +44,9 @@ def main():
         e, s = its.target.get_target_exposure_combos(cam)["minSensitivity"]
         print "Active sensor region (%d,%d %dx%d)" % (ax, ay, aw, ah)
 
+        # Uses a 2x digital zoom.
+        assert(props['android.scaler.availableMaxDigitalZoom'] >= 2)
+
         # Capture a full frame.
         req = its.objects.manual_capture_request(s,e)
         cap_full = cam.do_capture(req)
@@ -55,9 +55,9 @@ def main():
         wfull, hfull = cap_full["width"], cap_full["height"]
 
         # Capture a burst of crop region frames.
-        # Each is captured into an image 1/2x1/2 the size, which should allow
-        # these crop images to be compared with 1/2x1/2 regions that are
-        # cropped from the full frame.
+        # Note that each region is 1/2x1/2 of the full frame, and is digitally
+        # zoomed into the full size output image, so must be downscaled (below)
+        # by 2x when compared to a tile of the full image.
         reqs = []
         for x,y,w,h in REGIONS:
             req = its.objects.manual_capture_request(s,e)
@@ -67,8 +67,7 @@ def main():
                     "right": int(ax + aw * (x + w)),
                     "bottom": int(ay + ah * (y + h))}
             reqs.append(req)
-        fmt = {"format":"yuv", "width":wfull/2, "height":hfull/2}
-        caps_regions = cam.do_capture(reqs, fmt)
+        caps_regions = cam.do_capture(reqs)
         match_failed = False
         for i,cap in enumerate(caps_regions):
             a = cap["metadata"]["android.scaler.cropRegion"]
@@ -79,6 +78,7 @@ def main():
             # the full image, to find the best match (which should be
             # the region that corresponds to this crop image).
             img_crop = its.image.convert_capture_to_rgb_image(cap)
+            img_crop = its.image.downscale_image(img_crop, 2)
             its.image.write_image(img_crop, "%s_crop%d.jpg" % (NAME, i))
             min_diff = None
             min_diff_region = None

@@ -25,8 +25,7 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # TODO: Look into why some of the RMS diffs are higher in this test.
-    THRESHOLD_MAX_RMS_DIFF = 0.1
+    THRESHOLD_MAX_RMS_DIFF = 0.03
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()

@@ -48,7 +48,7 @@ def main():
             e = int(s_e_prod / float(s))
             req = its.objects.manual_capture_request(s, e)
 
-            # TODO: Capture using raw-only, once it works reliably.
+            # Capture raw+yuv, but only look at the raw.
             cap,_ = cam.do_capture(req, cam.CAP_RAW_YUV)
 
             # Measure the variance. Each shot should be noisier than the
