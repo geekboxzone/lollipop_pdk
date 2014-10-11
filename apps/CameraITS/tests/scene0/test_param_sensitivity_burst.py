@@ -33,14 +33,14 @@ def main():
         props = cam.get_camera_properties()
         sens_range = props['android.sensor.info.sensitivityRange']
         sens_step = (sens_range[1] - sens_range[0]) / NUM_STEPS
-        sensitivities = range(sens_range[0], sens_range[1], sens_step)
-        # TODO: Update test to ensure manual settings are within legal ranges.
-        reqs = [its.objects.manual_capture_request(s,10*1000*1000)
-                for s in sensitivities]
+        sens_list = range(sens_range[0], sens_range[1], sens_step)
+        e = min(props['android.sensor.info.exposureTimeRange'])
+        reqs = [its.objects.manual_capture_request(s,e) for s in sens_list]
+        _,fmt = its.objects.get_fastest_manual_capture_settings(props)
 
-        caps = cam.do_capture(reqs)
+        caps = cam.do_capture(reqs, fmt)
         for i,cap in enumerate(caps):
-            s_req = sensitivities[i]
+            s_req = sens_list[i]
             s_res = cap["metadata"]["android.sensor.sensitivity"]
             assert(s_req == s_res)
 

@@ -33,10 +33,14 @@ def main():
     # Number of samples averaged together, in the plot.
     N = 20
 
+    # Pass/fail thresholds for gyro drift
+    MEAN_THRESH = 0.01
+    VAR_THRESH = 0.001
+
     with its.device.ItsSession() as cam:
         print "Collecting gyro events"
         cam.start_sensor_events()
-        time.sleep(10)
+        time.sleep(5)
         gyro_events = cam.get_sensor_events()["gyro"]
 
     nevents = (len(gyro_events) / N) * N
@@ -46,6 +50,9 @@ def main():
     xs = numpy.array([e["x"] for e in gyro_events])
     ys = numpy.array([e["y"] for e in gyro_events])
     zs = numpy.array([e["z"] for e in gyro_events])
+
+    # Group samples into size-N groups and average each together, to get rid
+    # of individual rnadom spikes in the data.
     times = times[N/2::N]
     xs = xs.reshape(nevents/N, N).mean(1)
     ys = ys.reshape(nevents/N, N).mean(1)
@@ -59,7 +66,9 @@ def main():
     pylab.legend()
     matplotlib.pyplot.savefig("%s_plot.png" % (NAME))
 
-    # TODO: Add pass/fail check.
+    for samples in [xs,ys,zs]:
+        assert(samples.mean() < MEAN_THRESH)
+        assert(numpy.var(samples) < VAR_THRESH)
 
 if __name__ == '__main__':
     main()
