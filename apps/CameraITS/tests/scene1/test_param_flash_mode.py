@@ -26,8 +26,6 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    MIN_BRIGHTNESS_DELTA = 0.1
-
     with its.device.ItsSession() as cam:
 
         flash_modes_reported = []
@@ -58,8 +56,8 @@ def main():
         assert(flash_states_reported[2] in [3,4])
 
         print "G brightnesses:", g_means
-        assert(g_means[1] > g_means[0] + MIN_BRIGHTNESS_DELTA)
-        assert(g_means[2] > g_means[0] + MIN_BRIGHTNESS_DELTA)
+        assert(g_means[1] > g_means[0])
+        assert(g_means[2] > g_means[0])
 
 if __name__ == '__main__':
     main()
