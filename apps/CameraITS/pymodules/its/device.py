@@ -90,6 +90,7 @@ class ItsSession(object):
                 print "Reboot complete"
 
         # TODO: Figure out why "--user 0" is needed, and fix the problem.
+        _run('%s shell am force-stop --user 0 %s' % (adb, self.PACKAGE))
         _run(('%s shell am startservice --user 0 -t text/plain '
               '-a %s') % (adb, self.INTENT_START))
 
