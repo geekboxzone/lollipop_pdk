@@ -62,10 +62,10 @@ def main():
         for x,y,w,h in REGIONS:
             req = its.objects.manual_capture_request(s,e)
             req["android.scaler.cropRegion"] = {
-                    "top": int(ay + ah * y),
-                    "left": int(ax + aw * x),
-                    "right": int(ax + aw * (x + w)),
-                    "bottom": int(ay + ah * (y + h))}
+                    "top": int(ah * y),
+                    "left": int(aw * x),
+                    "right": int(aw * (x + w)),
+                    "bottom": int(ah * (y + h))}
             reqs.append(req)
         caps_regions = cam.do_capture(reqs)
         match_failed = False
