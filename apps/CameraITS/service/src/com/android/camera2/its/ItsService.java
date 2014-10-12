@@ -106,6 +106,8 @@ public class ItsService extends Service implements SensorEventListener {
     public static final String REGION_AE_KEY = "ae";
     public static final String REGION_AWB_KEY = "awb";
     public static final String REGION_AF_KEY = "af";
+    public static final String LOCK_AE_KEY = "aeLock";
+    public static final String LOCK_AWB_KEY = "awbLock";
     public static final String TRIGGER_KEY = "triggers";
     public static final String TRIGGER_AE_KEY = "ae";
     public static final String TRIGGER_AF_KEY = "af";
@@ -154,6 +156,10 @@ public class ItsService extends Service implements SensorEventListener {
     private volatile boolean mConvergedAE = false;
     private volatile boolean mConvergedAF = false;
     private volatile boolean mConvergedAWB = false;
+    private volatile boolean mLockedAE = false;
+    private volatile boolean mLockedAWB = false;
+    private volatile boolean mNeedsLockedAE = false;
+    private volatile boolean mNeedsLockedAWB = false;
 
     class MySensorEvent {
         public Sensor sensor;
@@ -788,6 +794,11 @@ public class ItsService extends Service implements SensorEventListener {
                 }
             }
 
+            // If AE or AWB lock is specified, then the 3A will converge first and then lock these
+            // values, waiting until the HAL has reported that the lock was successful.
+            mNeedsLockedAE = params.optBoolean(LOCK_AE_KEY, false);
+            mNeedsLockedAWB = params.optBoolean(LOCK_AWB_KEY, false);
+
             // By default, AE and AF both get triggered, but the user can optionally override this.
             // Also, AF won't get triggered if the lens is fixed-focus.
             boolean doAE = true;
@@ -815,9 +826,14 @@ public class ItsService extends Service implements SensorEventListener {
             mConvergedAE = false;
             mConvergedAWB = false;
             mConvergedAF = false;
+            mLockedAE = false;
+            mLockedAWB = false;
             long tstart = System.currentTimeMillis();
             boolean triggeredAE = false;
             boolean triggeredAF = false;
+
+            Logt.i(TAG, String.format("Initiating 3A: AE:%d, AF:%d, AWB:1, AELOCK:%d, AWBLOCK:%d",
+                    doAE?1:0, doAF?1:0, mNeedsLockedAE?1:0, mNeedsLockedAWB?1:0));
 
             // Keep issuing capture requests until 3A has converged.
             while (true) {
@@ -831,8 +847,11 @@ public class ItsService extends Service implements SensorEventListener {
                 mInterlock3A.close();
 
                 // If not converged yet, issue another capture request.
-                if ((doAE && (!triggeredAE || !mConvergedAE)) || !mConvergedAWB ||
-                        (doAF && (!triggeredAF || !mConvergedAF))) {
+                if (       (doAE && (!triggeredAE || !mConvergedAE))
+                        || !mConvergedAWB
+                        || (doAF && (!triggeredAF || !mConvergedAF))
+                        || (doAE && mNeedsLockedAE && !mLockedAE)
+                        || (mNeedsLockedAWB && !mLockedAWB)) {
 
                     // Baseline capture request for 3A.
                     CaptureRequest.Builder req = mCamera.createCaptureRequest(
@@ -853,6 +872,13 @@ public class ItsService extends Service implements SensorEventListener {
                             CaptureRequest.CONTROL_AWB_MODE_AUTO);
                     req.set(CaptureRequest.CONTROL_AWB_LOCK, false);
                     req.set(CaptureRequest.CONTROL_AWB_REGIONS, regionAWB);
+
+                    if (mConvergedAE && mNeedsLockedAE) {
+                        req.set(CaptureRequest.CONTROL_AE_LOCK, true);
+                    }
+                    if (mConvergedAWB && mNeedsLockedAWB) {
+                        req.set(CaptureRequest.CONTROL_AWB_LOCK, true);
+                    }
 
                     // Trigger AE first.
                     if (doAE && !triggeredAE) {
@@ -1192,7 +1218,11 @@ public class ItsService extends Service implements SensorEventListener {
                     mConvergedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
                                               CaptureResult.CONTROL_AE_STATE_CONVERGED ||
                                    result.get(CaptureResult.CONTROL_AE_STATE) ==
-                                              CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED;
+                                              CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED ||
+                                   result.get(CaptureResult.CONTROL_AE_STATE) ==
+                                              CaptureResult.CONTROL_AE_STATE_LOCKED;
+                    mLockedAE = result.get(CaptureResult.CONTROL_AE_STATE) ==
+                                           CaptureResult.CONTROL_AE_STATE_LOCKED;
                 }
                 if (result.get(CaptureResult.CONTROL_AF_STATE) != null) {
                     mConvergedAF = result.get(CaptureResult.CONTROL_AF_STATE) ==
@@ -1200,10 +1230,14 @@ public class ItsService extends Service implements SensorEventListener {
                 }
                 if (result.get(CaptureResult.CONTROL_AWB_STATE) != null) {
                     mConvergedAWB = result.get(CaptureResult.CONTROL_AWB_STATE) ==
-                                               CaptureResult.CONTROL_AWB_STATE_CONVERGED;
+                                               CaptureResult.CONTROL_AWB_STATE_CONVERGED ||
+                                    result.get(CaptureResult.CONTROL_AWB_STATE) ==
+                                               CaptureResult.CONTROL_AWB_STATE_LOCKED;
+                    mLockedAWB = result.get(CaptureResult.CONTROL_AWB_STATE) ==
+                                            CaptureResult.CONTROL_AWB_STATE_LOCKED;
                 }
 
-                if (mConvergedAE) {
+                if (mConvergedAE && (!mNeedsLockedAE || mLockedAE)) {
                     mSocketRunnableObj.sendResponse("aeResult", String.format("%d %d",
                             result.get(CaptureResult.SENSOR_SENSITIVITY).intValue(),
                             result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue()
@@ -1216,7 +1250,7 @@ public class ItsService extends Service implements SensorEventListener {
                             ));
                 }
 
-                if (mConvergedAWB) {
+                if (mConvergedAWB && (!mNeedsLockedAWB || mLockedAWB)) {
                     if (result.get(CaptureResult.COLOR_CORRECTION_GAINS) != null
                             && result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM) != null) {
                         mSocketRunnableObj.sendResponse("awbResult", String.format(

@@ -41,20 +41,27 @@ def main():
 
         # Capture at full resolution.
         props = cam.get_camera_properties()
-        req = its.objects.auto_capture_request()
         w,h = its.objects.get_available_output_sizes("yuv", props)[0]
 
         # Converge 3A prior to capture.
-        cam.do_3a()
+        cam.do_3a(lock_ae=True, lock_awb=True)
+
+        # After 3A has converged, lock AE+AWB for the duration of the test.
+        req = its.objects.auto_capture_request()
+        req["android.blackLevel.lock"] = True
+        req["android.control.awbLock"] = True
+        req["android.control.aeLock"] = True
 
         # Capture bursts of YUV shots.
-        # Build a 4D array, which is an array of all RGB images.
-        imgs = numpy.empty([FRAMES,h,w,3])
+        # Build a 4D array, which is an array of all RGB images after down-
+        # scaling them by a factor of 4x4.
+        imgs = numpy.empty([FRAMES,h/4,w/4,3])
         for j in range(BURSTS):
             caps = cam.do_capture([req]*BURST_LEN)
             for i,cap in enumerate(caps):
                 n = j*BURST_LEN + i
-                imgs[n] = its.image.convert_capture_to_rgb_image(cap)
+                imgs[n] = its.image.downscale_image(
+                        its.image.convert_capture_to_rgb_image(cap), 4)
 
         # Dump all images.
         print "Dumping images"
@@ -70,7 +77,7 @@ def main():
         print "Computing frame differences"
         delta_maxes = []
         for i in range(FRAMES):
-            deltas = (imgs[i] - img_mean).reshape(h*w*3)
+            deltas = (imgs[i] - img_mean).reshape(h*w*3/16)
             delta_max_pos = numpy.max(deltas)
             delta_max_neg = numpy.min(deltas)
             delta_maxes.append(max(abs(delta_max_pos), abs(delta_max_neg)))

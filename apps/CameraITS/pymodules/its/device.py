@@ -254,7 +254,8 @@ class ItsSession(object):
     def do_3a(self, regions_ae=[[0,0,1,1,1]],
                     regions_awb=[[0,0,1,1,1]],
                     regions_af=[[0,0,1,1,1]],
-                    do_ae=True, do_awb=True, do_af=True):
+                    do_ae=True, do_awb=True, do_af=True,
+                    lock_ae=False, lock_awb=False):
         """Perform a 3A operation on the device.
 
         Triggers some or all of AE, AWB, and AF, and returns once they have
@@ -266,6 +267,11 @@ class ItsSession(object):
             regions_ae: List of weighted AE regions.
             regions_awb: List of weighted AWB regions.
             regions_af: List of weighted AF regions.
+            do_ae: Trigger AE and wait for it to converge.
+            do_awb: Wait for AWB to converge.
+            do_af: Trigger AF and wait for it to converge.
+            lock_ae: Request AE lock after convergence, and wait for it.
+            lock_awb: Request AWB lock after convergence, and wait for it.
 
         Region format in args:
             Arguments are lists of weighted regions; each weighted region is a
@@ -290,6 +296,10 @@ class ItsSession(object):
                           "awb": sum(regions_awb, []),
                           "af": sum(regions_af, [])}
         cmd["triggers"] = {"ae": do_ae, "af": do_af}
+        if lock_ae:
+            cmd["aeLock"] = True
+        if lock_awb:
+            cmd["awbLock"] = True
         self.sock.send(json.dumps(cmd) + "\n")
 
         # Wait for each specified 3A to converge.
