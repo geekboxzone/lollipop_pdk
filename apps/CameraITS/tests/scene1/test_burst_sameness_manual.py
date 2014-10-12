@@ -32,10 +32,10 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     BURST_LEN = 50
-    BURSTS = 10
+    BURSTS = 5
     FRAMES = BURST_LEN * BURSTS
 
-    DELTA_THRESH = 0.1
+    SPREAD_THRESH = 0.03
 
     with its.device.ItsSession() as cam:
 
@@ -46,17 +46,23 @@ def main():
         req = its.objects.manual_capture_request(s, e)
         w,h = fmt["width"], fmt["height"]
 
-        # Converge 3A prior to capture.
-        cam.do_3a()
-
         # Capture bursts of YUV shots.
-        # Build a 4D array, which is an array of all RGB images.
+        # Get the mean values of a center patch for each.
+        # Also build a 4D array, which is an array of all RGB images.
+        r_means = []
+        g_means = []
+        b_means = []
         imgs = numpy.empty([FRAMES,h,w,3])
         for j in range(BURSTS):
             caps = cam.do_capture([req]*BURST_LEN, [fmt])
             for i,cap in enumerate(caps):
                 n = j*BURST_LEN + i
                 imgs[n] = its.image.convert_capture_to_rgb_image(cap)
+                tile = its.image.get_image_patch(imgs[n], 0.45, 0.45, 0.1, 0.1)
+                means = its.image.compute_image_means(tile)
+                r_means.append(means[0])
+                g_means.append(means[1])
+                b_means.append(means[2])
 
         # Dump all images.
         print "Dumping images"
@@ -67,19 +73,11 @@ def main():
         img_mean = imgs.mean(0)
         its.image.write_image(img_mean, "%s_mean.jpg"%(NAME))
 
-        # Compute the deltas of each image from the mean image; this test
-        # passes if none of the deltas are large.
-        print "Computing frame differences"
-        delta_maxes = []
-        for i in range(FRAMES):
-            deltas = (imgs[i] - img_mean).reshape(h*w*3)
-            delta_max_pos = numpy.max(deltas)
-            delta_max_neg = numpy.min(deltas)
-            delta_maxes.append(max(abs(delta_max_pos), abs(delta_max_neg)))
-        max_delta_max = max(delta_maxes)
-        print "Frame %d has largest diff %f" % (
-                delta_maxes.index(max_delta_max), max_delta_max)
-        assert(max_delta_max < DELTA_THRESH)
+        # Pass/fail based on center patch similarity.
+        for means in [r_means, g_means, b_means]:
+            spread = max(means) - min(means)
+            print spread
+            assert(spread < SPREAD_THRESH)
 
 if __name__ == '__main__':
     main()
