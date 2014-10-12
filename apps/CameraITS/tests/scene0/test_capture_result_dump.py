@@ -28,9 +28,9 @@ def main():
         # Arbitrary capture request exposure values; image content is not
         # important for this test, only the metadata.
         props = cam.get_camera_properties()
-        req,_ = its.objects.get_fastest_manual_capture_settings(props)
+        req,fmt = its.objects.get_fastest_manual_capture_settings(props)
         req["android.statistics.lensShadingMapMode"] = 1
-        cap = cam.do_capture(req, cam.CAP_YUV)
+        cap = cam.do_capture(req, fmt)
         pprint.pprint(cap["metadata"])
 
         # No pass/fail check; test passes if it completes.

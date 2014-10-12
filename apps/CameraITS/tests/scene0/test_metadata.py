@@ -32,8 +32,8 @@ def main():
         # Arbitrary capture request exposure values; image content is not
         # important for this test, only the metadata.
         props = cam.get_camera_properties()
-        req,_ = its.objects.get_fastest_manual_capture_settings(props)
-        cap = cam.do_capture(req, cam.CAP_YUV)
+        req,fmt = its.objects.get_fastest_manual_capture_settings(props)
+        cap = cam.do_capture(req, fmt)
         md = cap["metadata"]
 
     print "Hardware level"
