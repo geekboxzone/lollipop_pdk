@@ -33,8 +33,6 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    THRESHOLD_MIN_VARIANCE_RATIO = 0.7
-
     # List of variances for Y,U,V.
     variances = [[],[],[]]
 
@@ -86,12 +84,11 @@ def main():
 
     assert(nr_modes_reported == [0,1,2])
 
-    # Check that the variance of the NR=0 image is much higher than for the
+    # Check that the variance of the NR=0 image is higher than for the
     # NR=1 and NR=2 images.
     for j in range(3):
         for i in range(1,3):
-            assert(variances[j][i] / variances[j][0] <
-                   THRESHOLD_MIN_VARIANCE_RATIO)
+            assert(variances[j][i] < variances[j][0])
 
 if __name__ == '__main__':
     main()

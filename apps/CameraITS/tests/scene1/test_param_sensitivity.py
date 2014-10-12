@@ -26,9 +26,6 @@ def main():
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
-    # Pass/fail threshold.
-    THRESHOLD_MIN_DIFF = 0.02
-
     NUM_STEPS = 5
 
     sensitivities = None
@@ -65,7 +62,7 @@ def main():
     # Test for pass/fail: check that each shot is brighter than the previous.
     for means in [r_means, g_means, b_means]:
         for i in range(len(means)-1):
-            assert(means[i+1] - means[i] > THRESHOLD_MIN_DIFF)
+            assert(means[i+1] > means[i])
 
 if __name__ == '__main__':
     main()
