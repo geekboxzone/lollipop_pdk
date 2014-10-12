@@ -29,7 +29,7 @@ def main():
     The "reboot" or "reboot=<N>" and "camera=<N>" arguments may also be
     provided, just as with all the test scripts. The "target" argument is
     may also be provided but it has no effect on this script since the cached
-    exposure value is cleared regardless..
+    exposure value is cleared regardless.
 
     If no exposure value is provided, the camera will be used to measure
     the scene and set a level that will result in the luma (with linear
@@ -43,21 +43,21 @@ def main():
 
     # Command line args, ignoring any args that will be passed down to the
     # ItsSession constructor.
-    args = [s for s in sys.argv if s[:6] not in ["reboot", "camera", "target"]]
+    args = [s for s in sys.argv if s[:6] not in \
+            ["reboot", "camera", "target", "noinit"]]
 
     if len(args) == 1:
         with its.device.ItsSession() as cam:
             # Automatically measure target exposure.
             its.target.clear_cached_target_exposure()
-            its.target.get_target_exposure(cam)
+            exposure = its.target.get_target_exposure(cam)
     elif len(args) == 2:
         # Hard-code the target exposure.
-        exposure = float(args[1])
+        exposure = int(args[1])
         its.target.set_hardcoded_exposure(exposure)
     else:
         print "Usage: python %s [EXPOSURE]"
         sys.exit(0)
-    exposure = its.target.get_target_exposure()
     print "New target exposure set to", exposure
     print "This corresponds to %dms at ISO 100" % int(exposure/100/1000000.0)
 

@@ -62,7 +62,7 @@ done
 rm -rf out
 mkdir -p out
 
-echo Running tests with args: $REBOOT camera=$CAMERA target
+echo Running tests with args: $REBOOT camera=$CAMERA target noinit
 
 cd out
 python ../../../tools/config.py $REBOOT camera=$CAMERA
@@ -79,7 +79,7 @@ do
     echo "--------------------------------------------------------------------"
     echo "Running test: $T"
     echo "--------------------------------------------------------------------"
-    python ../"$T" $REBOOT camera=$CAMERA target
+    python ../"$T" $REBOOT camera=$CAMERA noinit target
     code=$?
     if [ $code -ne 0 ]; then
         let failcount=failcount+1

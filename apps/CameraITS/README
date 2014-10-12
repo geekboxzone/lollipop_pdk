@@ -215,6 +215,15 @@ The tests/inprog directory contains a mix of unfinished, in-progress, and
 incomplete tests. These may or may not be useful in testing a HAL impl.,
 and as these tests are copmleted they will be moved into the scene<N> folders.
 
+When running individual tests from the command line (as in the examples here),
+each test run will ensure that the ItsService is running on the device and is
+ready to accept TCP connections. When using a separate test harness to control
+this infrastructure, the "noinit" command line argument can be provided to
+skip this step; in this case, the test will just try to open a socket to the
+service on the device, and will fail if it's not running and ready.
+
+    python tests/scene1/test_linearity.py noinit
+
 3.4. Target exposure
 --------------------
 
@@ -255,6 +264,18 @@ how to work with image data in general using this infrastructure. (Its code
 is commented with explanatory remarks.)
 
     python tests/tutorial.py
+
+3.6. List of command line args
+---------------------------------
+
+The above doc sections describe the following command line arguments that may
+be provided when running a test:
+
+    reboot
+    reboot=N
+    target
+    noinit
+    camera=N
 
 4. Known issues
 ---------------

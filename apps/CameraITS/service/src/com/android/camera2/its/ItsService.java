@@ -92,6 +92,9 @@ public class ItsService extends Service implements SensorEventListener {
     private static final long TIMEOUT_IDLE_MS = 2000;
     private static final long TIMEOUT_STATE_MS = 500;
 
+    // Timeout to wait for a capture result after the capture buffer has arrived, in ms.
+    private static final long TIMEOUT_CAP_RES = 2000;
+
     private static final int MAX_CONCURRENT_READER_BUFFERS = 8;
 
     // Supports at most RAW+YUV+JPEG, one surface each.
@@ -129,13 +132,11 @@ public class ItsService extends Service implements SensorEventListener {
 
     private volatile ServerSocket mSocket = null;
     private volatile SocketRunnable mSocketRunnableObj = null;
-    private volatile Thread mSocketThread = null;
     private volatile BlockingQueue<ByteBuffer> mSocketWriteQueue =
             new LinkedBlockingDeque<ByteBuffer>();
-    private final Object mSocketWriteLock = new Object();
+    private final Object mSocketWriteEnqueueLock = new Object();
+    private final Object mSocketWriteDrainLock = new Object();
 
-    private volatile SerializerRunnable mSerializerRunnableObj = null;
-    private volatile Thread mSerializerThread = null;
     private volatile BlockingQueue<Object[]> mSerializerQueue =
             new LinkedBlockingDeque<Object[]>();
 
@@ -183,11 +184,9 @@ public class ItsService extends Service implements SensorEventListener {
 
     @Override
     public void onCreate() {
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
         try {
+            mThreadExitFlag = false;
+
             // Get handle to camera manager.
             mCameraManager = (CameraManager) this.getSystemService(Context.CAMERA_SERVICE);
             if (mCameraManager == null) {
@@ -195,40 +194,6 @@ public class ItsService extends Service implements SensorEventListener {
             }
             mBlockingCameraManager = new BlockingCameraManager(mCameraManager);
             mCameraListener = new BlockingStateCallback();
-
-            // Open the camera device, and get its properties.
-            String[] devices;
-            try {
-                devices = mCameraManager.getCameraIdList();
-                if (devices == null || devices.length == 0) {
-                    throw new ItsException("No camera devices");
-                }
-            } catch (CameraAccessException e) {
-                throw new ItsException("Failed to get device ID list", e);
-            }
-
-            // Args are a string, which is just the camera ID to open.
-            int cameraId = 0;
-            String args = intent.getDataString();
-            if (args != null) {
-                Logt.i(TAG, String.format("Received intent args: %s", args));
-                cameraId = Integer.parseInt(args);
-            }
-            Logt.i(TAG, String.format("Opening camera %d", cameraId));
-
-            mCameraThread = new HandlerThread("ItsCameraThread");
-            try {
-                mCameraThread.start();
-                mCameraHandler = new Handler(mCameraThread.getLooper());
-                mCamera = mBlockingCameraManager.openCamera(devices[cameraId],
-                        mCameraListener, mCameraHandler);
-                mCameraCharacteristics = mCameraManager.getCameraCharacteristics(
-                        devices[cameraId]);
-            } catch (CameraAccessException e) {
-                throw new ItsException("Failed to open camera", e);
-            } catch (BlockingOpenException e) {
-                throw new ItsException("Failed to open camera (after blocking)", e);
-            }
 
             // Register for motion events.
             mEvents = new LinkedList<MySensorEvent>();
@@ -251,47 +216,101 @@ public class ItsService extends Service implements SensorEventListener {
             }
 
             // Create a thread to handle object serialization.
-            mSerializerRunnableObj = new SerializerRunnable();
-            mSerializerThread = new Thread(mSerializerRunnableObj);
-            mSerializerThread.start();
+            (new Thread(new SerializerRunnable())).start();;
 
             // Create a thread to receive capture results and process them.
             mResultThread = new HandlerThread("ResultThread");
             mResultThread.start();
             mResultHandler = new Handler(mResultThread.getLooper());
 
+            // Create a thread for the camera device.
+            mCameraThread = new HandlerThread("ItsCameraThread");
+            mCameraThread.start();
+            mCameraHandler = new Handler(mCameraThread.getLooper());
+
             // Create a thread to process commands, listening on a TCP socket.
             mSocketRunnableObj = new SocketRunnable();
-            mSocketThread = new Thread(mSocketRunnableObj);
-            mSocketThread.start();
+            (new Thread(mSocketRunnableObj)).start();
         } catch (ItsException e) {
             Logt.e(TAG, "Service failed to start: ", e);
+        }
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        try {
+            // Just log a message indicating that the service is running and is able to accept
+            // socket connections.
+            while (!mThreadExitFlag && mSocket==null) {
+                Thread.sleep(1);
+            }
+            if (!mThreadExitFlag){
+                Logt.i(TAG, "ItsService ready");
+            } else {
+                Logt.e(TAG, "Starting ItsService in bad state");
+            }
+        } catch (java.lang.InterruptedException e) {
+            Logt.e(TAG, "Error starting ItsService (interrupted)", e);
         }
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        try {
-            mThreadExitFlag = true;
-            for (int i = 0; i < MAX_NUM_OUTPUT_SURFACES; i++) {
-                if (mSaveThreads[i] != null) {
-                    mSaveThreads[i].quit();
-                    mSaveThreads[i] = null;
-                }
+        mThreadExitFlag = true;
+        for (int i = 0; i < MAX_NUM_OUTPUT_SURFACES; i++) {
+            if (mSaveThreads[i] != null) {
+                mSaveThreads[i].quit();
+                mSaveThreads[i] = null;
             }
-            if (mCameraThread != null) {
-                mCameraThread.quitSafely();
-                mCameraThread = null;
-            }
-            try {
-                mCamera.close();
-            } catch (Exception e) {
-                throw new ItsException("Failed to close device");
-            }
-        } catch (ItsException e) {
-            Logt.e(TAG, "Script failed: ", e);
         }
+        if (mResultThread != null) {
+            mResultThread.quitSafely();
+            mResultThread = null;
+        }
+        if (mCameraThread != null) {
+            mCameraThread.quitSafely();
+            mCameraThread = null;
+        }
+    }
+
+    public void openCameraDevice(int cameraId) throws ItsException {
+        Logt.i(TAG, String.format("Opening camera %d", cameraId));
+
+        String[] devices;
+        try {
+            devices = mCameraManager.getCameraIdList();
+            if (devices == null || devices.length == 0) {
+                throw new ItsException("No camera devices");
+            }
+        } catch (CameraAccessException e) {
+            throw new ItsException("Failed to get device ID list", e);
+        }
+
+        try {
+            mCamera = mBlockingCameraManager.openCamera(devices[cameraId],
+                    mCameraListener, mCameraHandler);
+            mCameraCharacteristics = mCameraManager.getCameraCharacteristics(
+                    devices[cameraId]);
+        } catch (CameraAccessException e) {
+            throw new ItsException("Failed to open camera", e);
+        } catch (BlockingOpenException e) {
+            throw new ItsException("Failed to open camera (after blocking)", e);
+        }
+        mSocketRunnableObj.sendResponse("cameraOpened", "");
+    }
+
+    public void closeCameraDevice() throws ItsException {
+        try {
+            if (mCamera != null) {
+                Logt.i(TAG, "Closing camera");
+                mCamera.close();
+                mCamera = null;
+            }
+        } catch (Exception e) {
+            throw new ItsException("Failed to close device");
+        }
+        mSocketRunnableObj.sendResponse("cameraClosed", "");
     }
 
     class SerializerRunnable implements Runnable {
@@ -299,7 +318,7 @@ public class ItsService extends Service implements SensorEventListener {
         // the reflection).
         public void run() {
             Logt.i(TAG, "Serializer thread starting");
-            while (true) {
+            while (! mThreadExitFlag) {
                 try {
                     Object objs[] = mSerializerQueue.take();
                     JSONObject jsonObj = new JSONObject();
@@ -358,20 +377,29 @@ public class ItsService extends Service implements SensorEventListener {
             mOpenSocket = openSocket;
         }
 
+        public void setOpenSocket(Socket openSocket) {
+            mOpenSocket = openSocket;
+        }
+
         public void run() {
             Logt.i(TAG, "Socket writer thread starting");
             while (true) {
                 try {
                     ByteBuffer b = mSocketWriteQueue.take();
-                    if (b.hasArray()) {
-                        mOpenSocket.getOutputStream().write(b.array());
-                    } else {
-                        byte[] barray = new byte[b.capacity()];
-                        b.get(barray);
-                        mOpenSocket.getOutputStream().write(barray);
+                    synchronized(mSocketWriteDrainLock) {
+                        if (mOpenSocket == null) {
+                            continue;
+                        }
+                        if (b.hasArray()) {
+                            mOpenSocket.getOutputStream().write(b.array());
+                        } else {
+                            byte[] barray = new byte[b.capacity()];
+                            b.get(barray);
+                            mOpenSocket.getOutputStream().write(barray);
+                        }
+                        mOpenSocket.getOutputStream().flush();
+                        Logt.i(TAG, String.format("Wrote to socket: %d bytes", b.capacity()));
                     }
-                    mOpenSocket.getOutputStream().flush();
-                    Logt.i(TAG, String.format("Wrote to socket: %d bytes", b.capacity()));
                 } catch (IOException e) {
                     Logt.e(TAG, "Error writing to socket", e);
                     break;
@@ -403,43 +431,69 @@ public class ItsService extends Service implements SensorEventListener {
             } catch (IOException e) {
                 Logt.e(TAG, "Failed to create socket", e);
             }
-            try {
-                Logt.i(TAG, "Waiting for client to connect to socket");
-                mOpenSocket = mSocket.accept();
-                if (mOpenSocket == null) {
-                    Logt.e(TAG, "Socket connection error");
-                    return;
-                }
-                Logt.i(TAG, "Socket connected");
-            } catch (IOException e) {
-                Logt.e(TAG, "Socket open error: ", e);
-                return;
-            }
-            mSocketThread = new Thread(new SocketWriteRunnable(mOpenSocket));
-            mSocketThread.start();
+
+            // Create a new thread to handle writes to this socket.
+            mSocketWriteRunnable = new SocketWriteRunnable(null);
+            (new Thread(mSocketWriteRunnable)).start();
+
             while (!mThreadExitFlag) {
+                // Receive the socket-open request from the host.
                 try {
-                    BufferedReader input = new BufferedReader(
-                            new InputStreamReader(mOpenSocket.getInputStream()));
-                    if (input == null) {
-                        Logt.e(TAG, "Failed to get socket input stream");
+                    Logt.i(TAG, "Waiting for client to connect to socket");
+                    mOpenSocket = mSocket.accept();
+                    if (mOpenSocket == null) {
+                        Logt.e(TAG, "Socket connection error");
                         break;
                     }
-                    String line = input.readLine();
-                    if (line == null) {
-                        Logt.e(TAG, "Failed to read socket line");
-                        break;
-                    }
-                    processSocketCommand(line);
+                    mSocketWriteQueue.clear();
+                    mSocketWriteRunnable.setOpenSocket(mOpenSocket);
+                    Logt.i(TAG, "Socket connected");
                 } catch (IOException e) {
-                    Logt.e(TAG, "Socket read error: ", e);
-                    break;
-                } catch (ItsException e) {
-                    Logt.e(TAG, "Script error: ", e);
+                    Logt.e(TAG, "Socket open error: ", e);
                     break;
                 }
+
+                // Process commands over the open socket.
+                while (!mThreadExitFlag) {
+                    try {
+                        BufferedReader input = new BufferedReader(
+                                new InputStreamReader(mOpenSocket.getInputStream()));
+                        if (input == null) {
+                            Logt.e(TAG, "Failed to get socket input stream");
+                            break;
+                        }
+                        String line = input.readLine();
+                        if (line == null) {
+                            Logt.i(TAG, "Socket readline retuned null (host disconnected)");
+                            break;
+                        }
+                        processSocketCommand(line);
+                    } catch (IOException e) {
+                        Logt.e(TAG, "Socket read error: ", e);
+                        break;
+                    } catch (ItsException e) {
+                        Logt.e(TAG, "Script error: ", e);
+                        break;
+                    }
+                }
+
+                // Close socket and go back to waiting for a new connection.
+                try {
+                    synchronized(mSocketWriteDrainLock) {
+                        mSocketWriteQueue.clear();
+                        mOpenSocket.close();
+                        mOpenSocket = null;
+                        Logt.i(TAG, "Socket disconnected");
+                    }
+                } catch (java.io.IOException e) {
+                    Logt.e(TAG, "Exception closing socket");
+                }
             }
+
+            // It's an overall error state if the code gets here; no recevery.
+            // Try to do some cleanup, but the service probably needs to be restarted.
             Logt.i(TAG, "Socket server loop exited");
+            mThreadExitFlag = true;
             try {
                 if (mOpenSocket != null) {
                     mOpenSocket.close();
@@ -456,7 +510,6 @@ public class ItsService extends Service implements SensorEventListener {
             } catch (java.io.IOException e) {
                 Logt.w(TAG, "Exception closing socket");
             }
-            Logt.i(TAG, "Socket server thread exited");
         }
 
         public void processSocketCommand(String cmd)
@@ -464,7 +517,12 @@ public class ItsService extends Service implements SensorEventListener {
             // Each command is a serialized JSON object.
             try {
                 JSONObject cmdObj = new JSONObject(cmd);
-                if ("getCameraProperties".equals(cmdObj.getString("cmdName"))) {
+                if ("open".equals(cmdObj.getString("cmdName"))) {
+                    int cameraId = cmdObj.getInt("cameraId");
+                    openCameraDevice(cameraId);
+                } else if ("close".equals(cmdObj.getString("cmdName"))) {
+                    closeCameraDevice();
+                } else if ("getCameraProperties".equals(cmdObj.getString("cmdName"))) {
                     doGetProps();
                 } else if ("startSensorEvents".equals(cmdObj.getString("cmdName"))) {
                     doStartSensorEvents();
@@ -500,7 +558,7 @@ public class ItsService extends Service implements SensorEventListener {
                 }
                 ByteBuffer bstr = ByteBuffer.wrap(
                         (jsonObj.toString()+"\n").getBytes(Charset.defaultCharset()));
-                synchronized(mSocketWriteLock) {
+                synchronized(mSocketWriteEnqueueLock) {
                     if (bstr != null) {
                         mSocketWriteQueue.put(bstr);
                     }
@@ -1039,8 +1097,10 @@ public class ItsService extends Service implements SensorEventListener {
                         ByteBuffer buf = ByteBuffer.wrap(img);
                         mSocketRunnableObj.sendResponseCaptureBuffer("rawImage", buf);
                     } else {
-                        // Wait until the corresponding capture result is ready.
-                        while (! mThreadExitFlag) {
+                        // Wait until the corresponding capture result is ready, up to a timeout.
+                        long t0 = android.os.SystemClock.elapsedRealtime();
+                        while (! mThreadExitFlag
+                                && android.os.SystemClock.elapsedRealtime()-t0 < TIMEOUT_CAP_RES) {
                             if (mCaptureResults[count] != null) {
                                 Logt.i(TAG, "Writing capture as DNG");
                                 DngCreator dngCreator = new DngCreator(
@@ -1062,13 +1122,10 @@ public class ItsService extends Service implements SensorEventListener {
                 mCountCallbacksRemaining.decrementAndGet();
             } catch (IOException e) {
                 Logt.e(TAG, "Script error: ", e);
-                mThreadExitFlag = true;
             } catch (InterruptedException e) {
                 Logt.e(TAG, "Script error: ", e);
-                mThreadExitFlag = true;
             } catch (ItsException e) {
                 Logt.e(TAG, "Script error: ", e);
-                mThreadExitFlag = true;
             }
         }
     };
@@ -1198,10 +1255,8 @@ public class ItsService extends Service implements SensorEventListener {
                 }
             } catch (ItsException e) {
                 Logt.e(TAG, "Script error: ", e);
-                mThreadExitFlag = true;
             } catch (Exception e) {
                 Logt.e(TAG, "Script error: ", e);
-                mThreadExitFlag = true;
             }
         }
 
