@@ -14,6 +14,7 @@
 
 import its.device
 import its.objects
+import its.caps
 import os.path
 import time
 
@@ -24,6 +25,11 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+
+        # Only run test if the appropriate caps are claimed.
+        if not its.caps.sensor_fusion(props):
+            print "Test skipped"
+            return
 
         # Get the timestamp of a captured image.
         req, fmt = its.objects.get_fastest_manual_capture_settings(props)

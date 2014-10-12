@@ -59,8 +59,9 @@ def manual_sensor(props):
     Returns:
         Boolean.
     """
-    return props.has_key("android.request.availableCapabilities") and \
-           1 in props["android.request.availableCapabilities"]
+    return    props.has_key("android.request.availableCapabilities") and \
+              1 in props["android.request.availableCapabilities"] \
+           or full(props)
 
 def manual_post_proc(props):
     """Returns whether a device supports MANUAL_POST_PROCESSING capabilities.
@@ -71,8 +72,9 @@ def manual_post_proc(props):
     Returns:
         Boolean.
     """
-    return props.has_key("android.request.availableCapabilities") and \
-           2 in props["android.request.availableCapabilities"]
+    return    props.has_key("android.request.availableCapabilities") and \
+              2 in props["android.request.availableCapabilities"] \
+           or full(props)
 
 def raw(props):
     """Returns whether a device supports RAW capabilities.
