@@ -49,16 +49,13 @@ def main():
     check('props["android.info.supportedHardwareLevel"] in [0,1,2]')
     full = getval('props["android.info.supportedHardwareLevel"]') == 1
 
-    # Test: rollingShutterSkew, frameDuration, and
-    # availableMinFrameDurations tags must all be present, and
-    # rollingShutterSkew must be greater than zero and smaller than all
+    # Test: rollingShutterSkew, and frameDuration tags must all be present,
+    # and rollingShutterSkew must be greater than zero and smaller than all
     # of the possible frame durations.
     check('md.has_key("android.sensor.frameDuration")')
     check('md["android.sensor.frameDuration"] is not None')
     check('md.has_key("android.sensor.rollingShutterSkew")')
     check('md["android.sensor.rollingShutterSkew"] is not None')
-    check('props.has_key("android.scaler.availableMinFrameDurations")')
-    check('props["android.scaler.availableMinFrameDurations"] is not None')
     check('md["android.sensor.frameDuration"] > '
           'md["android.sensor.rollingShutterSkew"] > 0')
 

@@ -20,6 +20,9 @@ import os.path
 import numpy
 import matplotlib.pyplot
 
+# Required for 3d plot to work
+import mpl_toolkits.mplot3d
+
 def main():
     """Test that valid data comes back in CaptureResult objects.
     """
