@@ -17,10 +17,7 @@
 
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="1"
-    android:versionName="1.0"
     package="com.android.camera2.its">
-  <uses-sdk android:minSdkVersion="18" android:targetSdkVersion="19"/>
   <uses-feature android:name="android.hardware.camera" android:required="true"/>
   <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
   <uses-feature android:name="android.hardware.camera.flash" android:required="false"/>

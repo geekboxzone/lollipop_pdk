@@ -27,7 +27,7 @@ def main():
         # Test that a handful of required keys are present.
         assert(props.has_key('android.sensor.info.sensitivityRange'))
         assert(props.has_key('android.sensor.orientation'))
-        assert(props.has_key('android.scaler.availableStreamConfigurations'))
+        assert(props.has_key('android.scaler.streamConfigurationMap'))
         assert(props.has_key('android.lens.facing'))
 
         print "JPG sizes:", its.objects.get_available_output_sizes("jpg", props)

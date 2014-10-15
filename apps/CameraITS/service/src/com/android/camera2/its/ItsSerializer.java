@@ -27,12 +27,9 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.BlackLevelPattern;
 import android.hardware.camera2.params.ColorSpaceTransform;
 import android.hardware.camera2.params.Face;
-import android.hardware.camera2.params.HighSpeedVideoConfiguration;
 import android.hardware.camera2.params.LensShadingMap;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.RggbChannelVector;
-import android.hardware.camera2.params.StreamConfiguration;
-import android.hardware.camera2.params.StreamConfigurationDuration;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.hardware.camera2.params.TonemapCurve;
 import android.location.Location;
@@ -126,72 +123,29 @@ public class ItsSerializer {
     }
 
     @SuppressWarnings("unchecked")
-    private static Object serializeStreamConfiguration(
-            StreamConfiguration cfg)
-            throws org.json.JSONException {
-        JSONObject cfgObj = new JSONObject();
-        cfgObj.put("format", cfg.getFormat());
-        cfgObj.put("width", cfg.getWidth());
-        cfgObj.put("height", cfg.getHeight());
-        cfgObj.put("input", cfg.isInput());
-        return cfgObj;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object serializeStreamConfigurationDuration(
-            StreamConfigurationDuration dur)
-            throws org.json.JSONException {
-        JSONObject durObj = new JSONObject();
-        durObj.put("format", dur.getFormat());
-        durObj.put("width", dur.getWidth());
-        durObj.put("height", dur.getHeight());
-        durObj.put("duration", dur.getDuration());
-        return durObj;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object serializeHighSpeedVideoConfiguration(
-            HighSpeedVideoConfiguration cfg)
-            throws org.json.JSONException {
-        JSONObject cfgObj = new JSONObject();
-        cfgObj.put("width", cfg.getWidth());
-        cfgObj.put("height", cfg.getHeight());
-        cfgObj.put("fpsMin", cfg.getFpsMin());
-        cfgObj.put("fpsMax", cfg.getFpsMax());
-        return cfgObj;
-    }
-
-    @SuppressWarnings("unchecked")
     private static Object serializeStreamConfigurationMap(
             StreamConfigurationMap map)
             throws org.json.JSONException {
+        // TODO: Serialize the rest of the StreamConfigurationMap fields.
         JSONObject mapObj = new JSONObject();
-
-        // TODO: Finish serializeStreamConfigurationMap.
-        // The code below doesn't seem to work properly; it returns an empty list.
-        /*
-        JSONArray durArray = new JSONArray();
+        JSONArray cfgArray = new JSONArray();
         int fmts[] = map.getOutputFormats();
         if (fmts != null) {
-            for (int f = 0; f < Array.getLength(fmts); f++) {
-                Size sizes[] = map.getOutputSizes(f);
+            for (int fi = 0; fi < Array.getLength(fmts); fi++) {
+                Size sizes[] = map.getOutputSizes(fmts[fi]);
                 if (sizes != null) {
-                    for (int s = 0; s < Array.getLength(sizes); s++) {
-                        long minDur = map.getOutputMinFrameDuration(fmts[f], sizes[s]);
-                        long stallDur = map.getOutputStallDuration(fmts[f], sizes[s]);
-                        JSONObject durObj = new JSONObject();
-                        durObj.put("format", fmts[f]);
-                        durObj.put("size", serializeSize(sizes[s]));
-                        durObj.put("minFrameDuration", minDur);
-                        durObj.put("stallDiration", stallDur);
-                        durArray.put(durObj);
+                    for (int si = 0; si < Array.getLength(sizes); si++) {
+                        JSONObject obj = new JSONObject();
+                        obj.put("format", fmts[fi]);
+                        obj.put("width",sizes[si].getWidth());
+                        obj.put("height", sizes[si].getHeight());
+                        obj.put("input", false);
+                        cfgArray.put(obj);
                     }
                 }
             }
         }
-        mapObj.put("durations", durArray);
-        */
-
+        mapObj.put("availableStreamConfigurations", cfgArray);
         return mapObj;
     }
 
@@ -350,13 +304,6 @@ public class ItsSerializer {
                 return new MetadataEntry(keyName, serializeRect((Rect)keyValue));
             } else if (keyType == Face.class) {
                 return new MetadataEntry(keyName, serializeFace((Face)keyValue));
-            } else if (keyType == StreamConfiguration.class) {
-                return new MetadataEntry(keyName,
-                        serializeStreamConfiguration((StreamConfiguration)keyValue));
-            } else if (keyType == StreamConfigurationDuration.class) {
-                return new MetadataEntry(keyName,
-                        serializeStreamConfigurationDuration(
-                                (StreamConfigurationDuration)keyValue));
             } else if (keyType == StreamConfigurationMap.class) {
                 return new MetadataEntry(keyName,
                         serializeStreamConfigurationMap((StreamConfigurationMap)keyValue));
@@ -387,16 +334,9 @@ public class ItsSerializer {
             } else if (keyType == LensShadingMap.class) {
                 return new MetadataEntry(keyName,
                         serializeLensShadingMap((LensShadingMap)keyValue));
-            } else if (keyType == HighSpeedVideoConfiguration.class) {
-                return new MetadataEntry(keyName,
-                        serializeHighSpeedVideoConfiguration(
-                                (HighSpeedVideoConfiguration)keyValue));
-            } else if (keyType instanceof ParameterizedType &&
-                    ((ParameterizedType)keyType).getRawType() == Pair.class) {
-                return new MetadataEntry(keyName, serializePair((Pair)keyValue));
             } else {
-                throw new ItsException(
-                        "Unsupported key type in metadata serializer: " + keyType);
+                Logt.w(TAG, String.format("Serializing unsupported key type: " + keyType));
+                return null;
             }
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error for key: " + keyName + ": ", e);
@@ -439,20 +379,6 @@ public class ItsSerializer {
                 JSONArray jsonArray = new JSONArray();
                 for (int i = 0; i < arrayLen; i++) {
                     jsonArray.put(serializeFace((Face)Array.get(keyValue, i)));
-                }
-                return new MetadataEntry(keyName, jsonArray);
-            } else if (elmtType == StreamConfiguration.class) {
-                JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < arrayLen; i++) {
-                    jsonArray.put(serializeStreamConfiguration(
-                            (StreamConfiguration)Array.get(keyValue,i)));
-                }
-                return new MetadataEntry(keyName, jsonArray);
-            } else if (elmtType == StreamConfigurationDuration.class) {
-                JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < arrayLen; i++) {
-                    jsonArray.put(serializeStreamConfigurationDuration(
-                            (StreamConfigurationDuration)Array.get(keyValue,i)));
                 }
                 return new MetadataEntry(keyName, jsonArray);
             } else if (elmtType == StreamConfigurationMap.class) {
@@ -503,13 +429,6 @@ public class ItsSerializer {
                             (BlackLevelPattern)Array.get(keyValue,i)));
                 }
                 return new MetadataEntry(keyName, jsonArray);
-            } else if (elmtType == HighSpeedVideoConfiguration.class) {
-                JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < arrayLen; i++) {
-                    jsonArray.put(serializeHighSpeedVideoConfiguration(
-                            (HighSpeedVideoConfiguration)Array.get(keyValue,i)));
-                }
-                return new MetadataEntry(keyName, jsonArray);
             } else if (elmtType == Point.class) {
                 JSONArray jsonArray = new JSONArray();
                 for (int i = 0; i < arrayLen; i++) {
@@ -517,7 +436,8 @@ public class ItsSerializer {
                 }
                 return new MetadataEntry(keyName, jsonArray);
             } else {
-                throw new ItsException("Unsupported array type: " + elmtType);
+                Logt.w(TAG, String.format("Serializing unsupported array type: " + elmtType));
+                return null;
             }
         } catch (org.json.JSONException e) {
             throw new ItsException("JSON error for key: " + keyName + ": ", e);
