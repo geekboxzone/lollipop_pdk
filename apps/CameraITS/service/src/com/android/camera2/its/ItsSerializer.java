@@ -140,6 +140,8 @@ public class ItsSerializer {
                         obj.put("width",sizes[si].getWidth());
                         obj.put("height", sizes[si].getHeight());
                         obj.put("input", false);
+                        obj.put("minFrameDuration",
+                                map.getOutputMinFrameDuration(fmts[fi],sizes[si]));
                         cfgArray.put(obj);
                     }
                 }
