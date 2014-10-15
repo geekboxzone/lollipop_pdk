@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import os.path
-import pprint
-import math
 import numpy
 import matplotlib.pyplot
-import mpl_toolkits.mplot3d
 
 def main():
     """Test that valid data comes back in CaptureResult objects.
@@ -33,6 +31,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if (not its.caps.manual_sensor(props) or
+            not its.caps.manual_post_proc(props)):
+            print "Test skipped"
+            return
 
         manual_tonemap = [0,0, 1,1] # Linear
         manual_transform = its.objects.int_to_rational([1,2,3, 4,5,6, 7,8,9])

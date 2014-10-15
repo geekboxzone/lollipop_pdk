@@ -166,7 +166,7 @@ public class ItsService extends Service implements SensorEventListener {
         public int accuracy;
         public long timestamp;
         public float values[];
-    };
+    }
 
     // For capturing motion sensor traces.
     private SensorManager mSensorManager = null;
@@ -322,6 +322,7 @@ public class ItsService extends Service implements SensorEventListener {
     class SerializerRunnable implements Runnable {
         // Use a separate thread to perform JSON serialization (since this can be slow due to
         // the reflection).
+        @Override
         public void run() {
             Logt.i(TAG, "Serializer thread starting");
             while (! mThreadExitFlag) {
@@ -387,6 +388,7 @@ public class ItsService extends Service implements SensorEventListener {
             mOpenSocket = openSocket;
         }
 
+        @Override
         public void run() {
             Logt.i(TAG, "Socket writer thread starting");
             while (true) {
@@ -430,6 +432,7 @@ public class ItsService extends Service implements SensorEventListener {
         private Socket mOpenSocket = null;
         private SocketWriteRunnable mSocketWriteRunnable = null;
 
+        @Override
         public void run() {
             Logt.i(TAG, "Socket thread starting");
             try {
@@ -1238,16 +1241,28 @@ public class ItsService extends Service implements SensorEventListener {
                 }
 
                 if (mConvergedAE && (!mNeedsLockedAE || mLockedAE)) {
-                    mSocketRunnableObj.sendResponse("aeResult", String.format("%d %d",
-                            result.get(CaptureResult.SENSOR_SENSITIVITY).intValue(),
-                            result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue()
-                            ));
+                    if (result.get(CaptureResult.SENSOR_SENSITIVITY) != null
+                            && result.get(CaptureResult.SENSOR_EXPOSURE_TIME) != null) {
+                        mSocketRunnableObj.sendResponse("aeResult", String.format("%d %d",
+                                result.get(CaptureResult.SENSOR_SENSITIVITY).intValue(),
+                                result.get(CaptureResult.SENSOR_EXPOSURE_TIME).intValue()
+                                ));
+                    } else {
+                        Logt.i(TAG, String.format(
+                                "AE converged but NULL exposure values, sensitivity:%b, expTime:%b",
+                                result.get(CaptureResult.SENSOR_SENSITIVITY) == null,
+                                result.get(CaptureResult.SENSOR_EXPOSURE_TIME) == null));
+                    }
                 }
 
                 if (mConvergedAF) {
-                    mSocketRunnableObj.sendResponse("afResult", String.format("%f",
-                            result.get(CaptureResult.LENS_FOCUS_DISTANCE)
-                            ));
+                    if (result.get(CaptureResult.LENS_FOCUS_DISTANCE) != null) {
+                        mSocketRunnableObj.sendResponse("afResult", String.format("%f",
+                                result.get(CaptureResult.LENS_FOCUS_DISTANCE)
+                                ));
+                    } else {
+                        Logt.i(TAG, "AF converged but NULL focus distance values");
+                    }
                 }
 
                 if (mConvergedAWB && (!mNeedsLockedAWB || mLockedAWB)) {

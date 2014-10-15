@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import os.path
@@ -29,6 +30,12 @@ def main():
     MIN_DIFF_DELTA = 0.10
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if (not its.caps.manual_sensor(props) or
+            not its.caps.manual_post_proc(props)):
+            print "Test skipped"
+            return
+
         sens, exp_time, _,_,_ = cam.do_3a(do_af=False)
 
         means = []

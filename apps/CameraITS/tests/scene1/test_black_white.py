@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
-import sys
-import numpy
-import Image
-import pprint
-import math
 import pylab
 import os.path
 import matplotlib
@@ -36,6 +32,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.manual_sensor(props):
+            print "Test skipped"
+            return
+
         expt_range = props['android.sensor.info.exposureTimeRange']
         sens_range = props['android.sensor.info.sensitivityRange']
 

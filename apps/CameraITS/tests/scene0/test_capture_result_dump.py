@@ -12,24 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import its.caps
 import its.image
 import its.device
 import its.objects
 import its.target
-import os.path
 import pprint
 
 def main():
     """Test that a capture result is returned from a manual capture; dump it.
     """
-    NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
         # Arbitrary capture request exposure values; image content is not
         # important for this test, only the metadata.
         props = cam.get_camera_properties()
+        if not its.caps.manual_sensor(props):
+            print "Test skipped"
+            return
+
         req,fmt = its.objects.get_fastest_manual_capture_settings(props)
-        req["android.statistics.lensShadingMapMode"] = 1
         cap = cam.do_capture(req, fmt)
         pprint.pprint(cap["metadata"])
 

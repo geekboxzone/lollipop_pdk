@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import its.caps
 import its.device
 import its.objects
 import pprint
@@ -22,10 +23,13 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+
         pprint.pprint(props)
 
         # Test that a handful of required keys are present.
-        assert(props.has_key('android.sensor.info.sensitivityRange'))
+        if its.caps.manual_sensor(props):
+            assert(props.has_key('android.sensor.info.sensitivityRange'))
+
         assert(props.has_key('android.sensor.orientation'))
         assert(props.has_key('android.scaler.streamConfigurationMap'))
         assert(props.has_key('android.lens.facing'))

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import os.path
@@ -24,6 +25,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if (not its.caps.raw(props) or
+            not its.caps.read_3a(props)):
+            print "Test skipped"
+            return
 
         cam.do_3a()
 

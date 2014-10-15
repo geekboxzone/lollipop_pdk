@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import os.path
@@ -32,6 +33,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.manual_sensor(props):
+            print "Test skipped"
+            return
+
         req, fmt = its.objects.get_fastest_manual_capture_settings(props)
         caps = cam.do_capture([req]*50, [fmt])
 

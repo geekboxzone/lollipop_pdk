@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
-import pylab
 import os.path
-import matplotlib
-import matplotlib.pyplot
 
 def main():
     """Test that the android.flash.mode parameter is applied.
@@ -27,6 +25,10 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
 
         flash_modes_reported = []
         flash_states_reported = []

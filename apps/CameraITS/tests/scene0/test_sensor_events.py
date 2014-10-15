@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.device
+import its.caps
 import time
 
 def main():
@@ -23,6 +24,12 @@ def main():
     """
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        # Only run test if the appropriate caps are claimed.
+        if not its.caps.sensor_fusion(props):
+            print "Test skipped"
+            return
+
         cam.start_sensor_events()
         time.sleep(1)
         events = cam.get_sensor_events()

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -43,6 +44,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
         # NR mode 0 with low gain
         e, s = its.target.get_target_exposure_combos(cam)["minSensitivity"]
         req = its.objects.manual_capture_request(s, e)

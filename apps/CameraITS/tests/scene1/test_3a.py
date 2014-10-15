@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.device
+import its.caps
 
 def main():
     """Basic test for bring-up of 3A.
@@ -21,6 +22,11 @@ def main():
     """
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if not its.caps.read_3a(props):
+            print "Test skipped"
+            return
+
         sens, exp, gains, xform, focus = cam.do_3a()
         print "AE: sensitivity %d, exposure %dms" % (sens, exp/1000000)
         print "AWB: gains", gains, "transform", xform

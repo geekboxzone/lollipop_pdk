@@ -17,8 +17,6 @@ import its.device
 import its.objects
 import its.target
 import its.caps
-import os.path
-import pprint
 
 def main():
     """Test the validity of some metadata entries.
@@ -26,14 +24,13 @@ def main():
     Looks at capture results and at the camera characteristics objects.
     """
     global md, props, failed
-    NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
         # Arbitrary capture request exposure values; image content is not
         # important for this test, only the metadata.
         props = cam.get_camera_properties()
-        req,fmt = its.objects.get_fastest_manual_capture_settings(props)
-        cap = cam.do_capture(req, fmt)
+        auto_req = its.objects.auto_capture_request()
+        cap = cam.do_capture(auto_req)
         md = cap["metadata"]
 
     print "Hardware level"
@@ -62,7 +59,7 @@ def main():
     check('md["android.sensor.rollingShutterSkew"] is not None')
     check('props.has_key("android.scaler.availableMinFrameDurations")')
     check('props["android.scaler.availableMinFrameDurations"] is not None')
-    check('md["android.sensor.frameDuration"] > ' \
+    check('md["android.sensor.frameDuration"] > '
           'md["android.sensor.rollingShutterSkew"] > 0')
 
     # Test: timestampSource must be a valid value.

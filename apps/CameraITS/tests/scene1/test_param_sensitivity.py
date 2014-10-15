@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -34,8 +35,12 @@ def main():
     b_means = []
 
     with its.device.ItsSession() as cam:
-        expt,_ = its.target.get_target_exposure_combos(cam)["midSensitivity"]
         props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
+        expt,_ = its.target.get_target_exposure_combos(cam)["midSensitivity"]
         sens_range = props['android.sensor.info.sensitivityRange']
         sens_step = (sens_range[1] - sens_range[0]) / float(NUM_STEPS-1)
         sensitivities = [sens_range[0] + i * sens_step for i in range(NUM_STEPS)]

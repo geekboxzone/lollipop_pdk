@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.error
 import its.target
 import sys
-import time
 import os
 import os.path
 
@@ -33,6 +33,10 @@ def main():
     with its.device.ItsSession() as cam:
 
         props = cam.get_camera_properties()
+        if (not its.caps.compute_target_exposure(props) or
+            not its.caps.raw16(props)):
+            print "Test skipped"
+            return
 
         successes = []
         failures = []
@@ -65,7 +69,7 @@ def main():
                 [fmt_yuv_prev, fmt_jpg_prev, fmt_raw_full], # F8
                 [fmt_yuv_prev, fmt_jpg_full, fmt_raw_full]] # F9
 
-        # Two different burst lenghts: single frame, and 3 frames.
+        # Two different burst lengths: single frame, and 3 frames.
         burst_lens = [1, # B0
                       3] # B1
 

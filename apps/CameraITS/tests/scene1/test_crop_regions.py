@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
-import pylab
 import os.path
-import matplotlib
-import matplotlib.pyplot
-import copy
 import numpy
 
 def main():
@@ -38,6 +35,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
         a = props['android.sensor.info.activeArraySize']
         ax, ay = a["left"], a["top"]
         aw, ah = a["right"] - a["left"], a["bottom"] - a["top"]

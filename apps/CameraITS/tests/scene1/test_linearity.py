@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
-import sys
 import numpy
-import Image
-import pprint
 import math
 import pylab
 import os.path
@@ -38,7 +36,7 @@ def main():
     RESIDUAL_THRESHOLD = 0.00005
 
     # The HAL3.2 spec requires that curves up to 64 control points in length
-    # must be supported. 
+    # must be supported.
     L = 64
     LM1 = float(L-1)
 
@@ -48,9 +46,13 @@ def main():
             sum([[i/LM1, math.pow(i/LM1, 2.2)] for i in xrange(L)], []))
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
         e,s = its.target.get_target_exposure_combos(cam)["midSensitivity"]
         s /= 2
-        props = cam.get_camera_properties()
         sens_range = props['android.sensor.info.sensitivityRange']
         sensitivities = [s*1.0/3.0, s*2.0/3.0, s, s*4.0/3.0, s*5.0/3.0]
         sensitivities = [s for s in sensitivities

@@ -13,24 +13,24 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
-import pylab
-import os.path
-import matplotlib
-import matplotlib.pyplot
 
 def main():
     """Test that the android.sensor.sensitivity parameter is applied properly
     within a burst. Inspects the output metadata only (not the image data).
     """
-    NAME = os.path.basename(__file__).split(".")[0]
 
     NUM_STEPS = 3
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.manual_sensor(props):
+            print "Test skipped"
+            return
+
         sens_range = props['android.sensor.info.sensitivityRange']
         sens_step = (sens_range[1] - sens_range[0]) / NUM_STEPS
         sens_list = range(sens_range[0], sens_range[1], sens_step)

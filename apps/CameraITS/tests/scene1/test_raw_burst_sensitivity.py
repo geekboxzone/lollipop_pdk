@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import its.device
+import its.caps
 import its.objects
 import its.image
-import pprint
 import os.path
 import pylab
 import matplotlib
@@ -37,6 +37,11 @@ def main():
     with its.device.ItsSession() as cam:
 
         props = cam.get_camera_properties()
+        if not its.caps.raw16(props) or \
+           not its.caps.manual_sensor(props) or \
+           not its.caps.read_3a(props):
+            print "Test skipped"
+            return
 
         # Expose for the scene with min sensitivity
         sens_min, sens_max = props['android.sensor.info.sensitivityRange']

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -35,6 +36,10 @@ def main():
     THRESHOLD_MAX_DIFF = 0.1
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
 
         # Baseline request
         e, s = its.target.get_target_exposure_combos(cam)["midSensitivity"]

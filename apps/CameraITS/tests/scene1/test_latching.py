@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -20,22 +21,25 @@ import pylab
 import os.path
 import matplotlib
 import matplotlib.pyplot
-import copy
 
 def main():
     """Test that settings latch on the right frame.
 
     Takes a bunch of shots using back-to-back requests, varying the capture
     request parameters between shots. Checks that the images that come back
-    have the expexted properties.
+    have the expected properties.
     """
     NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.full(props):
+            print "Test skipped"
+            return
+
         _,fmt = its.objects.get_fastest_manual_capture_settings(props)
         e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
-        e = e / 2.0
+        e /= 2.0
 
         r_means = []
         g_means = []

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.device
+import its.caps
 import its.objects
 import its.target
 
@@ -29,6 +30,10 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
         _,fmt = its.objects.get_fastest_manual_capture_settings(props)
 
         # Capture 5 manual requests, with AE disabled, and the last request

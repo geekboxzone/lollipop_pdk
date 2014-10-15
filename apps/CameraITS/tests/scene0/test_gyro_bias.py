@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
 import time
-import math
 import pylab
 import os.path
 import matplotlib
 import matplotlib.pyplot
-import json
 import numpy
 
 def main():
@@ -38,6 +37,12 @@ def main():
     VAR_THRESH = 0.001
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        # Only run test if the appropriate caps are claimed.
+        if not its.caps.sensor_fusion(props):
+            print "Test skipped"
+            return
+
         print "Collecting gyro events"
         cam.start_sensor_events()
         time.sleep(5)

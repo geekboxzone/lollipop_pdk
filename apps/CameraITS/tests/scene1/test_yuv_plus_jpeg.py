@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -30,6 +31,11 @@ def main():
     fmt_jpeg = {"format":"jpeg"}
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
         # Use a manual request with a linear tonemap so that the YUV and JPEG
         # should look the same (once converted by the its.image module).
         e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]

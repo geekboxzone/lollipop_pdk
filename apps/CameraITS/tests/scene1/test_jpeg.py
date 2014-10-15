@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
 import os.path
-import Image
-import shutil
-import numpy
 import math
 
 def main():
@@ -31,6 +29,9 @@ def main():
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
 
         e, s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
         req = its.objects.manual_capture_request(s, e, True)

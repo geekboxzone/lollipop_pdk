@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -42,8 +43,12 @@ def main():
     b_means = []
 
     with its.device.ItsSession() as cam:
-        e,s = its.target.get_target_exposure_combos(cam)["minSensitivity"]
         props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
+        e,s = its.target.get_target_exposure_combos(cam)["minSensitivity"]
         expt_range = props['android.sensor.info.exposureTimeRange']
         sens_range = props['android.sensor.info.sensitivityRange']
 

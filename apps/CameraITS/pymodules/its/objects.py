@@ -131,7 +131,7 @@ def get_available_output_sizes(fmt, props):
     Returns:
         A sorted list of (w,h) tuples (sorted large-to-small).
     """
-    fmt_codes = {"raw":0x20, "yuv":0x23, "jpg":0x100, "jpeg":0x100}
+    fmt_codes = {"raw":0x20, "raw10":0x25, "yuv":0x23, "jpg":0x100, "jpeg":0x100}
     configs = props['android.scaler.streamConfigurationMap']\
                    ['availableStreamConfigurations']
     fmt_configs = [cfg for cfg in configs if cfg['format'] == fmt_codes[fmt]]

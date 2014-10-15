@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import its.target
@@ -32,6 +33,11 @@ def main():
     b_means = []
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if not its.caps.compute_target_exposure(props):
+            print "Test skipped"
+            return
+
         e,s = its.target.get_target_exposure_combos(cam)["midExposureTime"]
         for i,e_mult in enumerate([0.8, 0.9, 1.0, 1.1, 1.2]):
             req = its.objects.manual_capture_request(s, e * e_mult, True)

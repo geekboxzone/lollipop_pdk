@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import os.path
 import numpy
-import pylab
-import matplotlib
-import matplotlib.pyplot
 
 def main():
     """Take long bursts of images and check that they're all identical.
@@ -41,6 +39,10 @@ def main():
 
         # Capture at the smallest resolution.
         props = cam.get_camera_properties()
+        if not its.caps.manual_sensor(props):
+            print "Test skipped"
+            return
+
         _, fmt = its.objects.get_fastest_manual_capture_settings(props)
         w,h = fmt["width"], fmt["height"]
 

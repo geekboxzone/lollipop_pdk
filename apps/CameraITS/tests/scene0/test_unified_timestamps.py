@@ -15,13 +15,11 @@
 import its.device
 import its.objects
 import its.caps
-import os.path
 import time
 
 def main():
     """Test if image and motion sensor events are in the same time domain.
     """
-    NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
         props = cam.get_camera_properties()
@@ -51,7 +49,7 @@ def main():
         ts_mag0 = events["mag"][0]["time"]
         ts_mag1 = events["mag"][-1]["time"]
 
-        # Get the timestamp of another iamge.
+        # Get the timestamp of another image.
         cap = cam.do_capture(req, fmt)
         ts_image1 = cap['metadata']['android.sensor.timestamp']
 

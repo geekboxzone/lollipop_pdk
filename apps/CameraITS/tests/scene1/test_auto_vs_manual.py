@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import its.image
+import its.caps
 import its.device
 import its.objects
 import os.path
@@ -30,6 +31,11 @@ def main():
     NAME = os.path.basename(__file__).split(".")[0]
 
     with its.device.ItsSession() as cam:
+        props = cam.get_camera_properties()
+        if (not its.caps.manual_sensor(props) or
+            not its.caps.manual_post_proc(props)):
+            print "Test skipped"
+            return
 
         # Converge 3A and get the estimates.
         sens, exp, gains, xform, focus = cam.do_3a()
