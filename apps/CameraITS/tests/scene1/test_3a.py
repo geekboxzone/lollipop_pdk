@@ -27,7 +27,7 @@ def main():
             print "Test skipped"
             return
 
-        sens, exp, gains, xform, focus = cam.do_3a()
+        sens, exp, gains, xform, focus = cam.do_3a(get_results=True)
         print "AE: sensitivity %d, exposure %dms" % (sens, exp/1000000)
         print "AWB: gains", gains, "transform", xform
         print "AF: distance", focus

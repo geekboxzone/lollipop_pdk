@@ -36,7 +36,7 @@ def main():
             print "Test skipped"
             return
 
-        sens, exp_time, _,_,_ = cam.do_3a(do_af=False)
+        sens, exp_time, _,_,_ = cam.do_3a(do_af=False,get_results=True)
 
         means = []
 

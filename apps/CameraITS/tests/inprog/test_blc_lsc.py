@@ -39,8 +39,8 @@ def main():
         # Get AE+AWB lock first, so the auto values in the capture result are
         # populated properly.
         r = [[0,0,1,1,1]]
-        ae_sen,ae_exp,awb_gains,awb_transform,_ = \
-                cam.do_3a(r,r,r,True,True,False)
+        ae_sen,ae_exp,awb_gains,awb_transform,_ \
+                = cam.do_3a(r,r,r,do_af=False,get_results=True)
         print "AE:", ae_sen, ae_exp / 1000000.0
         print "AWB:", awb_gains, awb_transform
 

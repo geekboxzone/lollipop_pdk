@@ -97,7 +97,7 @@ def main():
         #
         # If this keeps on failing, try also rebooting the device before
         # running the test.
-        sens, exp, gains, xform, focus = cam.do_3a()
+        sens, exp, gains, xform, focus = cam.do_3a(get_results=True)
         print "AE: sensitivity %d, exposure %dms" % (sens, exp/1000000.0)
         print "AWB: gains", gains, "transform", xform
         print "AF: distance", focus

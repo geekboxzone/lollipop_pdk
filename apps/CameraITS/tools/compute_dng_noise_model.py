@@ -41,7 +41,7 @@ def main():
 
         # Expose for the scene with min sensitivity
         sens_min, sens_max = props['android.sensor.info.sensitivityRange']
-        s_ae,e_ae,awb_gains,awb_ccm,_  = cam.do_3a()
+        s_ae,e_ae,awb_gains,awb_ccm,_  = cam.do_3a(get_results=True)
         s_e_prod = s_ae * e_ae
 
         # Make the image brighter since the script looks at linear Bayer

@@ -36,7 +36,7 @@ def main():
         }
 
     with its.device.ItsSession() as cam:
-        sens, exp, gains, xform, focus = cam.do_3a()
+        sens, exp, gains, xform, focus = cam.do_3a(get_results=True)
         for e in [0,1,2]:
             req["android.edge.mode"] = e
             cap = cam.do_capture(req)

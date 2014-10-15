@@ -904,6 +904,7 @@ public class ItsService extends Service implements SensorEventListener {
                     mIssuedRequest3A = true;
                     mSession.capture(req.build(), mCaptureResultListener, mResultHandler);
                 } else {
+                    mSocketRunnableObj.sendResponse("3aConverged", "");
                     Logt.i(TAG, "3A converged");
                     break;
                 }

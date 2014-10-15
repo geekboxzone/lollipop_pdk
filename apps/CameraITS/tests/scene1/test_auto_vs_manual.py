@@ -38,7 +38,7 @@ def main():
             return
 
         # Converge 3A and get the estimates.
-        sens, exp, gains, xform, focus = cam.do_3a()
+        sens, exp, gains, xform, focus = cam.do_3a(get_results=True)
         xform_rat = its.objects.float_to_rational(xform)
         print "AE sensitivity %d, exposure %dms" % (sens, exp/1000000.0)
         print "AWB gains", gains
@@ -85,7 +85,7 @@ def main():
         print "Manual wb+tm transform:", xform_m2
 
         # Check that the WB gains and transform reported in each capture
-        # result math with the original AWB estimate from do_3a.
+        # result match with the original AWB estimate from do_3a.
         for g,x in [(gains_a,xform_a),(gains_m1,xform_m1),(gains_m2,xform_m2)]:
             assert(all([abs(xform[i] - x[i]) < 0.05 for i in range(9)]))
             assert(all([abs(gains[i] - g[i]) < 0.05 for i in range(4)]))

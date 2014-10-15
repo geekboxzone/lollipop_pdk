@@ -109,7 +109,7 @@ def test_auto(cam, w_map, h_map):
     # Get 3A lock first, so the auto values in the capture result are
     # populated properly.
     rect = [[0,0,1,1,1]]
-    cam.do_3a(rect, rect, rect, True, True, False)
+    cam.do_3a(rect, rect, rect, do_af=False)
 
     cap = cam.do_capture(auto_req)
     cap_res = cap["metadata"]

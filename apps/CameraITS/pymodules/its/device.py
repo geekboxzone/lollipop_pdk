@@ -256,7 +256,8 @@ class ItsSession(object):
                     regions_awb=[[0,0,1,1,1]],
                     regions_af=[[0,0,1,1,1]],
                     do_ae=True, do_awb=True, do_af=True,
-                    lock_ae=False, lock_awb=False):
+                    lock_ae=False, lock_awb=False,
+                    get_results=False):
         """Perform a 3A operation on the device.
 
         Triggers some or all of AE, AWB, and AF, and returns once they have
@@ -273,6 +274,7 @@ class ItsSession(object):
             do_af: Trigger AF and wait for it to converge.
             lock_ae: Request AE lock after convergence, and wait for it.
             lock_awb: Request AWB lock after convergence, and wait for it.
+            get_results: Return the 3A results from this function.
 
         Region format in args:
             Arguments are lists of weighted regions; each weighted region is a
@@ -283,12 +285,13 @@ class ItsSession(object):
             Weights are non-negative integers.
 
         Returns:
-            Five values:
+            Five values are returned if get_results is true::
             * AE sensitivity; None if do_ae is False
             * AE exposure time; None if do_ae is False
             * AWB gains (list); None if do_awb is False
             * AWB transform (list); None if do_awb is false
             * AF focus position; None if do_af is false
+            Otherwise, it returns five None values.
         """
         print "Running vendor 3A on device"
         cmd = {}
@@ -309,6 +312,7 @@ class ItsSession(object):
         awb_gains = None
         awb_transform = None
         af_dist = None
+        converged = False
         while True:
             data,_ = self.__read_response_from_socket()
             vals = data['strValue'].split()
@@ -319,12 +323,16 @@ class ItsSession(object):
             elif data['tag'] == 'awbResult':
                 awb_gains = [float(f) for f in vals[:4]]
                 awb_transform = [float(f) for f in vals[4:]]
+            elif data['tag'] == '3aConverged':
+                converged = True
             elif data['tag'] == '3aDone':
                 break
             else:
                 raise its.error.Error('Invalid command response')
+        if converged and not get_results:
+            return None,None,None,None,None
         if (do_ae and ae_sens == None or do_awb and awb_gains == None
-                                      or do_af and af_dist == None):
+                or do_af and af_dist == None or not converged):
             raise its.error.Error('3A failed to converge')
         return ae_sens, ae_exp, awb_gains, awb_transform, af_dist
 

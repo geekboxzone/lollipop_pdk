@@ -56,7 +56,8 @@ def __do_target_exposure_measurement(its_session):
     # Get AE+AWB lock first, so the auto values in the capture result are
     # populated properly.
     r = [[0.45, 0.45, 0.1, 0.1, 1]]
-    sens, exp_time, gains, xform, _ = its_session.do_3a(r,r,r,True,True,False)
+    sens, exp_time, gains, xform, _ \
+            = its_session.do_3a(r,r,r,do_af=False,get_results=True)
 
     # Convert the transform to rational.
     xform_rat = [{"numerator":int(100*x),"denominator":100} for x in xform]
